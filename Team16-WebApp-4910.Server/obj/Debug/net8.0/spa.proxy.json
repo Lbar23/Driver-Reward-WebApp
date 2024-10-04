@@ -1,0 +1,10 @@
+{
+"SpaProxyServer": {
+"ServerUrl": "https://localhost:5173",
+"RedirectUrl": "",
+"LaunchCommand": "npm run dev",
+"WorkingDirectory": "C:\\Users\\damon\\Coding_Folder\\Updated GIDP Skeleton Structure\\Team16-WebApp-4910.Server\\..\\team16-webapp-4910.client",
+"MaxTimeoutInSeconds": "120",
+"KeepRunning": "false"
+}
+}
