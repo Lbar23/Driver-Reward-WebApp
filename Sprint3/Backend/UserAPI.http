@@ -1,0 +1,42 @@
+### Variables
+@baseUrl = http://localhost:5198/api
+@contentType = application/json
+
+### Get all users
+GET {{baseUrl}}/users
+Accept: {{contentType}}
+
+### Get a specific user by ID
+GET {{baseUrl}}/users/1
+Accept: {{contentType}}
+
+### Create a new user
+POST {{baseUrl}}/users
+Content-Type: {{contentType}}
+
+{
+    "username": "johndoe",
+    "password": "securepassword123",
+    "email": "john.doe@example.com"
+}
+
+### Update an existing user
+PUT {{baseUrl}}/users/1
+Content-Type: {{contentType}}
+
+{
+    "username": "johndoe_updated",
+    "email": "john.doe_updated@example.com"
+}
+
+### Delete a user
+DELETE {{baseUrl}}/users/1
+Accept: {{contentType}}
+
+### Get users created after a specific date
+GET {{baseUrl}}/users?createdAfter=2023-01-01
+Accept: {{contentType}}
+
+### Get users last used before a specific date
+GET {{baseUrl}}/users?lastUsedBefore=2023-06-01
+Accept: {{contentType}}
