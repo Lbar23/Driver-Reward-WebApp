@@ -1,3 +1,5 @@
+-- For sake of instance; Use IdentityTables instead later
+
 -- Users table (for all user types)
 CREATE TABLE Users (
     UserID INT PRIMARY KEY AUTO_INCREMENT,
