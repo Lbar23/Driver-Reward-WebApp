@@ -42,7 +42,15 @@ const RegisterPage: React.FC = () => {
             });
             console.log('Registration successful:', response.data);
         } catch (error) {
-            console.error('Registration failed:', error.response?.data || error.message);
+          if (axios.isAxiosError(error)){ //check for axios issues
+            console.error('Registration failed:', error.response?.data);
+          }
+          else if (error instanceof Error){ //should catch js
+            console.error('Registration failed:', error.message);
+          }
+          else{ 
+            console.error('An unknown error occurred:', JSON.stringify(error));
+          }
         }
     };
 

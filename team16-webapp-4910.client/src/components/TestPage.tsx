@@ -20,7 +20,15 @@ const TestPage: React.FC = () => {
       });
       setMessage(`Registration successful. Role: ${response.data.role}`);
     } catch (error) {
-      setMessage(error.response.data);
+      if (axios.isAxiosError(error)){ //check for axios issues
+        setMessage(error.response?.data);
+      }
+      else if (error instanceof Error){ //should catch js
+        setMessage(error.message);
+      }
+      else{ 
+        setMessage(JSON.stringify(error));
+      }
     }
   };
 
@@ -30,8 +38,16 @@ const TestPage: React.FC = () => {
       const response = await axios.post('/api/user/login', { username, password });
       setToken(response.data.token);
       setMessage(`Login successful. Role: ${response.data.role}`);
-    } catch (error) {
-      setMessage(error.response.data);
+    } catch (error) { //this should be a function later
+      if (axios.isAxiosError(error)){ //check for axios issues
+        setMessage(error.response?.data);
+      }
+      else if (error instanceof Error){ //should catch js
+        setMessage(error.message);
+      }
+      else{ 
+        setMessage(JSON.stringify(error));
+      }
     }
   };
 
