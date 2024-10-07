@@ -11,6 +11,7 @@ namespace Team16_WebApp_4910.Server
     {
         //override
         public DbSet<Users> Users { get; set; }
+        public DbSet<Admins> Admins { get; set; }
         public DbSet<Sponsors> Sponsors { get; set; }
         public DbSet<Drivers> Drivers { get; set; }
         public DbSet<Products> Products { get; set; }
@@ -32,6 +33,13 @@ namespace Team16_WebApp_4910.Server
                 entity.Property(static e => e.Email).IsRequired().HasMaxLength(100);
                 entity.Property(static e => e.UserType).IsRequired().HasConversion<string>();
                 entity.Property(static e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            modelBuilder.Entity<Admins>(static entity =>
+            {
+                entity.ToTable("Admins");
+                entity.HasKey(static e => e.AdminID);
+                entity.HasOne(static d => d.User).WithOne().HasForeignKey<Admins>(static d => d.UserID);
             });
 
             modelBuilder.Entity<Sponsors>(static entity =>
