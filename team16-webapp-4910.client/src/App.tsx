@@ -1,4 +1,4 @@
-// import React from 'react';
+import React from 'react';
 import { Route, Routes, Link, Navigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -7,6 +7,8 @@ import FeedbackForm from './components/Feedback';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import TestPage from './components/TestPage';
+import About from './components/About';
+import Home from './components/HomePage';
 
 const theme = createTheme({
     palette: {
@@ -22,6 +24,7 @@ const NavBar = () => (
             <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
                 Incentive Application
             </Typography>
+            <Button color="inherit" component={Link} to="/about">About</Button>
             <Button color="inherit" component={Link} to="/login">Login</Button>
             <Button color="inherit" component={Link} to="/register">Register</Button>
             <Button color="inherit" component={Link} to="/faq">FAQ</Button>
@@ -42,6 +45,8 @@ const App = () => {
                     <Route path="/feedback" element={<FeedbackForm />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                     <Route path="/test" element={<TestPage /> } />
+                    <Route path="/about" element={<About /> } />
+                    <Route path="/home" element={<Home /> } />
                 </Routes>
             </Container>
         </ThemeProvider>
