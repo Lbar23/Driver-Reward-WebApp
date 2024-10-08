@@ -23,8 +23,12 @@ const About: React.FC = () => {
                 }
                 const data: AboutInfo[] = await response.json();
                 setAboutInfo(data);
-            } catch (error: any) {
-                setError(error.message);
+            } catch (error) {
+                if (error instanceof Error) {
+                    setError(error.message);
+                } else {
+                    setError('An unknown error occurred');
+                }
             }
         };
 
