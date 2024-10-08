@@ -35,32 +35,62 @@ using (var sshClient = new SshClient(sshHost, sshUsername, new PrivateKeyFile(ss
 
     builder.Services.AddControllers();
 
+    //Database Connection Setup
+    builder.Services.AddDbContext<AppDBContext>(options =>
+        options.UseMySql(connection_string,
+            new MySqlServerVersion(new Version(8, 0, 25)),
+            options => options.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)));
+
+    //Identity Setup
+    builder.Services.AddIdentity<Users, IdentityRole<int>>(options => {
+        options.SignIn.RequireConfirmedAccount = false;
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequiredLength = 6;
+        options.Password.RequiredUniqueChars = 1;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.AllowedForNewUsers = true;
+        options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+        options.User.RequireUniqueEmail = true;
+    })
+    .AddEntityFrameworkStores<AppDBContext>()
+    .AddDefaultTokenProviders();
+
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
     {
         c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API", Version = "v1" });
     });
 
+    // CORS configuration and middle ware
+    
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowAllOrigins",
             builder =>
             {
-                builder.WithOrigins("http://localhost:5173", "https://localhost:7284", "http://localhost:5062")
+                builder.WithOrigins("http://localhost:5173", "http://localhost:5062")
                     .AllowAnyMethod()
                     .AllowAnyHeader();
             });
     });
+    
 
-    builder.Services.AddDbContext<AppDBContext>(options =>
-        options.UseMySql(connection_string,
-            new MySqlServerVersion(new Version(8, 0, 25)),
-            options => options.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)));
+
+    // Add SPA services
+    builder.Services.AddSpaStaticFiles(configuration =>
+    {
+        configuration.RootPath = "../team16-webapp-4910.client/dist";
+    });
 
     var app = builder.Build();
 
     app.UseDefaultFiles();
     app.UseStaticFiles();
+    app.UseSpaStaticFiles();
 
     app.UseRouting();
 
@@ -70,13 +100,32 @@ using (var sshClient = new SshClient(sshHost, sshUsername, new PrivateKeyFile(ss
         app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Your API v1"));
     }
 
-    app.UseHttpsRedirection();
+    //app.UseHttpsRedirection();
 
     app.UseCors("AllowAllOrigins");
 
+    // Each HTTP below can be switched to HTTPS for higher security reasons
+    // But at the bare minimum, the Web Application can run on HTTP
+
+    // app.UseCors(policy =>
+    //     policy.WithOrigins("http://localhost:5173", "http://localhost:5062")
+    //         .AllowAnyHeader()
+    //         .AllowAnyMethod()
+    // );
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
     app.MapControllers();
 
-    app.MapFallbackToFile("/index.html");
+    app.UseSpa(spa =>
+    {
+        spa.Options.SourcePath = "../team16-webapp-4910.client";
+        if (app.Environment.IsDevelopment())
+        {
+            spa.UseProxyToSpaDevelopmentServer("http://localhost:5173");
+        }
+    });
 
     app.Run();
 
@@ -84,34 +133,3 @@ using (var sshClient = new SshClient(sshHost, sshUsername, new PrivateKeyFile(ss
     forwardedPort.Stop();
     sshClient.Disconnect();
 }
-
-// builder.Services.AddIdentity<Users, IdentityRole>()
-    //     .AddEntityFrameworkStores<AppDBContext>()
-    //     .AddDefaultTokenProviders();
-
-    // builder.Services.AddIdentity<Users, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
-    //     .AddDefaultTokenProviders();
-
-    // // Add this line to register CustomUserStore
-    // builder.Services.AddScoped<IUserStore<Users>, CustomUserStore>();
-
-    // builder.Services.Configure<IdentityOptions>(options =>
-    // {
-    //     // Password settings
-    //     options.Password.RequireDigit = true;
-    //     options.Password.RequireLowercase = true;
-    //     options.Password.RequireNonAlphanumeric = true;
-    //     options.Password.RequireUppercase = true;
-    //     options.Password.RequiredLength = 6;
-    //     options.Password.RequiredUniqueChars = 1;
-
-    //     // Lockout settings
-    //     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
-    //     options.Lockout.MaxFailedAccessAttempts = 5;
-    //     options.Lockout.AllowedForNewUsers = true;
-
-    //     // User settings
-    //     options.User.AllowedUserNameCharacters =
-    //     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
-    //     options.User.RequireUniqueEmail = true;
-    // });

@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Team16_WebApp_4910.Server.Models;
 
@@ -8,47 +9,48 @@ namespace Team16_WebApp_4910.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController : ControllerBase
+    public class UserController(UserManager<Users> userManager, SignInManager<Users> signInManager) : ControllerBase
     {
-        private readonly AppDBContext _context;
-
-        public UserController(AppDBContext context)
-        {
-            _context = context;
-        }
+        private readonly UserManager<Users> _userManager = userManager;
+        private readonly SignInManager<Users> _signInManager = signInManager;
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserRegisterDto userDto)
         {
             var user = new Users
             {
-                Username = userDto.Username,
+                UserName = userDto.Username,
                 Email = userDto.Email,
-                PasswordHash = userDto.Password, // Note: This is not secure. We'll implement hashing later w/ Identity to follow.
                 UserType = DetermineUserRole(userDto.RegistrationCode),
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            var result = await _userManager.CreateAsync(user, userDto.Password);
 
-            return Ok(new { message = "User registered successfully", role = user.UserType });
+            if (result.Succeeded)
+            {
+                await _userManager.AddToRoleAsync(user, user.UserType);
+                return Ok(new { message = "User registered successfully", role = user.UserType });
+            }
+
+            return BadRequest(result.Errors);
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(UserLoginDto userDto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == userDto.Username);
+            var result = await _signInManager.PasswordSignInAsync(userDto.Username, userDto.Password, false, false);
 
-            if (user == null || user.PasswordHash != userDto.Password) // Note: This is not secure. We'll implement proper verification later.
+            if (result.Succeeded)
             {
-                return Unauthorized("Invalid username or password");
+                var user = await _userManager.FindByNameAsync(userDto.Username);
+                user.LastLogin = DateTime.UtcNow;
+                await _userManager.UpdateAsync(user);
+
+                return Ok(new { message = "Login successful", userId = user.Id, role = user.UserType });
             }
 
-            user.LastLogin = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Login successful", userId = user.UserID, role = user.UserType });
+            return Unauthorized("Invalid username or password");
         }
 
         [HttpGet("test-db-connection")]
@@ -56,7 +58,7 @@ namespace Team16_WebApp_4910.Server.Controllers
         {
             try
             {
-                var userCount = await _context.Users.CountAsync();
+                var userCount = await _userManager.Users.CountAsync();
                 return Ok($"Connection successful. User count: {userCount}");
             }
             catch (Exception ex)
@@ -66,9 +68,9 @@ namespace Team16_WebApp_4910.Server.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetUser(int id)
+        public async Task<IActionResult> GetUser(string id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _userManager.FindByIdAsync(id);
             if (user == null)
             {
                 return NotFound();
@@ -76,8 +78,8 @@ namespace Team16_WebApp_4910.Server.Controllers
 
             return Ok(new
             {
-                user.UserID,
-                user.Username,
+                user.Id,
+                user.UserName,
                 user.Email,
                 user.UserType,
                 user.CreatedAt,
@@ -85,7 +87,7 @@ namespace Team16_WebApp_4910.Server.Controllers
             });
         }
 
-        private string DetermineUserRole(string registrationCode)
+        private static string DetermineUserRole(string registrationCode)
         {
             switch (registrationCode.ToUpper())
             {

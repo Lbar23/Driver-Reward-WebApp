@@ -25,7 +25,7 @@ public class AdminController : ControllerBase
 
         var user = new Users
         {
-            Username = model.Username,
+            UserName = model.Username,
             Email = model.Email,
             PasswordHash = HashPassword(model.Password),
             UserType = "Admin",
