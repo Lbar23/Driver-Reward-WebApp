@@ -1,20 +1,38 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+# Project Documentation
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+## Summary of Tools and Libraries
+<!-- not 100% consolidated yet.. -->
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+### Frontend
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+**Core Languages**: TypeScript, JavaScript
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+**Frameworks/Libraries**: React, Tailwind CSS, PostCSS, Axios, Vite
+
+**Build Tools**: Vite (for fast development and optimized builds)
+
+### Backend
+
+**Languages/Frameworks**: C#, ASP.NET Core, Entity Framework Core
+
+**Libraries**: Newtonsoft.Json, Serilog, Swagger
+
+**Databases**: MySQL with support through ORM tools like EF Core
+
+#### Web Server
+
+**NGINX**: Used as a reverse proxy and static file server
+
+**Tools**: Certbot for SSL/TLS
+
+#### Integration
+
+**Node.js**: Utilized for asynchronous tasks, real-time processing, and database integration
+
+## DB ERD
+
+<h1><img src="./Docs/db.png" alt="Database ERD" width="500"></h1>
+
+## Website Wireframe
+
+<h1><img src="./Docs/web.png" width="500"></h1>
