@@ -8,8 +8,8 @@ using Team16_WebApp_4910.Server;
 var builder = WebApplication.CreateBuilder(args);
 
 // Any credentials needed (Secrets Manager)
-var username = "gitgudadmin";
-var password = "B%yuup#2559!";
+var username = "";
+var password = "";
 
 // SSH and database connection setup
 string sshHost = "3.136.81.78";
