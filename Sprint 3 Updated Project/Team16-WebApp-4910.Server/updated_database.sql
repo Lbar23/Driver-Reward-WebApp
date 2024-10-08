@@ -1,3 +1,7 @@
+CREATE SCHEMA IF NOT EXISTS `Team16_GIDP_DB` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci ;
+USE `Team16_GIDP_DB` ;
+
+-- IdentityTables
 CREATE TABLE AspNetUsers (
     Id INT PRIMARY KEY AUTO_INCREMENT,
     UserName VARCHAR(256) UNIQUE NOT NULL,
@@ -160,5 +164,5 @@ CREATE TABLE About (
     Version INT NOT NULL,
     `Release` DATE NOT NULL,
     `Product` VARCHAR(45) NOT NULL,
-    `Description` VARCHAR(500) NOT NULL,
+    `Description` VARCHAR(500) NOT NULL
 );
