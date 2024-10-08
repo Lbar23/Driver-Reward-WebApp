@@ -3,7 +3,8 @@ import { TextField, Button, Typography, Box, Link as MuiLink, LinearProgress } f
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE_URL = 'https://localhost:7284';
+//const API_BASE_URL = 'https://localhost:7284';
+const API_BASE_URL = 'http://localhost:5062';
 
 const usePasswordStrength = (password: string): number => {
   const [strength, setStrength] = useState<number>(0);

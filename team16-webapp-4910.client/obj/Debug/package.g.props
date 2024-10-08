@@ -14,11 +14,11 @@
     <PackageJsonDependenciesMuiIconsMaterial Condition="$(PackageJsonDependenciesMuiIconsMaterial) == ''">^6.1.1</PackageJsonDependenciesMuiIconsMaterial>
     <PackageJsonDependenciesMuiMaterial Condition="$(PackageJsonDependenciesMuiMaterial) == ''">^6.1.1</PackageJsonDependenciesMuiMaterial>
     <PackageJsonDependenciesRadixUiReactIcons Condition="$(PackageJsonDependenciesRadixUiReactIcons) == ''">^1.3.0</PackageJsonDependenciesRadixUiReactIcons>
-    <PackageJsonDependenciesTypesReactRouterDom Condition="$(PackageJsonDependenciesTypesReactRouterDom) == ''">^5.3.3</PackageJsonDependenciesTypesReactRouterDom>
     <PackageJsonDependenciesAxios Condition="$(PackageJsonDependenciesAxios) == ''">^1.7.7</PackageJsonDependenciesAxios>
     <PackageJsonDependenciesLucideReact Condition="$(PackageJsonDependenciesLucideReact) == ''">^0.446.0</PackageJsonDependenciesLucideReact>
     <PackageJsonDependenciesReact Condition="$(PackageJsonDependenciesReact) == ''">^18.3.1</PackageJsonDependenciesReact>
     <PackageJsonDependenciesReactDom Condition="$(PackageJsonDependenciesReactDom) == ''">^18.3.1</PackageJsonDependenciesReactDom>
+    <PackageJsonDependenciesReactRouterDom Condition="$(PackageJsonDependenciesReactRouterDom) == ''">^6.26.2</PackageJsonDependenciesReactRouterDom>
     <PackageJsonDependenciesTeam16Webapp4910Client Condition="$(PackageJsonDependenciesTeam16Webapp4910Client) == ''">file:</PackageJsonDependenciesTeam16Webapp4910Client>
     <PackageJsonDependenciesTsNode Condition="$(PackageJsonDependenciesTsNode) == ''">^10.9.2</PackageJsonDependenciesTsNode>
     <PackageJsonDependenciesVitePluginSvgr Condition="$(PackageJsonDependenciesVitePluginSvgr) == ''">^4.2.0</PackageJsonDependenciesVitePluginSvgr>

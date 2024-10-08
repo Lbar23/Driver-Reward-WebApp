@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\Team16-WebApp-4910.Server.props" />
-</Project>

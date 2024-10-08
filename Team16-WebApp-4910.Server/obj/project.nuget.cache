@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "gbGPNBQdXWk=",
+  "dgSpecHash": "bmsJo37qI7A=",
   "success": true,
   "projectFilePath": "C:\\Users\\Tummyache\\Documents\\Clemson\\Fall 2024\\CPSC_4910_SeniorCompPract\\Team16Proj\\F24-Team16\\Team16-WebApp-4910.Server\\Team16-WebApp-4910.Server.csproj",
   "expectedPackageFiles": [
@@ -12,6 +12,7 @@
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.aspnetcore.cryptography.keyderivation\\8.0.8\\microsoft.aspnetcore.cryptography.keyderivation.8.0.8.nupkg.sha512",
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.aspnetcore.identity.entityframeworkcore\\8.0.8\\microsoft.aspnetcore.identity.entityframeworkcore.8.0.8.nupkg.sha512",
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.aspnetcore.spaproxy\\8.0.8\\microsoft.aspnetcore.spaproxy.8.0.8.nupkg.sha512",
+    "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.aspnetcore.spaservices.extensions\\8.0.8\\microsoft.aspnetcore.spaservices.extensions.8.0.8.nupkg.sha512",
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\6.0.0\\microsoft.bcl.asyncinterfaces.6.0.0.nupkg.sha512",
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.codeanalysis.analyzers\\3.3.3\\microsoft.codeanalysis.analyzers.3.3.3.nupkg.sha512",
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.codeanalysis.common\\4.5.0\\microsoft.codeanalysis.common.4.5.0.nupkg.sha512",
@@ -34,6 +35,9 @@
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\8.0.0\\microsoft.extensions.dependencyinjection.8.0.0.nupkg.sha512",
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.0\\microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.extensions.dependencymodel\\8.0.1\\microsoft.extensions.dependencymodel.8.0.1.nupkg.sha512",
+    "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.extensions.fileproviders.abstractions\\8.0.0\\microsoft.extensions.fileproviders.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.extensions.fileproviders.physical\\8.0.0\\microsoft.extensions.fileproviders.physical.8.0.0.nupkg.sha512",
+    "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.extensions.filesystemglobbing\\8.0.0\\microsoft.extensions.filesystemglobbing.8.0.0.nupkg.sha512",
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.extensions.identity.core\\8.0.8\\microsoft.extensions.identity.core.8.0.8.nupkg.sha512",
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.extensions.identity.stores\\8.0.8\\microsoft.extensions.identity.stores.8.0.8.nupkg.sha512",
     "C:\\Users\\Tummyache\\.nuget\\packages\\microsoft.extensions.logging\\8.0.0\\microsoft.extensions.logging.8.0.0.nupkg.sha512",
