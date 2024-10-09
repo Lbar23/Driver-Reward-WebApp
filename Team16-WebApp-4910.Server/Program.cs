@@ -83,7 +83,7 @@ using (var sshClient = new SshClient(sshHost, sshUsername, new PrivateKeyFile(ss
     // Add SPA services
     builder.Services.AddSpaStaticFiles(configuration =>
     {
-        configuration.RootPath = "../team16-webapp-4910.client/dist";
+        configuration.RootPath = "../client/dist";
     });
 
     var app = builder.Build();
@@ -120,7 +120,7 @@ using (var sshClient = new SshClient(sshHost, sshUsername, new PrivateKeyFile(ss
 
     app.UseSpa(spa =>
     {
-        spa.Options.SourcePath = "../team16-webapp-4910.client";
+        spa.Options.SourcePath = "../client";
         if (app.Environment.IsDevelopment())
         {
             spa.UseProxyToSpaDevelopmentServer("http://localhost:5173");

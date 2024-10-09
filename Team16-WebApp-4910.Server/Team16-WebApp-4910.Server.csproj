@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Team16_WebApp_4910.Server</RootNamespace>
-    <SpaRoot>..\team16-webapp-4910.client</SpaRoot>
+    <SpaRoot>..\client</SpaRoot>
     <SpaProxyLaunchCommand>npm run dev</SpaProxyLaunchCommand>
     <SpaProxyServerUrl>https://localhost:5173</SpaProxyServerUrl>
     <UserSecretsId>0dc179dd-7099-49d0-9334-eb377ace0989</UserSecretsId>
@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\team16-webapp-4910.client\team16-webapp-4910.client.esproj">
+    <ProjectReference Include="..\client\client.esproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>

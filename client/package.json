@@ -1,5 +1,5 @@
 {
-  "name": "team16-webapp-4910.client",
+  "name": "client",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -20,7 +20,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
-    "team16-webapp-4910.client": "file:",
+    "client": "file:",
     "ts-node": "^10.9.2",
     "vite-plugin-svgr": "^4.2.0",
     "vite-tsconfig-paths": "^5.0.1",
