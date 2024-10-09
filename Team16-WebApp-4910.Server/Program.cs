@@ -16,7 +16,7 @@ var password = builder.Configuration["DBCredentials:Password"];
 // SSH and database connection setup
 string sshHost = "3.136.81.78";
 string sshUsername = "ubuntu";
-string sshKeyPath = "../cpsc-team16-key.pem"; //<- to secrets manager later
+string sshKeyPath = "../../../cpsc-team16-key.pem"; //<- to secrets manager later
 
 string dbHost = "team16-database.cpin0o6jvads.us-east-2.rds.amazonaws.com";
 int dbPort = 3306;
