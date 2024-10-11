@@ -7,14 +7,8 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Team16_WebApp_4910.Server
 {
-    public class AppDBContext : IdentityDbContext<Users, IdentityRole<int>, int>
+    public class AppDBContext(DbContextOptions<AppDBContext> options) : IdentityDbContext<Users, IdentityRole<int>, int>(options)
     {
-        public AppDBContext(DbContextOptions<AppDBContext> options) : base(options)
-        {
-            
-        }
-        //override
-        //public DbSet<Users> Users { get; set; }
         public DbSet<Sponsors> Sponsors { get; set; }
         public DbSet<Drivers> Drivers { get; set; }
         public DbSet<Products> Products { get; set; }
@@ -26,93 +20,82 @@ namespace Team16_WebApp_4910.Server
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            
 
-            modelBuilder.Entity<Users>(static entity =>
+            modelBuilder.Entity<Users>(entity =>
             {
-                entity.ToTable("Users");
-                entity.HasKey(static e => e.UserID);
-                entity.Property(static e => e.Username).IsRequired().HasMaxLength(50);
-                entity.Property(static e => e.PasswordHash).IsRequired().HasMaxLength(255);
-                entity.Property(static e => e.Email).IsRequired().HasMaxLength(100);
-                entity.Property(static e => e.UserType).IsRequired().HasConversion<string>();
-                entity.Property(static e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.ToTable("AspNetUsers");
+                entity.Property(e => e.UserType).IsRequired().HasConversion<string>();
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
-            modelBuilder.Entity<Sponsors>(static entity =>
+            modelBuilder.Entity<Sponsors>(entity =>
             {
                 entity.ToTable("Sponsors");
-                entity.HasKey(static e => e.SponsorID);
-                entity.HasOne(static d => d.User).WithOne().HasForeignKey<Sponsors>(static d => d.UserID);
-                entity.Property(static e => e.CompanyName).IsRequired().HasMaxLength(100);
-                entity.Property(static e => e.PointDollarValue).HasPrecision(10, 2).HasDefaultValue(0.01m);
+                entity.HasKey(e => e.SponsorID);
+                entity.HasOne(d => d.User).WithOne().HasForeignKey<Sponsors>(d => d.UserID);
+                entity.Property(e => e.CompanyName).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.PointDollarValue).HasPrecision(10, 2).HasDefaultValue(0.01m);
             });
 
-            modelBuilder.Entity<Drivers>(static entity =>
+            modelBuilder.Entity<Drivers>(entity =>
             {
                 entity.ToTable("Drivers");
-                entity.HasKey(static e => e.DriverID);
-                entity.HasOne(static d => d.User).WithOne().HasForeignKey<Drivers>(static d => d.UserID);
-                entity.HasOne(static d => d.Sponsor).WithMany().HasForeignKey(static d => d.SponsorID);
-                entity.Property(static e => e.TotalPoints).HasDefaultValue(0);
+                entity.HasKey(e => e.DriverID);
+                entity.HasOne(d => d.User).WithOne().HasForeignKey<Drivers>(d => d.UserID);
+                entity.HasOne(d => d.Sponsor).WithMany().HasForeignKey(d => d.SponsorID);
+                entity.Property(e => e.TotalPoints).HasDefaultValue(0);
             });
 
-            modelBuilder.Entity<Products>(static entity =>
+            modelBuilder.Entity<Products>(entity =>
             {
                 entity.ToTable("Products");
-                entity.HasKey(static e => e.ProductID);
-                entity.HasOne(static d => d.Sponsor).WithMany().HasForeignKey(static d => d.SponsorID);
-                entity.Property(static e => e.Name).IsRequired().HasMaxLength(100);
-                entity.Property(static e => e.PriceInPoints).IsRequired();
-                entity.Property(static e => e.Availability).HasDefaultValue(true);
+                entity.HasKey(e => e.ProductID);
+                entity.HasOne(d => d.Sponsor).WithMany().HasForeignKey(d => d.SponsorID);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.PriceInPoints).IsRequired();
+                entity.Property(e => e.Availability).HasDefaultValue(true);
             });
 
-            modelBuilder.Entity<Purchases>(static entity =>
+            modelBuilder.Entity<Purchases>(entity =>
             {
                 entity.ToTable("Purchases");
-                entity.HasKey(static e => e.PurchaseID);
-                entity.HasOne(static d => d.Driver).WithMany().HasForeignKey(static d => d.DriverID);
-                entity.HasOne(static d => d.Product).WithMany().HasForeignKey(static d => d.ProductID);
-                entity.Property(static e => e.PointsSpent).IsRequired();
-                entity.Property(static e => e.PurchaseDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                entity.Property(static e => e.Status).HasDefaultValue("Pending").HasConversion<string>();
+                entity.HasKey(e => e.PurchaseID);
+                entity.HasOne(d => d.Driver).WithMany().HasForeignKey(d => d.DriverID);
+                entity.HasOne(d => d.Product).WithMany().HasForeignKey(d => d.ProductID);
+                entity.Property(e => e.PointsSpent).IsRequired();
+                entity.Property(e => e.PurchaseDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.Status).HasDefaultValue("Pending").HasConversion<string>();
             });
 
-            modelBuilder.Entity<PointTransactions>(static entity =>
+            modelBuilder.Entity<PointTransactions>(entity =>
             {
                 entity.ToTable("PointTransactions");
-                entity.HasKey(static e => e.TransactionID);
-                entity.HasOne(static d => d.Driver).WithMany().HasForeignKey(static d => d.DriverID);
-                entity.HasOne(static d => d.Sponsor).WithMany().HasForeignKey(static d => d.SponsorID);
-                entity.Property(static e => e.PointsChanged).IsRequired();
-                entity.Property(static e => e.TransactionDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.HasKey(e => e.TransactionID);
+                entity.HasOne(d => d.Driver).WithMany().HasForeignKey(d => d.DriverID);
+                entity.HasOne(d => d.Sponsor).WithMany().HasForeignKey(d => d.SponsorID);
+                entity.Property(e => e.PointsChanged).IsRequired();
+                entity.Property(e => e.TransactionDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
-            modelBuilder.Entity<DriverApplications>(static entity =>
+            modelBuilder.Entity<DriverApplications>(entity =>
             {
                 entity.ToTable("DriverApplications");
-                entity.HasKey(static e => e.ApplicationID);
-                entity.HasOne(static d => d.Driver).WithMany().HasForeignKey(static d => d.DriverID);
-                entity.HasOne(static d => d.Sponsor).WithMany().HasForeignKey(static d => d.SponsorID);
-                entity.Property(static e => e.Status).HasDefaultValue("Pending").HasConversion<string>();
-                entity.Property(static e => e.ApplyDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.HasKey(e => e.ApplicationID);
+                entity.HasOne(d => d.Driver).WithMany().HasForeignKey(d => d.DriverID);
+                entity.HasOne(d => d.Sponsor).WithMany().HasForeignKey(d => d.SponsorID);
+                entity.Property(e => e.Status).HasDefaultValue("Pending").HasConversion<string>();
+                entity.Property(e => e.ApplyDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
-            modelBuilder.Entity<AuditLog>(static entity =>
+            modelBuilder.Entity<AuditLog>(entity =>
             {
                 entity.ToTable("AuditLog");
-                entity.HasKey(static e => e.LogID);
-                entity.HasOne(static d => d.User).WithMany().HasForeignKey(static d => d.UserID);
-                entity.Property(static e => e.Action).IsRequired().HasMaxLength(50);
-                entity.Property(static e => e.Category).HasDefaultValue(AuditLogCategory.User).HasConversion<string>();
-                entity.Property(static e => e.Timestamp).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            });
-
-            modelBuilder.Entity<IdentityUserLogin<string>>(entity => 
-            {
-                entity.HasKey(e => new {e.LoginProvider, e.ProviderKey});
+                entity.HasKey(e => e.LogID);
+                entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserID);
+                entity.Property(e => e.Action).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Category).HasDefaultValue(AuditLogCategory.User).HasConversion<string>();
+                entity.Property(e => e.Timestamp).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
         }
     }
 }
-
