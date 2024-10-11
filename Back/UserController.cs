@@ -8,7 +8,9 @@ using System.Security.Cryptography;
 using System.Net.Mail;
 using System.Net;
 using Google.Apis.Auth;
-
+using Microsoft.Extensions.Configuration;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 
 namespace Team16_WebApp_4910.Server.Controllers
 {
@@ -18,17 +20,19 @@ namespace Team16_WebApp_4910.Server.Controllers
     {
         private readonly UserManager<Users> _userManager;
         private readonly SignInManager<Users> _signInManager;
-        private readonly AppDBContext _context;
-        private static readonly Dictionary<string, string> _otpStore = new Dictionary<string, string>();
+        private readonly IConfiguration _configuration;
+        private readonly IEmailService _emailService;
 
         public UserController(
             UserManager<Users> userManager,
             SignInManager<Users> signInManager,
-            AppDBContext context)
+            IConfiguration configuration,
+            IEmailService emailService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
-            _context = context;
+            _configuration = configuration;
+            _emailService = emailService;
         }
 
         [HttpPost("register")]
@@ -42,140 +46,198 @@ namespace Team16_WebApp_4910.Server.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            var result = await _userManager.CreateAsync(user, userDto.Password);
 
-            // Generate and send verification code
-            return Ok(new { message = "User registered successfully. Please check your email for the verification code.", userId = user.UserID });
+            if (result.Succeeded)
+            {
+                await _userManager.AddToRoleAsync(user, user.UserType);
+                await SendConfirmationEmail(user.Email);
+                return Ok(new { success = true, message = "User registered successfully. Please check your email to confirm your account.", role = user.UserType });
+            }
 
+            return BadRequest(new { success = false, errors = result.Errors });
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(UserLoginDto userDto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == userDto.Username);
-
+            var user = await _userManager.FindByNameAsync(userDto.Username)
+                        ?? await _userManager.FindByEmailAsync(userDto.Username);
+            
             if (user == null)
             {
-                return Unauthorized("Invalid username or password");
+                return Unauthorized(new { success = false, message = "Invalid username or password" });
             }
-
-            // Generate and send OTP
-            string otp = GenerateOTP();
-            _otpStore[user.Email] = otp;
-            await SendOTPEmail(user.Email, otp);
-
-            return Ok(new { message = "OTP sent to email", requiresOTP = true });
-
-        }
-        
-        [HttpPost("verify-otp")]
-        public async Task<IActionResult> VerifyOTP(OTPVerificationDto otpDto)
-        {
-            if (_otpStore.TryGetValue(otpDto.Email, out string storedOtp) && storedOtp == otpDto.OTP)
+            /*
+            if (!await _userManager.IsEmailConfirmedAsync(user))
             {
-                _otpStore.Remove(otpDto.Email);
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == otpDto.Email);
-                return Ok(new { message = "Login successful", userId = user.UserID, role = user.UserType });
+                return Unauthorized(new { 
+                    success = false, 
+                    message = "Email not confirmed", 
+                    requiresEmailConfirmation = true 
+                });
+            }*/
+
+            var result = await _signInManager.PasswordSignInAsync(user, userDto.Password, userDto.RememberMe, lockoutOnFailure: true);
+
+            if (result.Succeeded)
+            {
+                user.LastLogin = DateTime.UtcNow;
+                await _userManager.UpdateAsync(user);
+                
+                return Ok(new { success = true, message = "Login successful", userId = user.Id, role = user.UserType });
+            }
+            
+            if (result.RequiresTwoFactor)
+            {
+                return Ok(new { success = true, requiresTwoFactor = true, userId = user.Id });
             }
 
-            return Unauthorized("Invalid OTP");
+            if (result.IsLockedOut)
+            {
+                return BadRequest(new { success = false, message = "User account locked out" });
+            }
+
+            return Unauthorized(new { success = false, message = "Invalid username or password" });
         }
 
-        [HttpPost("enable-2fa")]
-        public async Task<IActionResult> EnableTwoFactor()
+        [HttpPost("send-confirmation-email")]
+        public async Task<IActionResult> SendConfirmationEmail([FromBody] string email)
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
-                return NotFound("User not found.");
+                // Don't reveal that the user does not exist
+                return Ok("If a user with this email exists, a confirmation email has been sent.");
             }
 
-            var isTwoFactorEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
-            if (!isTwoFactorEnabled)
+            if (await _userManager.IsEmailConfirmedAsync(user))
             {
+                return BadRequest("This email is already confirmed.");
+            }
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var confirmationLink = Url.Action("ConfirmEmail", "Account", 
+                new { userId = user.Id, token = token }, Request.Scheme);
+
+            try
+            {
+                await _emailService.SendEmailAsync(
+                    user.Email,
+                    "Confirm your email",
+                    $"Please confirm your account by clicking this link: {confirmationLink}"
+                );
+
+                return Ok("Confirmation email sent. Please check your email.");
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                return StatusCode(500, "Failed to send confirmation email. Please try again.");
+            }
+        }
+/*
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(string userId, string token)
+        {
+            if (userId == null || token == null)
+            {
+                return BadRequest("Invalid email confirmation link");
+            }
+
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
+            if (user == null)
+            {
+                return NotFound($"Unable to load user with ID '{userId}'.");
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+            if (result.Succeeded)
+            {
+                return Ok("Thank you for confirming your email.");
+            }
+            else
+            {
+                return BadRequest("Error confirming your email.");
+            }
+        }
+*/
+
+        [HttpPost("send-2fa-code")]
+        public async Task<IActionResult> SendTwoFactorCode([FromBody] SendTwoFactorCodeDto dto)
+        {
+            Console.WriteLine(dto.UserId);
+            try
+            {
+                Console.WriteLine(dto.UserId);
+                var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == dto.UserId);
+                
+                if (user == null)
+                {
+                    return NotFound(new { success = false, message = "User not found." });
+                }
+
                 var token = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
-                // In a real application, you would send this token via email
-                // For demonstration purposes, we're returning it directly
-                return Ok(new { twoFactorToken = token });
-            }
 
-            return BadRequest("Two-factor authentication is already enabled.");
+                await _emailService.SendEmailAsync(
+                    user.Email,
+                    "Your Two-Factor Authentication Code",
+                    $"Your two-factor authentication code is: {token}"
+                );
+
+                return Ok(new { success = true, message = "2FA code sent to your email." });
+            }
+            catch (Exception ex)
+            {
+                // Log the exception for debugging
+                Console.WriteLine($"Error: {ex.Message}");
+                return StatusCode(500, new { success = false, message = "An error occurred on the server." });
+            }
+        }
+
+        private async Task<bool> SendTwoFactorCodeEmail(string email, string token)
+        {
+            try
+            {
+                // Implement your email sending logic here
+                // This is a placeholder implementation
+                Console.WriteLine($"Sending 2FA code {token} to {email}");
+                
+                // Simulate email sending delay
+                await Task.Delay(1000);
+
+                // Return true to simulate successful email sending
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                Console.WriteLine($"Error sending 2FA code: {ex.Message}");
+                return false;
+            }
         }
 
         [HttpPost("verify-2fa")]
         public async Task<IActionResult> VerifyTwoFactor(TwoFactorDto twoFactorDto)
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == twoFactorDto.UserId);
             if (user == null)
             {
-                return NotFound("User not found.");
+                return NotFound(new { success = false, message = "User not found." });
             }
 
-            var result = await _userManager.VerifyTwoFactorTokenAsync(user, "Email", twoFactorDto.Token);
-            if (result)
+            var isValid = await _userManager.VerifyTwoFactorTokenAsync(user, "Email", twoFactorDto.Token);
+
+            if (isValid)
             {
-                await _userManager.SetTwoFactorEnabledAsync(user, true);
-                return Ok(new { message = "Two-factor authentication enabled successfully." });
-            }
-
-            return BadRequest("Invalid verification code.");
-        }
-
-        [HttpPost("login-2fa")]
-        public async Task<IActionResult> LoginTwoFactor(TwoFactorDto twoFactorDto)
-        {
-            var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
-            if (user == null)
-            {
-                return NotFound("User not found.");
-            }
-
-            var result = await _signInManager.TwoFactorSignInAsync("Email", twoFactorDto.Token, false, false);
-
-            if (result.Succeeded)
-            {
+                await _signInManager.SignInAsync(user, twoFactorDto.RememberMe);
                 user.LastLogin = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
+                await _userManager.UpdateAsync(user);
 
-                return Ok(new { message = "Login successful", userId = user.Id, role = user.UserType });
+                return Ok(new { success = true, message = "Login successful", userId = user.Id, role = user.UserType });
             }
 
-            return Unauthorized("Invalid verification code.");
-        }
-
-        [HttpGet("test-db-connection")]
-        public async Task<IActionResult> TestDbConnection()
-        {
-            try
-            {
-                var userCount = await _context.Users.CountAsync();
-                return Ok($"Connection successful. User count: {userCount}");
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Database connection failed: {ex.Message}");
-            }
-        }
-
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetUser(string id)
-        {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            return Ok(new
-            {
-                user.Id,
-                user.UserName,
-                user.Email,
-                user.UserType,
-                user.CreatedAt,
-                user.LastLogin
-            });
+            return Unauthorized(new { success = false, message = "Invalid verification code." });
         }
 
         [HttpPost("google-sign-in")]
@@ -185,27 +247,29 @@ namespace Team16_WebApp_4910.Server.Controllers
             {
                 var payload = await GoogleJsonWebSignature.ValidateAsync(request.Token, new GoogleJsonWebSignature.ValidationSettings
                 {
-                    Audience = new[] { "446234699257-5k91m28pvfpk6mov3gr9pi190p261d8r.apps.googleusercontent.com" } // Replace with your Google Client ID
+                    Audience = new[] { _configuration["Google:ClientId"] }
                 });
 
-                // Check if the user exists in your database
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == payload.Email);
+                var user = await _userManager.FindByEmailAsync(payload.Email);
 
                 if (user == null)
                 {
-                    // Create a new user if they don't exist
                     user = new Users
                     {
                         Email = payload.Email,
-                        Username = payload.Email, // You might want to generate a username or ask the user to create one
-                        // Set other properties as needed
+                        UserName = payload.Email,
+                        UserType = "Driver", // Default role, adjust as needed
+                        CreatedAt = DateTime.UtcNow
                     };
-                    _context.Users.Add(user);
-                    await _context.SaveChangesAsync();
+                    var result = await _userManager.CreateAsync(user);
+                    if (!result.Succeeded)
+                    {
+                        return BadRequest(new { success = false, errors = result.Errors });
+                    }
                 }
 
-                // Log the user in
-                return Ok(new { success = true, message = "Google sign-in successful", userId = user.UserID, role = user.UserType });
+                await _signInManager.SignInAsync(user, isPersistent: false);
+                return Ok(new { success = true, message = "Google sign-in successful", userId = user.Id, role = user.UserType });
             }
             catch (InvalidJwtException)
             {
@@ -213,31 +277,11 @@ namespace Team16_WebApp_4910.Server.Controllers
             }
         }
 
-
-        private string GenerateOTP()
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
         {
-            return new Random().Next(100000, 999999).ToString();
-        }
-
-        private async Task SendOTPEmail(string email, string otp)
-        {
-            var smtpClient = new SmtpClient("smtp.gmail.com")
-            {
-                Port = 587,
-                Credentials = new NetworkCredential("your-email@gmail.com", "your-app-password"),
-                EnableSsl = true,
-            };
-
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress("your-email@gmail.com"),
-                Subject = "Your Login OTP",
-                Body = $"Your OTP is: {otp}",
-                IsBodyHtml = false,
-            };
-            mailMessage.To.Add(email);
-
-            await smtpClient.SendMailAsync(mailMessage);
+            await _signInManager.SignOutAsync();
+            return Ok(new { success = true, message = "Logged out successfully" });
         }
 
         private string DetermineUserRole(string registrationCode)
@@ -267,27 +311,23 @@ namespace Team16_WebApp_4910.Server.Controllers
     {
         public string Username { get; set; }
         public string Password { get; set; }
+        public bool RememberMe { get; set; }
+    }
+
+    public class SendTwoFactorCodeDto
+    {
+        public int UserId { get; set; }
     }
 
     public class TwoFactorDto
     {
+        public int UserId { get; set; }
         public string Token { get; set; }
+        public bool RememberMe { get; set; }
     }
-    public class OTPVerificationDto
-    {
-        public string Email { get; set; }
-        public string OTP { get; set; }
-    }
+
     public class GoogleSignInRequest
     {
         public string Token { get; set; }
     }
-/*
-    public class ApplicationUser : IdentityUser
-    {
-        public string UserType { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime? LastLogin { get; set; }
-    }
-    */
 }
