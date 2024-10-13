@@ -16,7 +16,7 @@ var password = builder.Configuration["DBCredentials:Password"];
 // SSH and database connection setup
 string sshHost = "3.136.81.78";
 string sshUsername = "ubuntu";
-string sshKeyPath = "C:\\Users\\damon\\Coding_Folder\\APIKeys\\EC2 Instance Key (pem)\\cpsc-team16-key.pem"; //<- to secrets manager later
+string sshKeyPath = "C:\Users\ragas\Documents\Computer code\4910\cpsc-team16-key.pem"; //<- to secrets manager later
 
 string dbHost = "team16-database.cpin0o6jvads.us-east-2.rds.amazonaws.com";
 int dbPort = 3306;
@@ -59,6 +59,23 @@ using (var sshClient = new SshClient(sshHost, sshUsername, new PrivateKeyFile(ss
     .AddEntityFrameworkStores<AppDBContext>()
     .AddDefaultTokenProviders();
 
+    builder.Services.ConfigureApplicationCookie(options =>
+    {
+        options.LoginPath = "/users/login";
+        options.LogoutPath = "/users/logout";
+        options.AccessDeniedPath = "/users/AccessDenied";
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromHours(1);
+    });
+
+    builder.Services.Configure<IdentityOptions>(options =>
+    {
+        options.Tokens.AuthenticatorTokenProvider = TokenOptions.DefaultAuthenticatorProvider;
+    });
+
+    builder.Services.Configure<EmailConfiguration>(builder.Configuration.GetSection("EmailConfiguration"));
+    builder.Services.AddTransient<IEmailService, EmailService>();
+
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
     {
@@ -74,7 +91,8 @@ using (var sshClient = new SshClient(sshHost, sshUsername, new PrivateKeyFile(ss
             {
                 builder.WithOrigins("http://localhost:5173", "http://localhost:5062")
                     .AllowAnyMethod()
-                    .AllowAnyHeader();
+                    .AllowAnyHeader()
+                    .AllowCredentials();
             });
     });
     
