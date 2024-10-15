@@ -20,5 +20,6 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../Backend_Server/wwwroot'),
     emptyOutDir: true, // Clears the output directory before each build
+    assetsDir: 'assets',
   }
 })
