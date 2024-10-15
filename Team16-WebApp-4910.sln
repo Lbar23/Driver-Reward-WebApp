@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35312.102
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Team16-WebApp-4910.Server", "Team16-WebApp-4910.Server\Team16-WebApp-4910.Server.csproj", "{D47C06E2-CD29-425C-A455-7E1DEDE36D32}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "team16-webapp-4910.client", "team16-webapp-4910.client\team16-webapp-4910.client.esproj", "{CAAC170B-5076-400B-A1CB-84228FF8791D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D47C06E2-CD29-425C-A455-7E1DEDE36D32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D47C06E2-CD29-425C-A455-7E1DEDE36D32}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D47C06E2-CD29-425C-A455-7E1DEDE36D32}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D47C06E2-CD29-425C-A455-7E1DEDE36D32}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CAAC170B-5076-400B-A1CB-84228FF8791D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CAAC170B-5076-400B-A1CB-84228FF8791D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CAAC170B-5076-400B-A1CB-84228FF8791D}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{CAAC170B-5076-400B-A1CB-84228FF8791D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CAAC170B-5076-400B-A1CB-84228FF8791D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CAAC170B-5076-400B-A1CB-84228FF8791D}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2741C896-2701-402B-932C-571E5831EF60}
+	EndGlobalSection
+EndGlobal
