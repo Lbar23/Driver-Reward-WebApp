@@ -100,6 +100,9 @@ try
         // Identity Services and Options
         builder.Services.AddIdentity<Users, IdentityRole<int>>(options => {
             options.SignIn.RequireConfirmedAccount = false;
+            options.Tokens.AuthenticatorIssuer = "GitGud";
+            options.Tokens.EmailConfirmationTokenProvider = "email";
+            options.Tokens.ChangePhoneNumberTokenProvider = "phone";
             options.Password.RequireDigit = true;
             options.Password.RequireLowercase = true;
             options.Password.RequireNonAlphanumeric = true;

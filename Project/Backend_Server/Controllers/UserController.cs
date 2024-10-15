@@ -44,6 +44,14 @@ namespace Backend_Server.Controllers
             if (result.Succeeded)
             {
                 var user = await _userManager.FindByNameAsync(userDto.Username);
+                // check for 2fa
+                if (await _userManager.GetTwoFactorEnabledAsync(user))
+                {
+                    //need to add email option
+                    var code = await _userManager.GenerateTwoFactorTokenAsync(user, "Phone");
+                    // setup sns later here
+                    return Ok(new { message = "2FA required", userId = user.Id });
+                }
                 user.LastLogin = DateTime.UtcNow;
                 await _userManager.UpdateAsync(user);
 
@@ -112,7 +120,7 @@ namespace Backend_Server.Controllers
 
     public class UserLoginDto
     {
-        public string Username { get; set; }
-        public string Password { get; set; }
+        public required string Username { get; set; }
+        public required string Password { get; set; }
     }
 }
