@@ -9,6 +9,7 @@ namespace Backend_Server
 {
     public class AppDBContext(DbContextOptions<AppDBContext> options) : IdentityDbContext<Users, IdentityRole<int>, int>(options)
     {
+        public DbSet<About> About { get; set; }
         public DbSet<Sponsors> Sponsors { get; set; }
         public DbSet<Drivers> Drivers { get; set; }
         public DbSet<Products> Products { get; set; }
@@ -35,6 +36,16 @@ namespace Backend_Server
                 entity.HasOne(d => d.User).WithOne().HasForeignKey<Sponsors>(d => d.UserID);
                 entity.Property(e => e.CompanyName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.PointDollarValue).HasPrecision(10, 2).HasDefaultValue(0.01m);
+            });
+
+            modelBuilder.Entity<About>(entity =>
+            {
+                entity.ToTable("About");
+                entity.HasKey(e => e.Release);
+                entity.Property(d => d.Team).HasDefaultValue(16);
+                entity.Property(d => d.Version);
+                entity.Property(d => d.Product); 
+                entity.Property(d => d.Description); 
             });
 
             modelBuilder.Entity<Drivers>(entity =>

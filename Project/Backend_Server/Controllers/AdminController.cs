@@ -3,54 +3,74 @@ using System.Security.Cryptography;
 using System.Text;
 using Backend_Server;
 using Backend_Server.Models;
+using Microsoft.EntityFrameworkCore;
 
-[ApiController]
-[Route("api/[controller]")]
-public class AdminController : ControllerBase
-{
-    private readonly AppDBContext _context;
+namespace Backend_Server.Controllers{
 
-    public AdminController(AppDBContext context)
+
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AdminController : ControllerBase
     {
-        _context = context;
-    }
+        private readonly AppDBContext _context;
 
-    [HttpPost("create")]
-    public async Task<IActionResult> CreateAdmin([FromBody] AdminCreateModel model)
-    {
-        if (!ModelState.IsValid)
+        public AdminController(AppDBContext context)
         {
-            return BadRequest(ModelState);
+            _context = context;
         }
 
-        var user = new Users
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateAdmin([FromBody] AdminCreateModel model)
         {
-            UserName = model.Username,
-            Email = model.Email,
-            PasswordHash = HashPassword(model.Password),
-            UserType = "Admin",
-            CreatedAt = DateTime.UtcNow
-        };
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+            var user = new Users
+            {
+                UserName = model.Username,
+                Email = model.Email,
+                PasswordHash = HashPassword(model.Password),
+                UserType = "Admin",
+                CreatedAt = DateTime.UtcNow
+            };
 
-        return Ok(new { message = "Admin user created successfully" });
-    }
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
 
-    private string HashPassword(string password)
-    {
-        using (var sha256 = SHA256.Create())
+            return Ok(new { message = "Admin user created successfully" });
+        }
+
+        [HttpGet("about")]
+        public async Task<IActionResult> GetAbout()
         {
-            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-            return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
+            var aboutInfo = await _context.About.LastOrDefaultAsync();
+            return Ok(new
+            {
+                aboutInfo.Team,
+                aboutInfo.Version,
+                aboutInfo.Release,
+                aboutInfo.Product,
+                aboutInfo.Description,
+            });
+        }
+
+        private string HashPassword(string password)
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+                return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
+            }
         }
     }
-}
 
-public class AdminCreateModel
-{
-    public required string Username { get; set; }
-    public required string Email { get; set; }
-    public required string Password { get; set; }
+    public class AdminCreateModel
+    {
+        public required string Username { get; set; }
+        public required string Email { get; set; }
+        public required string Password { get; set; }
+    };
+
 }

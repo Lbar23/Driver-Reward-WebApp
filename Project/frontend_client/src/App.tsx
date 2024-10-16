@@ -3,9 +3,10 @@ import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import FAQ from './components/FAQ';
 import FeedbackForm from './components/Feedback';
+import Dashboard from './components/Dashboard';
+import About from './components/About';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
-import TestPage from './components/TestPage';
 
 const theme = createTheme({
     palette: {
@@ -21,6 +22,7 @@ const NavBar = () => (
             <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
                 Incentive Application
             </Typography>
+            <Button color="inherit" component={Link} to="/about">About</Button>
             <Button color="inherit" component={Link} to="/login">Login</Button>
             <Button color="inherit" component={Link} to="/register">Register</Button>
             <Button color="inherit" component={Link} to="/faq">FAQ</Button>
@@ -37,10 +39,11 @@ const App = () => {
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/about" element={<About />} />
                     <Route path="/faq" element={<FAQ />} />
                     <Route path="/feedback" element={<FeedbackForm />} />
+                    <Route path="/dashboard" element={<Dashboard/>} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
-                    <Route path="/test" element={<TestPage /> } />
                 </Routes>
             </Container>
         </ThemeProvider>
