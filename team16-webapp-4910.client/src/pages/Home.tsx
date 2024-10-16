@@ -1,31 +1,45 @@
-//import React from 'react';
-import './Home.css';  // Import CSS styles for your component
+import React from 'react';
+import { Button, Typography, Box } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
-const Home = () => {
+const API_BASE_URL = 'https://localhost:7284';
+
+
+const HomePage: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/user/logout`);
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
-    <div className="home-container">
-      {/* Navigation Bar */}
-      <nav className="navbar">
-        <h1 className="logo">My Website</h1>
-        <ul className="nav-links">
-          <li><a href="/login">Login</a></li>
-          <li><a href="/register">Register</a></li>
-        </ul>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="hero">
-        <h2>Welcome to My Website</h2>
-        <p>Explore amazing features and enjoy a seamless experience.</p>
-        <a href="/register" className="cta-button">Get Started</a>
-      </section>
-
-      {/* Footer */}
-      <footer className="footer">
-        <p>© 2024 My Website. All rights reserved.</p>
-      </footer>
-    </div>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        maxWidth: 600,
+        margin: 'auto',
+        padding: 3,
+        boxShadow: 3,
+        borderRadius: 2,
+        backgroundColor: 'background.paper',
+      }}
+    >
+      <Typography variant="h4" component="h1" gutterBottom>
+        Welcome to Your Dashboard
+      </Typography>
+      <Typography variant="body1" sx={{ mb: 3 }}>
+        You are now logged in. This is your home page.
+      </Typography>
+    </Box>
   );
 };
 
-export default Home;
+export default HomePage;

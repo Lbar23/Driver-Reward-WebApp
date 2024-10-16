@@ -39,7 +39,7 @@ namespace Team16_WebApp_4910.Server.Controllers
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, user.UserType);
-                await SendConfirmationEmail(user.Email);
+                //await SendConfirmationEmail(user.Email);
                 return Ok(new { success = true, message = "User registered successfully. Please check your email to confirm your account.", role = user.UserType });
             }
 
@@ -187,7 +187,7 @@ namespace Team16_WebApp_4910.Server.Controllers
             {
                 var payload = await GoogleJsonWebSignature.ValidateAsync(request.Token, new GoogleJsonWebSignature.ValidationSettings
                 {
-                    Audience = new[] { _configuration["Google:ClientId"] }
+                    Audience = new[] { 446234699257-5k91m28pvfpk6mov3gr9pi190p261d8r.apps.googleusercontent.com }
                 });
 
                 var user = await _userManager.FindByEmailAsync(payload.Email);
@@ -213,7 +213,7 @@ namespace Team16_WebApp_4910.Server.Controllers
             }
             catch (InvalidJwtException)
             {
-                return BadRequest(new { success = false, message = "Invalid Google token" });
+                return BadRequest(new { success = false, message = "Invalid Google token", details = ex.Message });
             }
         }
 
