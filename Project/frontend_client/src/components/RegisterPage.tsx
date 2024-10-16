@@ -2,7 +2,6 @@ import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { TextField, Button, Typography, Box, Link as MuiLink, LinearProgress } from '@mui/material';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { API_BASE_URL } from '../../config';
 
 
 const usePasswordStrength = (password: string): number => {
@@ -34,7 +33,7 @@ const RegisterPage: React.FC = () => {
     const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/User/register`, {
+            const response = await axios.post(`/api/User/register`, {
                 username,
                 email,
                 password,

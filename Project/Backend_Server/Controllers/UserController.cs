@@ -94,7 +94,7 @@ namespace Backend_Server.Controllers
                 user.LastLogin
             });
         }
-
+    // will be replaced with real reg code
         private static string DetermineUserRole(string registrationCode)
         {
             switch (registrationCode.ToUpper())

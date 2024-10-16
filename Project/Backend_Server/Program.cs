@@ -115,13 +115,25 @@ try
             options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
             options.User.RequireUniqueEmail = true;
         })
+        
         .AddEntityFrameworkStores<AppDBContext>()
         .AddDefaultTokenProviders();
+
+        // Add cookie authentication
+        builder.Services.ConfigureApplicationCookie(options =>
+        {
+            // options.LoginPath = "/api/login";  //will come back to later
+            // options.LogoutPath = "/api/logout"; 
+            options.Cookie.HttpOnly = true; 
+            options.ExpireTimeSpan = TimeSpan.FromMinutes(60); 
+            options.SlidingExpiration = true;
+        });
 
         builder.Services.AddDbContext<AppDBContext>(options =>
             options.UseMySql(connection_string,
                 ServerVersion.AutoDetect(connection_string),
                 options => options.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)));
+        
 
         // Adds static files to root Backend
         builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
