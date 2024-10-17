@@ -37,9 +37,9 @@ const App = () => {
             <NavBar />
             <Container maxWidth="md" sx={{ mt: 4 }}>
                 <Routes>
+                    <Route path="/about" element={<About />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/about" element={<About />} />
                     <Route path="/faq" element={<FAQ />} />
                     <Route path="/feedback" element={<FeedbackForm />} />
                     <Route path="/dashboard" element={<Dashboard/>} />

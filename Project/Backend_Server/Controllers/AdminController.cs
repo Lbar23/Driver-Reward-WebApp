@@ -46,6 +46,11 @@ namespace Backend_Server.Controllers{
         public async Task<IActionResult> GetAbout()
         {
             var aboutInfo = await _context.About.LastOrDefaultAsync();
+            if (aboutInfo == null)
+            {
+                return NotFound(new { message = "No about information found" });
+            }
+
             return Ok(new
             {
                 aboutInfo.Team,
