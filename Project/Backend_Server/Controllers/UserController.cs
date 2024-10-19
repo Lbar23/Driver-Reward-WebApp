@@ -112,17 +112,18 @@ namespace Backend_Server.Controllers
             return permissions;
         }
     // will be replaced with real reg code
-        private static string DetermineUserRole(string registrationCode)
+        private static string DetermineUserRole(string email)
         {
-            switch (registrationCode.ToUpper())
+            //Don't have an official one yet. Unless you want me to set it up while I touch S3 as well; 
+            //I did know you brought it AWS Route 53, though.
+            string adminDomain = "admin.domain.com"; // <-- username@admin.domainname.com
+
+            if (adminDomain.Any(domain => email.EndsWith("@" + domain)))
             {
-                case "ADMIN2023":
-                    return "Admin";
-                case "SPONSOR2023":
-                    return "Sponsor";
-                default:
-                    return "Driver";
+                return "Admin";
             }
+            
+            return "Driver"; // The overall Default role of the 3 users
         }
     }
 
