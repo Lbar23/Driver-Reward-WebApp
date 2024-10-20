@@ -17,6 +17,8 @@ namespace Backend_Server
         public DbSet<PointTransactions> PointTransactions { get; set; }
         public DbSet<DriverApplications> DriverApplications { get; set; }
         public DbSet<AuditLog> AuditLog { get; set; }
+        public DbSet<Permissions> Permissions { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
