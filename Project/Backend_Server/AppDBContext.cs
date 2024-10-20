@@ -44,8 +44,8 @@ namespace Backend_Server
                 entity.HasKey(e => e.Release);
                 entity.Property(d => d.Team).HasDefaultValue(16);
                 entity.Property(d => d.Version);
-                entity.Property(d => d.Product); 
-                entity.Property(d => d.Description); 
+                entity.Property(d => d.Product);
+                entity.Property(d => d.Description);
             });
 
             modelBuilder.Entity<Drivers>(entity =>

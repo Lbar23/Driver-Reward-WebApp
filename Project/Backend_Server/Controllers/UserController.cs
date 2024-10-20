@@ -9,10 +9,11 @@ namespace Backend_Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(UserManager<Users> userManager, SignInManager<Users> signInManager) : ControllerBase
+    public class UserController(UserManager<Users> userManager, SignInManager<Users> signInManager, AppDBContext context) : ControllerBase
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly SignInManager<Users> _signInManager = signInManager;
+        private readonly AppDBContext _context = context;
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserRegisterDto userDto)
@@ -75,7 +76,7 @@ namespace Backend_Server.Controllers
             }
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("currentuser")]
         public async Task<IActionResult> GetUser(string id)
         {
             var user = await _userManager.FindByIdAsync(id);
@@ -83,7 +84,8 @@ namespace Backend_Server.Controllers
             {
                 return NotFound();
             }
-
+            var roles = await _userManager.GetRolesAsync(user);
+            var permissions = await GetUserPermissions(user);
             return Ok(new
             {
                 user.Id,
@@ -91,8 +93,23 @@ namespace Backend_Server.Controllers
                 user.Email,
                 user.UserType,
                 user.CreatedAt,
-                user.LastLogin
+                user.LastLogin,
+                Roles = roles,
+                Permissions = permissions
             });
+            
+        }
+
+        //Permission task to grab the entire list of specific permissions for the specified user(s)
+        private async Task<List<string>> GetUserPermissions(Users user)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            var permissions = await _context.Permissions // <-- Will throw error until I update database & AppDBContext
+                .Where(p => roles.Contains(p.Role))
+                .Select(p => p.PermissionName)
+                .Distinct()
+                .ToListAsync();
+            return permissions;
         }
     // will be replaced with real reg code
         private static string DetermineUserRole(string registrationCode)
@@ -122,5 +139,10 @@ namespace Backend_Server.Controllers
     {
         public required string Username { get; set; }
         public required string Password { get; set; }
+    }
+
+    public class SponserAccessDto
+    {
+        public string AccessCode { get; set; } // <-- Access code based on Sponsor (unique specific ones for different Sponsors, but the same code for the same Sponsors)
     }
 }
