@@ -19,9 +19,9 @@ const About: React.FC = () => {
     useEffect(() => {
         const fetchAboutInfo = async () => {
             try {
-                const response = await axios.get('/api/About');
+                const response = await axios.get('/api/about');
                 
-                console.log('API Response:', response.data); // log the response to verify the structure
+                console.log('API Response:', response.data); 
                 setAboutInfo(response.data.items);
             } catch (error: any) {
                 setError(error.message);
