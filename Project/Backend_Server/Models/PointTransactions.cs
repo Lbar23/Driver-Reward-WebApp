@@ -11,9 +11,9 @@ namespace Backend_Server.Models
         public int DriverID { get; set; }
         public int SponsorID { get; set; }
         public int PointsChanged { get; set; }
-        public string Reason { get; set; }
+        public required string Reason { get; set; }
         public DateTime TransactionDate { get; set; }
-        public Drivers Driver { get; set; }
-        public Sponsors Sponsor { get; set; }
+        public required Drivers Driver { get; set; }
+        public required Sponsors Sponsor { get; set; }
     }
 }

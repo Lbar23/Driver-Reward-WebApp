@@ -41,10 +41,9 @@ namespace Backend_Server.Controllers
         public async Task<IActionResult> Login(UserLoginDto userDto)
         {
             var result = await _signInManager.PasswordSignInAsync(userDto.Username, userDto.Password, false, false);
-
-            if (result.Succeeded)
+            var user = await _userManager.FindByNameAsync(userDto.Username);
+            if (result.Succeeded && user != null)
             {
-                var user = await _userManager.FindByNameAsync(userDto.Username);
                 // check for 2fa
                 if (await _userManager.GetTwoFactorEnabledAsync(user))
                 {
@@ -128,10 +127,10 @@ namespace Backend_Server.Controllers
 
     public class UserRegisterDto
     {
-        public string Username { get; set; }
-        public string Email { get; set; }
-        public string Password { get; set; }
-        public string RegistrationCode { get; set; }
+        public required string Username { get; set; }
+        public required string Email { get; set; }
+        public required string Password { get; set; }
+        public required string RegistrationCode { get; set; }
         //public string CompanyName { get; set; }
     }
 
@@ -143,6 +142,6 @@ namespace Backend_Server.Controllers
 
     public class SponserAccessDto
     {
-        public string AccessCode { get; set; } // <-- Access code based on Sponsor (unique specific ones for different Sponsors, but the same code for the same Sponsors)
+        public required string AccessCode { get; set; } // <-- Access code based on Sponsor (unique specific ones for different Sponsors, but the same code for the same Sponsors)
     }
 }

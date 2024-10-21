@@ -8,7 +8,7 @@ namespace Backend_Server.Models
 {
     public class Users : IdentityUser<int>
     {
-        public string UserType { get; set; }
+        public required string UserType { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLogin { get; set; }
     }
