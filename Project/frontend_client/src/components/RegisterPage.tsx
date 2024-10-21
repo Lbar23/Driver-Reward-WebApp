@@ -1,136 +1,235 @@
-import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
-import { TextField, Button, Typography, Box, Link as MuiLink, LinearProgress } from '@mui/material';
-import { Link } from 'react-router-dom';
+import React, { useState, FormEvent } from 'react';
+import { TextField, Button, Typography, Box, LinearProgress, Stepper, Step, StepLabel } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { API_BASE_URL } from '../../config';
 
+const API_BASE_URL = 'https://localhost:7284';
 
-const usePasswordStrength = (password: string): number => {
-  const [strength, setStrength] = useState<number>(0);
+const passwordRequirements = [
+  { check: (pw: string) => pw.length >= 6, message: "At least 6 characters long" },
+  { check: (pw: string) => /[0-9]/.test(pw), message: "Contains at least one digit" },
+  { check: (pw: string) => /[a-z]/.test(pw), message: "Contains at least one lowercase letter" },
+  { check: (pw: string) => /[A-Z]/.test(pw), message: "Contains at least one uppercase letter" },
+  { check: (pw: string) => /[^A-Za-z0-9]/.test(pw), message: "Contains at least one special character" },
+  { check: (pw: string) => new Set(pw).size >= 1, message: "Contains at least 1 unique character" },
+];
 
-  useEffect(() => {
-    const calculateStrength = (pwd: string): number => {
-      let score = 0;
-      if (pwd.length > 6) score += 1;
-      if (pwd.length > 10) score += 1;
-      if (/[A-Z]/.test(pwd)) score += 1;
-      if (/[0-9]/.test(pwd)) score += 1;
-      if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
-      return (score / 5) * 100;
-    };
-
-    setStrength(calculateStrength(password));
-  }, [password]);
-
-  return strength;
-};
-
-const RegisterPage: React.FC = () => {
+const RegisterPage: React.FC<{ setIsLoggedIn: (isLoggedIn: boolean) => void }> = ({ setIsLoggedIn }) => {
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const passwordStrength = usePasswordStrength(password);
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [twoFactorCode, setTwoFactorCode] = useState<string>('');
+  const [activeStep, setActiveStep] = useState<number>(0);
+  const [error, setError] = useState<string>('');
+  const [registrationCode, setRegistrationCode] = useState<string>('');
+  const navigate = useNavigate();
 
-    const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        try {
-            const response = await axios.post(`${API_BASE_URL}/api/User/register`, {
-                username,
-                email,
-                password,
-                registrationCode: "DRIVER" // or whatever default you want
-            });
-            console.log('Registration successful:', response.data);
-        } catch (error) {
-          if (axios.isAxiosError(error)){ //check for axios issues
-            console.error('Registration failed:', error.response?.data);
-          }
-          else if (error instanceof Error){ //should catch js
-            console.error('Registration failed:', error.message);
-          }
-          else{ 
-            console.error('An unknown error occurred:', JSON.stringify(error));
-          }
-        }
-    };
+  const steps = ['Register', 'Verify 2FA'];
 
-  const getStrengthColor = (strength: number): 'error' | 'warning' | 'success' => {
-    if (strength < 33) return 'error';
-    if (strength < 66) return 'warning';
-    return 'success';
+  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (!passwordRequirements.every(req => req.check(password))) {
+      setError("Password does not meet all requirements");
+      return;
+    }
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/user/register`, {
+        username,
+        email,
+        password,
+        registrationCode      
+      });
+
+      if (response.data && response.data.success) {
+        setActiveStep(1);
+      } else {
+        setError('Registration failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Registration failed:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        setError(error.response.data.message || 'An error occurred during registration');
+      } else {
+        setError('An unexpected error occurred');
+      }
+    }
+  };
+
+  const handleVerify2FA = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/user/verify2fa`, {
+        email,
+        twoFactorCode
+      });
+
+      if (response.data && response.data.success) {
+        localStorage.setItem('userToken', response.data.token);
+        setIsLoggedIn(true);
+        navigate('/home');
+      } else {
+        setError('2FA verification failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('2FA verification failed:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        setError(error.response.data.message || 'An error occurred during 2FA verification');
+      } else {
+        setError('An unexpected error occurred');
+      }
+    }
+  };
+
+  const getStepContent = (step: number) => {
+    switch (step) {
+      case 0:
+        return (
+          <Box component="form" onSubmit={handleRegister} noValidate sx={{ mt: 1 }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="username"
+              label="Username"
+              name="username"
+              autoComplete="username"
+              autoFocus
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email Address"
+              name="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type="password"
+              id="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="confirmPassword"
+              label="Confirm Password"
+              type="password"
+              id="confirmPassword"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="registerCode"
+              label="Register Code"
+              name="Register Code"
+              autoComplete="Register Code"
+              value={registrationCode}
+              onChange={(e) => setRegistrationCode(e.target.value)}
+            />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+            >
+              Register
+            </Button>
+          </Box>
+        );
+      case 1:
+        return (
+          <Box component="form" onSubmit={handleVerify2FA} noValidate sx={{ mt: 1 }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="twoFactorCode"
+              label="2FA Code"
+              name="twoFactorCode"
+              autoComplete="off"
+              autoFocus
+              value={twoFactorCode}
+              onChange={(e) => setTwoFactorCode(e.target.value)}
+            />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+            >
+              Verify
+            </Button>
+          </Box>
+        );
+      default:
+        return 'Unknown step';
+    }
   };
 
   return (
-    <Box
-      component="form"
-      onSubmit={handleRegister}
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        maxWidth: 400,
-        margin: 'auto',
-        padding: 3,
-        boxShadow: 3,
-        borderRadius: 2,
-        backgroundColor: 'background.paper',
-      }}
-    >
-      <Typography variant="h4" component="h1" gutterBottom>
-        Create Account
-      </Typography>
-      <TextField
-        label="Username"
-        variant="outlined"
-        margin="normal"
-        fullWidth
-        value={username}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
-        required
-      />
-      <TextField
-        label="Email"
-        type="email"
-        variant="outlined"
-        margin="normal"
-        fullWidth
-        value={email}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-        required
-      />
-      <TextField
-        label="Password"
-        type="password"
-        variant="outlined"
-        margin="normal"
-        fullWidth
-        value={password}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-        required
-      />
-      <Box sx={{ width: '100%', mt: 1 }}>
-        <LinearProgress 
-          variant="determinate" 
-          value={passwordStrength} 
-          color={getStrengthColor(passwordStrength)}
-        />
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          Password strength: {passwordStrength < 33 ? 'Weak' : passwordStrength < 66 ? 'Medium' : 'Strong'}
-        </Typography>
+    <Box sx={{ width: '100%', maxWidth: 400, margin: 'auto', mt: 4 }}>
+      <Stepper activeStep={activeStep}>
+        {steps.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
+      <Box sx={{ mt: 4 }}>
+        {getStepContent(activeStep)}
+        {error && (
+          <Typography color="error" sx={{ mt: 2 }}>
+            {error}
+          </Typography>
+        )}
       </Box>
-      <Button
-        type="submit"
-        variant="contained"
-        color="primary"
-        size="large"
-        fullWidth
-        sx={{ mt: 3, mb: 2 }}
-      >
-        Register
-      </Button>
-      <MuiLink component={Link} to="/login" variant="body2">
-        Already have an account? Sign in
-      </MuiLink>
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h6">Password Requirements:</Typography>
+        {passwordRequirements.map((req, index) => (
+          <Box key={index} sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+            <Box sx={{ width: '100%', mr: 1 }}>
+              <LinearProgress
+                variant="determinate"
+                value={req.check(password) ? 100 : 0}
+                color={req.check(password) ? 'success' : 'error'}
+              />
+            </Box>
+            <Box sx={{ minWidth: 35 }}>
+              <Typography variant="body2" color="text.secondary">
+                {req.message}
+              </Typography>
+            </Box>
+          </Box>
+        ))}
+      </Box>
     </Box>
   );
 };

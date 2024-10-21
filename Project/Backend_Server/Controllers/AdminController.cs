@@ -38,6 +38,8 @@ public class AdminController : ControllerBase
         return Ok(new { message = "Admin user created successfully" });
     }
 
+    
+
     private string HashPassword(string password)
     {
         using (var sha256 = SHA256.Create())
