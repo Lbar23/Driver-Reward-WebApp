@@ -77,7 +77,8 @@ namespace Backend_Server
                 entity.HasOne(d => d.Product).WithMany().HasForeignKey(d => d.ProductID);
                 entity.Property(e => e.PointsSpent).IsRequired();
                 entity.Property(e => e.PurchaseDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                entity.Property(e => e.Status).HasDefaultValue("Pending").HasConversion<string>();
+                entity.Property(e => e.Status).HasConversion<string>()
+                    .HasDefaultValue(OrderStatus.Ordered);
             });
 
             modelBuilder.Entity<PointTransactions>(entity =>
@@ -96,7 +97,8 @@ namespace Backend_Server
                 entity.HasKey(e => e.ApplicationID);
                 entity.HasOne(d => d.Driver).WithMany().HasForeignKey(d => d.DriverID);
                 entity.HasOne(d => d.Sponsor).WithMany().HasForeignKey(d => d.SponsorID);
-                entity.Property(e => e.Status).HasDefaultValue("Pending").HasConversion<string>();
+                entity.Property(e => e.Status).HasConversion<string>()
+                    .HasDefaultValue(AppStatus.Submitted);
                 entity.Property(e => e.ApplyDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
@@ -109,6 +111,15 @@ namespace Backend_Server
                 entity.Property(e => e.Category).HasDefaultValue(AuditLogCategory.User).HasConversion<string>();
                 entity.Property(e => e.Timestamp).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
+
+            modelBuilder.Entity<Permissions>(entity =>
+            {
+                entity.ToTable("Permissions");
+                entity.HasKey(e => e.PermissionID);
+                entity.Property(d => d.Role);
+                entity.Property(d => d.PermissionName);
+            });
+            
         }
     }
 }
