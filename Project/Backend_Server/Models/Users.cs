@@ -6,11 +6,18 @@ using System.Threading.Tasks;
 
 namespace Backend_Server.Models
 {
+    public enum NotificationPref
+    {
+        None,   // In case 2FA is not enabled
+        Phone,  
+        Email  
+    }
     public class Users : IdentityUser<int>
     {
-        public string UserType { get; set; }
+        public required string UserType { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLogin { get; set; }
+        public NotificationPref NotifyPref { get; set; } = NotificationPref.None; 
     }
 
 }

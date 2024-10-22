@@ -1,58 +1,76 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 using System.Text;
-using Backend_Server;
 using Backend_Server.Models;
+using Microsoft.EntityFrameworkCore;
 
-[ApiController]
-[Route("api/[controller]")]
-public class AdminController : ControllerBase
+namespace Backend_Server.Controllers
 {
-    private readonly AppDBContext _context;
 
-    public AdminController(AppDBContext context)
-    {
-        _context = context;
-    }
 
-    [HttpPost("create")]
-    public async Task<IActionResult> CreateAdmin([FromBody] AdminCreateModel model)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AdminController : ControllerBase
     {
-        if (!ModelState.IsValid)
+        private readonly AppDBContext _context;
+
+        public AdminController(AppDBContext context)
         {
-            return BadRequest(ModelState);
+            _context = context;
         }
 
-        var user = new Users
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateAdmin([FromBody] AdminCreateModel model)
         {
-            UserName = model.Username,
-            Email = model.Email,
-            PasswordHash = HashPassword(model.Password),
-            UserType = "Admin",
-            CreatedAt = DateTime.UtcNow
-        };
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+            var user = new Users
+            {
+                UserName = model.Username,
+                Email = model.Email,
+                PasswordHash = HashPassword(model.Password),
+                UserType = "Admin",
+                CreatedAt = DateTime.UtcNow
+            };
 
-        return Ok(new { message = "Admin user created successfully" });
-    }
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
 
-    
+            return Ok(new { message = "Admin user created successfully" });
+        }
 
-    private string HashPassword(string password)
-    {
-        using (var sha256 = SHA256.Create())
+        [HttpGet("about")]
+        public async Task<IActionResult> GetAbout()
         {
-            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-            return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
+            var aboutInfo = await _context.About
+            .OrderByDescending(a => a.Release)
+            .LastOrDefaultAsync();
+            if (aboutInfo == null)
+            {
+                return NotFound(new { message = "No about information found" });
+            }
+
+            return Ok(aboutInfo);
+        }
+
+        private string HashPassword(string password)
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+                return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
+            }
         }
     }
-}
 
-public class AdminCreateModel
-{
-    public required string Username { get; set; }
-    public required string Email { get; set; }
-    public required string Password { get; set; }
+    public record AdminCreateModel
+    {
+        public required string Username { get; set; }
+        public required string Email { get; set; }
+        public required string Password { get; set; }
+    };
+
 }

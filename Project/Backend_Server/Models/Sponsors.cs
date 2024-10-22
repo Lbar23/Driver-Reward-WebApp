@@ -9,6 +9,7 @@ namespace Backend_Server.Models
     {
         public int SponsorID { get; set; }
         public int UserID { get; set; }
+        public required string AccessCode { get; set; }
         public required string CompanyName { get; set; }
         public decimal PointDollarValue { get; set; }
         public required Users User { get; set; }

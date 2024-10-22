@@ -5,6 +5,12 @@ using System.Threading.Tasks;
 
 namespace Backend_Server.Models
 {
+    public enum OrderStatus
+    {
+    Ordered, 
+    Cancelled,
+    Refunded,
+    }
     public class Purchases
     {
         public int PurchaseID { get; set; }
@@ -12,8 +18,8 @@ namespace Backend_Server.Models
         public int ProductID { get; set; }
         public int PointsSpent { get; set; }
         public DateTime PurchaseDate { get; set; }
-        public string Status { get; set; }
-        public Drivers Driver { get; set; }
-        public Products Product { get; set; }
+        public OrderStatus Status { get; set; } = OrderStatus.Ordered;
+        public required Drivers Driver { get; set; }
+        public required Products Product { get; set; }
     }
 }
