@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +13,9 @@ namespace Backend_Server.Controllers
         private readonly SignInManager<Users> _signInManager = signInManager;
         private readonly AppDBContext _context = context;
 
+
+
+        /********* API CALL METHODS *********/
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserRegisterDto userDto)
         {
@@ -121,7 +122,7 @@ namespace Backend_Server.Controllers
             return Ok(new { message = "Password changed successfully." });
         }
 
-        //Doesn't have an frontend api call yet; just here when it happens
+        //Doesn't have an frontend api page yet; just here when it happens
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetUserPassword(string userId, [FromBody] ResetPasswordDto request)
         {
@@ -142,6 +143,72 @@ namespace Backend_Server.Controllers
 
             return Ok(new { message = "Password reset successfully." });
         }
+
+        //uh, this is two stories combined, really
+        //Since transactions and purchases are one, and really, getting the default value doesn't need a separate method
+        //we ball with dis
+        [HttpGet("activity")]
+        public async Task<IActionResult> GetDriverActivity()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+                return Unauthorized("User not found.");
+
+            var driver = await _context.Drivers
+                .FirstOrDefaultAsync(d => d.UserID == user.Id);
+
+            if (driver == null)
+                return NotFound("Driver not found.");
+
+            // Poit transations
+            var pointTransactions = await _context.PointTransactions
+                .Where(t => t.DriverID == driver.DriverID)
+                .OrderByDescending(t => t.TransactionDate)
+                .Select(t => new TransactionDto
+                {
+                    Date = t.TransactionDate,
+                    Points = t.PointsChanged,
+                    Type = "Point Change",
+                    Reason = t.Reason,
+                    SponsorName = t.Sponsor.CompanyName
+                })
+                .ToListAsync();
+
+            // Purchases
+            var purchases = await _context.Purchases
+                .Where(p => p.DriverID == driver.DriverID)
+                .OrderByDescending(p => p.PurchaseDate)
+                .Select(p => new TransactionDto
+                {
+                    Date = p.PurchaseDate,
+                    Points = -p.PointsSpent, // negative points be like (spent)
+                    Type = "Purchase",
+                    Reason = $"Purchased {p.Product.Name}",
+                    Status = p.Status.ToString()
+                })
+                .ToListAsync();
+
+            // Sorting transactions
+            var allTransactions = pointTransactions.Concat(purchases)
+                .OrderByDescending(t => t.Date)
+                .ToList();
+
+            // Le Sponsor point value
+            var pointValue = new PointValueDto
+            {
+                TotalPoints = driver.TotalPoints,
+                PointValue = 0.01M, // Standalone default vaule; change based on project requirements/bare minimum
+                SponsorName = driver.Sponsor.CompanyName
+            };
+
+            return Ok(new
+            {
+                PointValue = pointValue,
+                Transactions = allTransactions
+            });
+        }
+        
+        /********* ASYNC FUNCTIONS CODE ****************/
 
         //Permission task to grab the entire list of specific permissions for the specified user(s)
         private async Task<List<string>> GetUserPermissions(Users user)
@@ -170,6 +237,8 @@ namespace Backend_Server.Controllers
             return "Driver"; // The overall Default role of the 3 users
         }
     }
+
+    /********* DTO RECORD 'CLASSES' ***********/
 
     public record UserRegisterDto //For better scalability, turn every DTO going forward into records instead (since they are inherently immutable data carriers)
     {
@@ -200,5 +269,23 @@ namespace Backend_Server.Controllers
     {
         public required string CurrentPassword { get; set; }
         public required string NewPassword { get; set; }
+    }
+
+    public record TransactionDto
+    {
+        public DateTime Date { get; init; }
+        public int Points { get; init; }
+        public required string Type { get; init; }
+        public required string Reason { get; init; }
+        public string? SponsorName { get; init; }
+        public string? Status { get; init; }
+    }
+
+    public record PointValueDto
+    {
+        public int TotalPoints { get; init; }
+        public decimal PointValue { get; init; }
+        public required string SponsorName { get; init; }
+        public decimal TotalValue => TotalPoints * PointValue;
     }
 }

@@ -8,6 +8,8 @@ import About from './pages/About';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PasswordChangeForm from './pages/PasswordChangeForm';
+import DriverPointsList from './components/PMSDriverList';
+import DriverActivity from './components/DriverActivity';
 
 const theme = createTheme({
     palette: {
@@ -44,7 +46,9 @@ const App = () => {
                     <Route path="/faq" element={<FAQ />} />
                     <Route path="/feedback" element={<FeedbackForm />} />
                     <Route path="/dashboard" element={<Dashboard/>} />
-                    <Route path="/change-password" element={<PasswordChangeForm/>} />
+                    <Route path="/change-password" element={<PasswordChangeForm/>} /> {/* This is just here when profile pages are well and done */}
+                    <Route path="/driver-points" element={<DriverPointsList />} /> {/* Again; remove once dashboard has this and database has some test data; just kind of here as a test that it loads */}
+                    <Route path="/driver-activity" element={<DriverActivity />} /> {/* Same thing as above; make this end */}
                     <Route path="/" element={<Navigate to="/login" replace />} />
                 </Routes>
             </Container>
