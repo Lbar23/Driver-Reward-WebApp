@@ -11,6 +11,7 @@ public class NotifyService
     private readonly IAmazonSecretsManager _secretsManager;
     private readonly IConfiguration _configuration;
     private readonly SendGridClient _sendGridClient;
+    private readonly ILogger<NotifyService> _logger;
     private string _sendGridApiKey;
     private string _twilioSID;
     private string _twilioAuthToken;
@@ -32,7 +33,6 @@ public class NotifyService
         _fromPhoneNumber = secrets["FromPhoneNumber"];
 
         // Init Twilio
-
         _sendGridClient = new SendGridClient(_sendGridApiKey);
         TwilioClient.Init(_twilioSID, _twilioAuthToken);
 
@@ -47,27 +47,77 @@ public class NotifyService
         return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(secretValueResponse.SecretString);
     }
 
-    // Send SMS using Twilio
+    // Send general SMS using Twilio
     public async Task SendSmsAsync(string phoneNumber, string message)
     {
-        var msg = await MessageResource.CreateAsync(
-            body: message,
-            from: new Twilio.Types.PhoneNumber(_fromPhoneNumber),
-            to: new Twilio.Types.PhoneNumber(phoneNumber)
-        );
+        try{
+            var msg = await MessageResource.CreateAsync(
+                body: message,
+                from: new Twilio.Types.PhoneNumber(_fromPhoneNumber),
+                to: new Twilio.Types.PhoneNumber(phoneNumber)
+            );
+
+        _logger.LogInformation($"SMS sent successfully to {phoneNumber}: SID {msg.Sid}");
+        }
+        catch (Exception ex){
+            _logger.LogError($"Failed to send SMS to {phoneNumber}: {ex.Message}");
+            throw;
+        }
     }
 
-    // Send Email using SendGrid
+    // Send general Email using SendGrid
     public async Task SendEmailAsync(string emailAddress, string subject, string message)
     {
-        var msg = new SendGridMessage()
+        try
         {
-            From = new EmailAddress(_fromEmailAddress, "GitGudDriversApp"),
-            Subject = subject,
-            PlainTextContent = message,
-            HtmlContent = $"<p>{message}</p>"
-        };
-        msg.AddTo(new EmailAddress(emailAddress));
-        await _sendGridClient.SendEmailAsync(msg);
+            var msg = new SendGridMessage()
+            {
+                From = new EmailAddress(_fromEmailAddress, "GitGudDriversApp"),
+                Subject = subject,
+                PlainTextContent = message,
+                HtmlContent = $"<p>{message}</p>"
+            };
+            msg.AddTo(new EmailAddress(emailAddress));
+
+            var response = await _sendGridClient.SendEmailAsync(msg);
+
+            if (response.IsSuccessStatusCode){
+                _logger.LogInformation($"Email sent successfully to {emailAddress}");
+            }
+            else{
+                _logger.LogError($"Failed to send email to {emailAddress}: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to send email to {emailAddress}: {ex.Message}");
+            throw;
+        }
+    }
+
+    // send email with a template id
+    public async Task SendTemplateEmail(string emailAddress, string tempID, Dictionary<string, string> tempData)
+    {
+        try
+        {
+            var msg = new SendGridMessage();
+            msg.SetFrom(new EmailAddress(_fromEmailAddress, "GitGudDriversApp"));
+            msg.AddTo(new EmailAddress(emailAddress));
+            msg.SetTemplateId(tempID);
+            msg.SetTemplateData(tempData);
+            var response = await _sendGridClient.SendEmailAsync(msg);
+
+            if (response.IsSuccessStatusCode){
+                _logger.LogInformation($"Email sent successfully to {emailAddress}");
+            }
+            else{
+                _logger.LogError($"Failed to send email to {emailAddress}: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to send email to {emailAddress}: {ex.Message}");
+            throw;
+        }
     }
 }

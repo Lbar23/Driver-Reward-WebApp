@@ -48,12 +48,17 @@ namespace Backend_Server.Controllers
             switch (user.NotifyPref)
                 {
                     case NotificationPref.Phone:
-                        // Send via AWS SNS (SMS)
+                        // Send via twilio
                         await _notifyService.SendSmsAsync(user.PhoneNumber, $"Your 2FA code is: {code}");
                         break;
                     case NotificationPref.Email:
-                        // Send via AWS SES (Email)
-                        await _notifyService.SendEmailAsync(user.Email, "Your 2FA Code", $"Your 2FA code is: {code}");
+                        // Send via sendgrid
+                        var tData = new Dictionary<string, string>
+                            {
+                                { "auth_code", code}
+                            };
+
+                        await _notifyService.SendTemplateEmail(user.Email, "d-16815c0473d948acb2715a5001907e8c", tData);
                         break;
                     default:
                         return false;
@@ -97,6 +102,7 @@ namespace Backend_Server.Controllers
                     var send2FaResult = await Send2FA(user);
                     if (!send2FaResult)
                     {
+                        Console.WriteLine($"Failed to send 2FA code to {user.UserName}");
                         return StatusCode(500, new { message = "Failed to send 2FA code. Please try again later." });
                     }
 
@@ -105,9 +111,10 @@ namespace Backend_Server.Controllers
                 user.LastLogin = DateTime.UtcNow;
                 await _userManager.UpdateAsync(user);
 
+                Console.WriteLine($"User {user.UserName} logged in successfully.");
                 return Ok(new { message = "Login successful", userId = user.Id, role = user.UserType });
             }
-
+            Console.WriteLine($"Login failed for user {userDto.Username}");
             return Unauthorized("Invalid username or password");
         }
 
