@@ -46,8 +46,8 @@ const handle2FA = async (e: FormEvent<HTMLFormElement>) => {
 
   try {
     const response = await axios.post('/api/user/verify-2fa', {
-      userId,
-      code: twoFactorCode
+        userId: String(userId),
+        code: twoFactorCode
     });
 
     // If 2FA verification is successful
