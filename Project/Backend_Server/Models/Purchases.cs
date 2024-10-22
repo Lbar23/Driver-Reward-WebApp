@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 namespace Backend_Server.Models
 {
     public enum OrderStatus
-{
+    {
     Ordered, 
     Cancelled,
     Refunded,
-}
+    }
     public class Purchases
     {
         public int PurchaseID { get; set; }

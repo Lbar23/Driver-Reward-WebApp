@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 namespace Backend_Server.Models
 {
     public enum AppStatus
-{
-    Submitted, 
-    Approved,
-    Rejected,
-}
+    {
+        Submitted, 
+        Approved,
+        Rejected,
+    }
 
     public class DriverApplications
     {
