@@ -45,15 +45,15 @@ namespace Backend_Server.Controllers{
         [HttpGet("about")]
         public async Task<IActionResult> GetAbout()
         {
-            var aboutInfo = await _context.About.LastOrDefaultAsync();
-            return Ok(new
+            var aboutInfo = await _context.About
+            .OrderByDescending(a => a.Release)
+            .LastOrDefaultAsync();
+            if (aboutInfo == null)
             {
-                aboutInfo.Team,
-                aboutInfo.Version,
-                aboutInfo.Release,
-                aboutInfo.Product,
-                aboutInfo.Description,
-            });
+                return NotFound(new { message = "No about information found" });
+            }
+
+            return Ok(aboutInfo);
         }
 
         private string HashPassword(string password)

@@ -11,7 +11,7 @@ namespace Backend_Server.Models
         public int UserID { get; set; }
         public int SponsorID { get; set; }
         public int TotalPoints { get; set; }
-        public Users User { get; set; }
-        public Sponsors Sponsor { get; set; }
+        public required Users User { get; set; }
+        public required Sponsors Sponsor { get; set; }
     }
 }

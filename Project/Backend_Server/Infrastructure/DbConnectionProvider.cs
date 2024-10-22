@@ -7,6 +7,7 @@ using Amazon.SecretsManager.Model;
 using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
 using Renci.SshNet;
+using System.IO;
 
 /// <summary>
 /// Provider Infrastructure Class for database connection in multiple instances, since the same connection must be the same for any usage of it.
@@ -19,9 +20,9 @@ namespace Backend_Server.Infrastructure
     {
         private readonly IConfiguration _configuration;
         private readonly IAmazonSecretsManager _secretsManager;
-        private SshClient _sshClient;
-        private ForwardedPortLocal _forwardedPort;
-        private string _tempKeyPath;
+        private SshClient? _sshClient;
+        private ForwardedPortLocal? _forwardedPort;
+        private string? _tempKeyPath;
 
         public DbConnectionProvider(IConfiguration configuration, IAmazonSecretsManager secretsManager)
         {
@@ -34,11 +35,12 @@ namespace Backend_Server.Infrastructure
             var (dbSecrets, sshSecrets) = await GetSecrets();
             await SetupSshTunnel(dbSecrets, sshSecrets);
 
-            string connectionString = _configuration.GetConnectionString("DefaultConnection")
+            string connectionString = (_configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("DefaultConnection string not found."))  //added null check
                 .Replace("{Username}", dbSecrets["username"].GetString())
                 .Replace("{Password}", dbSecrets["password"].GetString())
                 .Replace("{Host}", "127.0.0.1")
-                .Replace("{Port}", _forwardedPort.BoundPort.ToString());
+                .Replace("{Port}", _forwardedPort?.BoundPort.ToString());
 
             return new MySqlConnection(connectionString);
         }
@@ -46,9 +48,11 @@ namespace Backend_Server.Infrastructure
         private async Task<(Dictionary<string, JsonElement> dbSecrets, Dictionary<string, string> sshSecrets)> GetSecrets()
         {
             var dbSecretStr = await GetSecret("team16/rds-instance/db-credentials");
-            var dbSecrets = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(dbSecretStr);
+            var dbSecrets = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(dbSecretStr)
+                ?? throw new InvalidOperationException("Failed to deserialize SSH secrets");
             var sshSecretStr = await GetSecret("team16/ec2-instance/ssh-credentials");
-            var sshSecrets = JsonSerializer.Deserialize<Dictionary<string, string>>(sshSecretStr);
+            var sshSecrets = JsonSerializer.Deserialize<Dictionary<string, string>>(sshSecretStr)
+                ?? throw new InvalidOperationException("Failed to deserialize SSH secrets");
             return (dbSecrets, sshSecrets);
         }
 

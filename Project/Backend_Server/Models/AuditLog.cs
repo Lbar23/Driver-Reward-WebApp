@@ -18,10 +18,10 @@ namespace Backend_Server.Models
     {
         public int LogID { get; set; }
         public int UserID { get; set; }
-        public string Action { get; set; }
+        public required string Action { get; set; }
         public AuditLogCategory Category { get; set; }
-        public string Description { get; set; }
+        public string? Description { get; set; }
         public DateTime Timestamp { get; set; }
-        public Users User { get; set; }
+        public required Users User { get; set; }
     }
 }
