@@ -9,7 +9,7 @@ namespace Backend_Server.Models
     {
         public int SponsorID { get; set; }
         public int UserID { get; set; }
-        public string AccessCode { get; set; } //should be required? might break RBAC if required, so keep regular optional string
+        public required string AccessCode { get; set; }
         public required string CompanyName { get; set; }
         public decimal PointDollarValue { get; set; }
         public required Users User { get; set; }

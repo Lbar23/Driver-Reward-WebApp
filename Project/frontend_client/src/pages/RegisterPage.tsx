@@ -10,7 +10,7 @@ const usePasswordStrength = (password: string): number => {
   useEffect(() => {
     const calculateStrength = (pwd: string): number => {
       let score = 0;
-      if (pwd.length > 6) score += 1;
+      if (pwd.length > 8) score += 1; //Changed to 8 to reflect Identity Password character increase
       if (pwd.length > 10) score += 1;
       if (/[A-Z]/.test(pwd)) score += 1;
       if (/[0-9]/.test(pwd)) score += 1;
@@ -47,7 +47,7 @@ const RegisterPage: React.FC = () => {
           else if (error instanceof Error){ //should catch js
             console.error('Registration failed:', error.message);
           }
-          else{ 
+          else{
             console.error('An unknown error occurred:', JSON.stringify(error));
           }
         }
