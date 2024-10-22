@@ -132,6 +132,9 @@ const handle2FA = async (e: FormEvent<HTMLFormElement>) => {
       <MuiLink component={Link} to="/register" variant="body2">
         Don't have an account? Sign Up
       </MuiLink>
+      <MuiLink component={Link} to="/reset-password" variant="body2">
+        Forgot Password? Click here to Reset it
+      </MuiLink>
     </Box>
   );
 };

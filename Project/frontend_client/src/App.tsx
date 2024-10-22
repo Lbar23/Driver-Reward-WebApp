@@ -1,12 +1,15 @@
 import { Route, Routes, Link, Navigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import FAQ from './components/FAQ';
-import FeedbackForm from './components/Feedback';
-import Dashboard from './components/Dashboard';
-import About from './components/About';
-import LoginPage from './components/LoginPage';
-import RegisterPage from './components/RegisterPage';
+import FAQ from './pages/FAQ';
+import FeedbackForm from './pages/Feedback';
+import Dashboard from './pages/Dashboard';
+import About from './pages/About';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import PasswordChangeForm from './pages/PasswordChangeForm';
+import DriverPointsList from './components/PMSDriverList';
+import DriverActivity from './components/DriverActivity';
 
 const theme = createTheme({
     palette: {
@@ -20,7 +23,7 @@ const NavBar = () => (
     <AppBar position="static">
         <Toolbar>
             <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
-                Incentive Application
+                Git Gud Drivers
             </Typography>
             <Button color="inherit" component={Link} to="/about">About</Button>
             <Button color="inherit" component={Link} to="/login">Login</Button>
@@ -43,6 +46,9 @@ const App = () => {
                     <Route path="/faq" element={<FAQ />} />
                     <Route path="/feedback" element={<FeedbackForm />} />
                     <Route path="/dashboard" element={<Dashboard/>} />
+                    <Route path="/change-password" element={<PasswordChangeForm/>} /> {/* This is just here when profile pages are well and done */}
+                    <Route path="/driver-points" element={<DriverPointsList />} /> {/* Again; remove once dashboard has this and database has some test data; just kind of here as a test that it loads */}
+                    <Route path="/driver-activity" element={<DriverActivity />} /> {/* Same thing as above; make this end */}
                     <Route path="/" element={<Navigate to="/login" replace />} />
                 </Routes>
             </Container>

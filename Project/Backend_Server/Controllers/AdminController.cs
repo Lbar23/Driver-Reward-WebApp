@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 using System.Text;
-using Backend_Server;
 using Backend_Server.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace Backend_Server.Controllers{
+namespace Backend_Server.Controllers
+{
 
 
     [ApiController]
@@ -66,7 +66,7 @@ namespace Backend_Server.Controllers{
         }
     }
 
-    public class AdminCreateModel
+    public record AdminCreateModel
     {
         public required string Username { get; set; }
         public required string Email { get; set; }

@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +16,8 @@ namespace Backend_Server.Controllers
         private readonly AppDBContext _context = context;
         private readonly NotifyService _notifyService = notifyService;
 
+        /********* API CALL METHODS *********/
+        
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserRegisterDto userDto)
         {
@@ -183,33 +183,147 @@ namespace Backend_Server.Controllers
             
         }
 
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return NotFound("User not found, Please try again.");
+            }
+
+            var result = await _userManager.ChangePasswordAsync(user, 
+                request.CurrentPassword, 
+                request.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors.Select(e => e.Description));
+            }
+            //Ugh, in Sprint 9 of project, do manual logging for better logging levels; as of now, basic http requests auto logging
+            //for EVERY return, wooooooooooooooooo
+            return Ok(new { message = "Password changed successfully." });
+        }
+
+        //Doesn't have an frontend api page yet; just here when it happens
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetUserPassword(string userId, [FromBody] ResetPasswordDto request)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return NotFound("User not found, Please try again.");
+            }
+
+            // Generate reset token
+            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors.Select(e => e.Description));
+            }
+
+            return Ok(new { message = "Password reset successfully." });
+        }
+
+        //uh, this is two stories combined, really
+        //Since transactions and purchases are one, and really, getting the default value doesn't need a separate method
+        //we ball with dis
+        [HttpGet("activity")]
+        public async Task<IActionResult> GetDriverActivity()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+                return Unauthorized("User not found.");
+
+            var driver = await _context.Drivers
+                .FirstOrDefaultAsync(d => d.UserID == user.Id);
+
+            if (driver == null)
+                return NotFound("Driver not found.");
+
+            // Poit transations
+            var pointTransactions = await _context.PointTransactions
+                .Where(t => t.DriverID == driver.DriverID)
+                .OrderByDescending(t => t.TransactionDate)
+                .Select(t => new TransactionDto
+                {
+                    Date = t.TransactionDate,
+                    Points = t.PointsChanged,
+                    Type = "Point Change",
+                    Reason = t.Reason,
+                    SponsorName = t.Sponsor.CompanyName
+                })
+                .ToListAsync();
+
+            // Purchases
+            var purchases = await _context.Purchases
+                .Where(p => p.DriverID == driver.DriverID)
+                .OrderByDescending(p => p.PurchaseDate)
+                .Select(p => new TransactionDto
+                {
+                    Date = p.PurchaseDate,
+                    Points = -p.PointsSpent, // negative points be like (spent)
+                    Type = "Purchase",
+                    Reason = $"Purchased {p.Product.Name}",
+                    Status = p.Status.ToString()
+                })
+                .ToListAsync();
+
+            // Sorting transactions
+            var allTransactions = pointTransactions.Concat(purchases)
+                .OrderByDescending(t => t.Date)
+                .ToList();
+
+            // Le Sponsor point value
+            var pointValue = new PointValueDto
+            {
+                TotalPoints = driver.TotalPoints,
+                PointValue = 0.01M, // Standalone default vaule; change based on project requirements/bare minimum
+                SponsorName = driver.Sponsor.CompanyName
+            };
+
+            return Ok(new
+            {
+                PointValue = pointValue,
+                Transactions = allTransactions
+            });
+        }
+        
+        /********* ASYNC FUNCTIONS CODE ****************/
+
         //Permission task to grab the entire list of specific permissions for the specified user(s)
         private async Task<List<string>> GetUserPermissions(Users user)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            var permissions = await _context.Permissions // <-- Will throw error until I update database & AppDBContext
+            var permissions = await _context.Permissions // <-- Will throw error until I update database & AppDBContext (remove once added/fixed with no errors)
                 .Where(p => roles.Contains(p.Role))
                 .Select(p => p.PermissionName)
                 .Distinct()
                 .ToListAsync();
             return permissions;
         }
-    // will be replaced with real reg code
-        private static string DetermineUserRole(string registrationCode)
+
+        //Replaced with unique admin domain email instead of registration code
+        private static string DetermineUserRole(string email)
         {
-            switch (registrationCode.ToUpper())
+            //Don't have an official one yet. Unless you want me to set it up while I touch S3 as well; 
+            //I did know you brought it AWS Route 53, though.
+            string adminDomain = "admin.domain.com"; // <-- username@admin.domainname.com
+
+            if (adminDomain.Any(domain => email.EndsWith("@" + domain)))
             {
-                case "ADMIN2023":
-                    return "Admin";
-                case "SPONSOR2023":
-                    return "Sponsor";
-                default:
-                    return "Driver";
+                return "Admin";
             }
+            
+            return "Driver"; // The overall Default role of the 3 users
         }
     }
 
-    public class UserRegisterDto
+    /********* DTO RECORD 'CLASSES' ***********/
+
+    public record UserRegisterDto //For better scalability, turn every DTO going forward into records instead (since they are inherently immutable data carriers)
     {
         public required string Username { get; set; }
         public required string Email { get; set; }
@@ -218,13 +332,13 @@ namespace Backend_Server.Controllers
         //public string CompanyName { get; set; }
     }
 
-    public class UserLoginDto
+    public record UserLoginDto
     {
         public required string Username { get; set; }
         public required string Password { get; set; }
     }
 
-    public class SponserAccessDto
+    public record SponserAccessDto
     {
         public required string AccessCode { get; set; } // <-- Access code based on Sponsor (unique specific ones for different Sponsors, but the same code for the same Sponsors)
     }
@@ -233,4 +347,33 @@ public class TwoFactorDto
     {
         public required string UserId { get; set; }
         public required string Code { get; set; }
+    
+    public record ResetPasswordDto 
+    {
+        public required string NewPassword { get; set; }
     }
+
+    public record ChangePasswordDto
+    {
+        public required string CurrentPassword { get; set; }
+        public required string NewPassword { get; set; }
+    }
+
+    public record TransactionDto
+    {
+        public DateTime Date { get; init; }
+        public int Points { get; init; }
+        public required string Type { get; init; }
+        public required string Reason { get; init; }
+        public string? SponsorName { get; init; }
+        public string? Status { get; init; }
+    }
+
+    public record PointValueDto
+    {
+        public int TotalPoints { get; init; }
+        public decimal PointValue { get; init; }
+        public required string SponsorName { get; init; }
+        public decimal TotalValue => TotalPoints * PointValue;
+    }
+}
