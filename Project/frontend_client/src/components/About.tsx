@@ -5,8 +5,8 @@ import axios from 'axios';
 // define the type for the about information
 interface AboutInfo {
     team: string;
-    version: Date;
-    release: number;
+    version: number;
+    release: Date;
     product: string;
     description: string;
 }
