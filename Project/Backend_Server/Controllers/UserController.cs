@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +27,8 @@ namespace Backend_Server.Controllers
                 UserName = userDto.Username,
                 Email = userDto.Email,
                 UserType = DetermineUserRole(userDto.RegistrationCode),
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                LastLogin = DateTime.UtcNow
             };
 
             var result = await _userManager.CreateAsync(user, userDto.Password);
@@ -71,16 +73,17 @@ namespace Backend_Server.Controllers
         [HttpPost("verify-2fa")]
         public async Task<IActionResult> Verify2FA([FromBody] TwoFactorDto twoFactorDto)
         {
-            var user = await _userManager.FindByIdAsync(twoFactorDto.UserId);
+            var user = await _userManager.FindByIdAsync(twoFactorDto.UserId.ToString());
             if (user == null)
             {
-                return Unauthorized(new { message = "Invalid user" });
+                return Unauthorized(new { message = "Invalid user", UserId = twoFactorDto.UserId });
             }
 
             var result = await _signInManager.TwoFactorSignInAsync(user.NotifyPref.ToString(), twoFactorDto.Code, false, false);
             if (!result.Succeeded)
             {
-                return Unauthorized(new { message = "2FA failed" });
+                return Unauthorized(new { message = "2FA failed", UserId = twoFactorDto.UserId, 
+                    IncorrectCode = twoFactorDto.Code, expected = result});
             }
 
             user.LastLogin = DateTime.UtcNow;
@@ -342,11 +345,11 @@ namespace Backend_Server.Controllers
     {
         public required string AccessCode { get; set; } // <-- Access code based on Sponsor (unique specific ones for different Sponsors, but the same code for the same Sponsors)
     }
-}
-public class TwoFactorDto
+    public class TwoFactorDto
     {
         public required string UserId { get; set; }
         public required string Code { get; set; }
+    }
     
     public record ResetPasswordDto 
     {
