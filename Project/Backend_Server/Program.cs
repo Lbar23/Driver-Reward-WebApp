@@ -20,6 +20,7 @@ var awsOptions = new AWSOptions
 builder.Services.AddAWSService<IAmazonSecretsManager>(awsOptions);
 
 builder.Services.AddScoped<DbConnectionProvider>();
+builder.Services.AddScoped<NotifyService>();
 
 builder.Services.AddControllers();
 
