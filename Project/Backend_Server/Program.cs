@@ -55,7 +55,7 @@ try {
         options.Password.RequireLowercase = true;
         options.Password.RequireNonAlphanumeric = true;
         options.Password.RequireUppercase = true;
-        options.Password.RequiredLength = 6;
+        options.Password.RequiredLength = 8; // Increased to 8 characters for regular (Driver) users
         options.Password.RequiredUniqueChars = 1;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
         options.Lockout.MaxFailedAccessAttempts = 5;
@@ -63,7 +63,7 @@ try {
         options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
         options.User.RequireUniqueEmail = true;
     })
-
+    .AddPasswordValidator<AdminPasswordValidator>() //I forgot Identity had this, this is hella based
     .AddEntityFrameworkStores<AppDBContext>()
     .AddDefaultTokenProviders();
 

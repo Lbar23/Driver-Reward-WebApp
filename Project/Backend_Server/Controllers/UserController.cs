@@ -99,18 +99,63 @@ namespace Backend_Server.Controllers
             
         }
 
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return NotFound("User not found, Please try again.");
+            }
+
+            var result = await _userManager.ChangePasswordAsync(user, 
+                request.CurrentPassword, 
+                request.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors.Select(e => e.Description));
+            }
+            //Ugh, in Sprint 9 of project, do manual logging for better logging levels; as of now, basic http requests auto logging
+            //for EVERY return, wooooooooooooooooo
+            return Ok(new { message = "Password changed successfully." });
+        }
+
+        //Doesn't have an frontend api call yet; just here when it happens
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetUserPassword(string userId, [FromBody] ResetPasswordDto request)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return NotFound("User not found, Please try again.");
+            }
+
+            // Generate reset token
+            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors.Select(e => e.Description));
+            }
+
+            return Ok(new { message = "Password reset successfully." });
+        }
+
         //Permission task to grab the entire list of specific permissions for the specified user(s)
         private async Task<List<string>> GetUserPermissions(Users user)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            var permissions = await _context.Permissions // <-- Will throw error until I update database & AppDBContext
+            var permissions = await _context.Permissions // <-- Will throw error until I update database & AppDBContext (remove once added/fixed with no errors)
                 .Where(p => roles.Contains(p.Role))
                 .Select(p => p.PermissionName)
                 .Distinct()
                 .ToListAsync();
             return permissions;
         }
-    // will be replaced with real reg code
+
+        //Replaced with unique admin domain email instead of registration code
         private static string DetermineUserRole(string email)
         {
             //Don't have an official one yet. Unless you want me to set it up while I touch S3 as well; 
@@ -126,7 +171,7 @@ namespace Backend_Server.Controllers
         }
     }
 
-    public class UserRegisterDto
+    public record UserRegisterDto //For better scalability, turn every DTO going forward into records instead (since they are inherently immutable data carriers)
     {
         public required string Username { get; set; }
         public required string Email { get; set; }
@@ -135,14 +180,25 @@ namespace Backend_Server.Controllers
         //public string CompanyName { get; set; }
     }
 
-    public class UserLoginDto
+    public record UserLoginDto
     {
         public required string Username { get; set; }
         public required string Password { get; set; }
     }
 
-    public class SponserAccessDto
+    public record SponserAccessDto
     {
         public required string AccessCode { get; set; } // <-- Access code based on Sponsor (unique specific ones for different Sponsors, but the same code for the same Sponsors)
+    }
+
+    public record ResetPasswordDto 
+    {
+        public required string NewPassword { get; set; }
+    }
+
+    public record ChangePasswordDto
+    {
+        public required string CurrentPassword { get; set; }
+        public required string NewPassword { get; set; }
     }
 }
