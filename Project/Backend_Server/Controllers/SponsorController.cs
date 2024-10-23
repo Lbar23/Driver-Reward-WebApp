@@ -34,7 +34,7 @@ namespace Backend_Server.Controllers
 
             var drivers = await query.Select(d => new DriverListDto
             {
-                UserID = d.User,
+                UserID = d.UserID,
                 //Name = d.Name,
                 TotalPoints = d.TotalPoints,
                 //City = d.City,

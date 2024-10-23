@@ -239,6 +239,7 @@ namespace Backend_Server.Controllers
 
             var driver = await _context.Drivers
                 .FirstOrDefaultAsync(d => d.UserID == user.Id);
+            var sponsors = await _context.Sponsors.FirstOrDefaultAsync(s => s.UserID == user.Id);
 
             if (driver == null)
                 return NotFound("Driver not found.");
@@ -253,7 +254,7 @@ namespace Backend_Server.Controllers
                     Points = t.PointsChanged,
                     Type = "Point Change",
                     Reason = t.Reason,
-                    SponsorName = t.Sponsor
+                    SponsorName = sponsors!.CompanyName
                 })
                 .ToListAsync();
 
@@ -281,7 +282,7 @@ namespace Backend_Server.Controllers
             {
                 TotalPoints = driver.TotalPoints,
                 PointValue = 0.01M, // Standalone default vaule; change based on project requirements/bare minimum
-                SponsorName = driver.Sponsor.CompanyName
+                SponsorName = sponsors!.CompanyName
             };
 
             return Ok(new
