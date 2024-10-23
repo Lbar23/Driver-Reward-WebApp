@@ -75,8 +75,8 @@ namespace Backend_Server
             {
                 entity.ToTable("Purchases");
                 entity.HasKey(e => e.PurchaseID);
-                entity.HasOne(d => d.Driver).WithMany().HasForeignKey(d => d.UserID); // Updated to reference Users table
-                entity.HasOne(d => d.Product).WithMany().HasForeignKey(d => d.ProductID);
+                entity.HasOne<Users>().WithMany().HasForeignKey(d => d.UserID);
+                entity.HasOne<Purchases>().WithMany().HasForeignKey(d => d.PurchaseID);
                 entity.Property(e => e.PointsSpent).IsRequired();
                 entity.Property(e => e.PurchaseDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.Status).HasConversion<string>()
