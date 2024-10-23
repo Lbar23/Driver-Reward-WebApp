@@ -342,11 +342,11 @@ namespace Backend_Server.Controllers
     {
         public required string AccessCode { get; set; } // <-- Access code based on Sponsor (unique specific ones for different Sponsors, but the same code for the same Sponsors)
     }
-}
-public class TwoFactorDto
+    public class TwoFactorDto
     {
         public required string UserId { get; set; }
         public required string Code { get; set; }
+    }
     
     public record ResetPasswordDto 
     {
