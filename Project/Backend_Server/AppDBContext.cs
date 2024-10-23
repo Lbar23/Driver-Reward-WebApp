@@ -28,7 +28,8 @@ namespace Backend_Server
             {
                 entity.ToTable("AspNetUsers");
                 entity.Property(e => e.UserType).IsRequired().HasConversion<string>();
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP").HasColumnType("TIMESTAMP");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP")
+                    .HasColumnType("TIMESTAMP");
                 entity.Property(e => e.NotifyPref).HasDefaultValue(NotificationPref.None);
             });
 
@@ -46,10 +47,12 @@ namespace Backend_Server
             {
                 entity.ToTable("About");
                 entity.HasKey(e => e.Release);
+                entity.Property(e => e.Release).HasDefaultValueSql("(CURRENT_DATE)")
+                    .HasColumnType("DATE");
                 entity.Property(d => d.Team).HasDefaultValue(16);
                 entity.Property(d => d.Version).IsRequired();
                 entity.Property(d => d.Product).IsRequired();
-                entity.Property(d => d.Description);
+                entity.Property(d => d.Description).IsRequired();
             });
 
             modelBuilder.Entity<Drivers>(entity =>
@@ -77,9 +80,9 @@ namespace Backend_Server
                 entity.ToTable("Purchases");
                 entity.HasKey(e => e.PurchaseID);
                 entity.HasOne<Users>().WithMany().HasForeignKey(d => d.UserID);
-                entity.HasOne<Products>().WithMany().HasForeignKey(d => d.ProductID);
                 entity.Property(e => e.PointsSpent).IsRequired();
-                entity.Property(e => e.PurchaseDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.PurchaseDate).HasDefaultValueSql("CURRENT_TIMESTAMP")
+                    .HasColumnType("TIMESTAMP");
                 entity.Property(e => e.Status).HasConversion<string>()
                     .HasDefaultValue(OrderStatus.Ordered);
             });
@@ -91,7 +94,8 @@ namespace Backend_Server
                 entity.HasOne<Users>().WithMany().HasForeignKey(d => d.UserID);
                 entity.HasOne<Sponsors>().WithMany().HasForeignKey(d => d.SponsorID);
                 entity.Property(e => e.PointsChanged).IsRequired();
-                entity.Property(e => e.TransactionDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.TransactionDate).HasDefaultValueSql("CURRENT_TIMESTAMP")
+                    .HasColumnType("TIMESTAMP");
                 entity.Property(e => e.Reason).IsRequired();
             });
 
@@ -103,7 +107,10 @@ namespace Backend_Server
                 entity.HasOne<Sponsors>().WithMany().HasForeignKey(d => d.SponsorID);
                 entity.Property(e => e.Status).HasConversion<string>()
                     .HasDefaultValue(AppStatus.Submitted);
-                entity.Property(e => e.ApplyDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.ApplyDate).HasColumnType("DATE")
+                    .HasDefaultValueSql("(CURRENT_DATE)");
+                entity.Property(e => e.ProcessedDate).HasDefaultValueSql("(CURRENT_DATE)")
+                    .HasColumnType("DATE");
                 entity.Property(e => e.Reason).IsRequired().HasDefaultValue(string.Empty);
             });
 
@@ -114,7 +121,8 @@ namespace Backend_Server
                 entity.HasOne<Users>().WithMany().HasForeignKey(d => d.UserID);
                 // entity.Property(e => e.Action).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Category).HasDefaultValue(AuditLogCategory.User).HasConversion<string>();
-                entity.Property(e => e.Timestamp).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.Timestamp).HasDefaultValueSql("CURRENT_TIMESTAMP")
+                    .HasColumnType("TIMESTAMP");
             });
 
             modelBuilder.Entity<Permissions>(entity =>
