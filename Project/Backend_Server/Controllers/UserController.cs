@@ -245,7 +245,7 @@ namespace Backend_Server.Controllers
 
             // Poit transations
             var pointTransactions = await _context.PointTransactions
-                .Where(t => t.DriverID == driver.DriverID)
+                .Where(t => t.UserID == driver.UserID)
                 .OrderByDescending(t => t.TransactionDate)
                 .Select(t => new TransactionDto
                 {
@@ -259,7 +259,7 @@ namespace Backend_Server.Controllers
 
             // Purchases
             var purchases = await _context.Purchases
-                .Where(p => p.DriverID == driver.DriverID)
+                .Where(p => p.UserID == driver.UserID)
                 .OrderByDescending(p => p.PurchaseDate)
                 .Select(p => new TransactionDto
                 {
