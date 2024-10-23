@@ -33,11 +33,10 @@ const RegisterPage: React.FC = () => {
     const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
-            const response = await axios.post(`/api/User/register`, {
+            const response = await axios.post(`/api/user/register`, {
                 username,
                 email,
-                password,
-                registrationCode: "DRIVER" // or whatever default you want
+                password
             });
             console.log('Registration successful:', response.data);
         } catch (error) {
