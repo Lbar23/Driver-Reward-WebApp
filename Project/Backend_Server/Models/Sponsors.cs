@@ -10,7 +10,7 @@ namespace Backend_Server.Models
         public int UserID { get; set; }
         public int SponsorID { get; set; }
         public required string SponsorType { get; set; }
-        public required string AccessCode { get; set; }
+        //public required string AccessCode { get; set; } <-Replace?
         public required string CompanyName { get; set; }
         public decimal PointDollarValue { get; set; }
     }

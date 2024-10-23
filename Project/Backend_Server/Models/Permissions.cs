@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Backend_Server.Models
 {
-    public enum Permissions
+    public enum UserPermissions
     {
         ReportAdmin,
         ReportSponsor,
@@ -20,6 +20,6 @@ namespace Backend_Server.Models
     {
         public int PermissionID { get; set; }
         public required string Role { get; set; }  // fk from aspnet roles
-        public required Permissions Permission { get; set; }
+        public required UserPermissions Permission { get; set; }
     }
 }

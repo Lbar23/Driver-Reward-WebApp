@@ -21,6 +21,6 @@ namespace Backend_Server.Models
         public int LogID { get; set; }
         public AuditLogCategory Category { get; set; }
         public string? Description { get; set; }
-        public Date Timestamp { get; set; }
+        public DateTime Timestamp { get; set; }
     }
 }

@@ -18,8 +18,8 @@ namespace Backend_Server.Models
         public int UserID { get; set; }
         public int SponsorID { get; set; }
         public AppStatus Status { get; set; } = AppStatus.Submitted;
-        public Date ApplyDate { get; set; }
-        public Date? ProcessedDate { get; set; }
+        public DateOnly ApplyDate { get; set; }
+        public DateOnly? ProcessedDate { get; set; }
         public string Reason { get; set; } = string.Empty;
     }
 }

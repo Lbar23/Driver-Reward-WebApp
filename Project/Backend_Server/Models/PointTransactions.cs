@@ -12,6 +12,6 @@ namespace Backend_Server.Models
         public int TransactionID { get; set; }
         public int PointsChanged { get; set; }
         public required string Reason { get; set; }
-        public Date TransactionDate { get; set; }
+        public DateOnly TransactionDate { get; set; }
     }
 }
