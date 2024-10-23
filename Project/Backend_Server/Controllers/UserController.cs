@@ -253,7 +253,7 @@ namespace Backend_Server.Controllers
                     Points = t.PointsChanged,
                     Type = "Point Change",
                     Reason = t.Reason,
-                    SponsorName = t.Sponsor.CompanyName
+                    SponsorName = t.Sponsor
                 })
                 .ToListAsync();
 
@@ -297,9 +297,9 @@ namespace Backend_Server.Controllers
         private async Task<List<string>> GetUserPermissions(Users user)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            var permissions = await _context.Permissions // <-- Will throw error until I update database & AppDBContext (remove once added/fixed with no errors)
+            var permissions = await _context.Permissions 
                 .Where(p => roles.Contains(p.Role))
-                .Select(p => p.Permission)
+                .Select(p => p.Permission.ToString())
                 .Distinct()
                 .ToListAsync();
             return permissions;
