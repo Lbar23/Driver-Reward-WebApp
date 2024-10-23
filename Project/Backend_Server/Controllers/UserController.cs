@@ -245,7 +245,7 @@ namespace Backend_Server.Controllers
 
             // Poit transations
             var pointTransactions = await _context.PointTransactions
-                .Where(t => t.DriverID == driver.DriverID)
+                .Where(t => t.UserID == driver.UserID)
                 .OrderByDescending(t => t.TransactionDate)
                 .Select(t => new TransactionDto
                 {
@@ -253,13 +253,13 @@ namespace Backend_Server.Controllers
                     Points = t.PointsChanged,
                     Type = "Point Change",
                     Reason = t.Reason,
-                    SponsorName = t.Sponsor.CompanyName
+                    SponsorName = t.Sponsor
                 })
                 .ToListAsync();
 
             // Purchases
             var purchases = await _context.Purchases
-                .Where(p => p.DriverID == driver.DriverID)
+                .Where(p => p.UserID == driver.UserID)
                 .OrderByDescending(p => p.PurchaseDate)
                 .Select(p => new TransactionDto
                 {
@@ -297,9 +297,9 @@ namespace Backend_Server.Controllers
         private async Task<List<string>> GetUserPermissions(Users user)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            var permissions = await _context.Permissions // <-- Will throw error until I update database & AppDBContext (remove once added/fixed with no errors)
+            var permissions = await _context.Permissions 
                 .Where(p => roles.Contains(p.Role))
-                .Select(p => p.Permission)
+                .Select(p => p.Permission.ToString())
                 .Distinct()
                 .ToListAsync();
             return permissions;
