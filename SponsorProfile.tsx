@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Container,
   CssBaseline,
@@ -42,21 +43,25 @@ const Profile = () => {
 
   const [imagePreview, setImagePreview] = useState<string>(""); // To store the image preview URL
 
-  // Load data from localStorage when component mounts
   useEffect(() => {
-    const savedProfile = localStorage.getItem("userProfile");
-    if (savedProfile) {
-      const parsedProfile = JSON.parse(savedProfile);
-      setProfile(parsedProfile);
-      if (parsedProfile.profilePicture) {
-        setImagePreview(parsedProfile.profilePicture);
+    // Fetch profile data from the API when the component mounts
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get("/profile");
+        const profileData = response.data;
+        setProfile(profileData);
+        if (profileData.profilePicture) {
+          setImagePreview(profileData.profilePicture);
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
       }
-    }
+    };
+
+    fetchProfile();
   }, []);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setProfile({ ...profile, [name]: value });
   };
@@ -66,18 +71,66 @@ const Profile = () => {
     if (file) {
       const imageUrl = URL.createObjectURL(file); // Create a URL for the file
       setImagePreview(imageUrl); // Set the preview URL
-      setProfile({ ...profile, profilePicture: imageUrl }); // Save the file path in state
+      setProfile({ ...profile, profilePicture: file }); // Save the file in state
     }
   };
 
-  const handleSave = () => {
-    localStorage.setItem("userProfile", JSON.stringify(profile)); // Save the profile data to localStorage
-    console.log("Profile saved:", profile);
+  const handleSave = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("firstName", profile.firstName);
+      formData.append("lastName", profile.lastName);
+      formData.append("phone", profile.phone);
+      formData.append("address", profile.address);
+      formData.append("gender", profile.gender);
+      formData.append("nationality", profile.nationality);
+      formData.append("preferredLanguage", profile.preferredLanguage);
+      formData.append("preferredPronouns", profile.preferredPronouns);
+      formData.append("dateOfBirth", profile.dateOfBirth);
+      if (profile.profilePicture) {
+        formData.append("profilePicture", profile.profilePicture);
+      }
+
+      // POST request to save the profile
+      await axios.post("/profile", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      console.log("Profile saved:", profile);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+    }
   };
 
-  const handleUpdate = () => {
-    console.log("Profile updated:", profile);
-    // API call or other actions to update the profile
+  const handleUpdate = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("firstName", profile.firstName);
+      formData.append("lastName", profile.lastName);
+      formData.append("phone", profile.phone);
+      formData.append("address", profile.address);
+      formData.append("gender", profile.gender);
+      formData.append("nationality", profile.nationality);
+      formData.append("preferredLanguage", profile.preferredLanguage);
+      formData.append("preferredPronouns", profile.preferredPronouns);
+      formData.append("dateOfBirth", profile.dateOfBirth);
+      if (profile.profilePicture) {
+        formData.append("profilePicture", profile.profilePicture);
+      }
+
+      // PUT request to update the profile
+      await axios.put("/profile", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      console.log("Profile updated:", profile);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    }
   };
 
   return (
