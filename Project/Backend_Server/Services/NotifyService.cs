@@ -19,11 +19,10 @@ public class NotifyService
     private string _fromPhoneNumber;
 
 
-    public NotifyService(IConfiguration configuration, IAmazonSecretsManager secretsManager)
+    public NotifyService(IConfiguration configuration, IAmazonSecretsManager secretsManager, ILogger<NotifyService> logger)
     {
         _secretsManager = secretsManager;
         _configuration = configuration;
-        _logger = _logger;
 
         var secrets = LoadSecrets(secretsManager).Result;
 
@@ -45,7 +44,8 @@ public class NotifyService
             SecretId = "team16/notifyapi/creds" // Replace with your actual secret ID
         });
 
-        return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(secretValueResponse.SecretString);
+        return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(secretValueResponse.SecretString)
+            ?? new Dictionary<string, string>(); 
     }
 
     // Send general SMS using Twilio
@@ -69,6 +69,7 @@ public class NotifyService
     // Send general Email using SendGrid
     public async Task SendEmailAsync(string emailAddress, string subject, string message)
     {
+
         try
         {
             var msg = new SendGridMessage()
@@ -79,7 +80,7 @@ public class NotifyService
                 HtmlContent = $"<p>{message}</p>"
             };
             msg.AddTo(new EmailAddress(emailAddress));
-
+            
             var response = await _sendGridClient.SendEmailAsync(msg);
 
             if (response.IsSuccessStatusCode){

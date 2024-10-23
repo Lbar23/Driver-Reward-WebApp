@@ -34,7 +34,7 @@ namespace Backend_Server.Controllers
 
             var drivers = await query.Select(d => new DriverListDto
             {
-                DriverID = d.DriverID,
+                UserID = d.User
                 //Name = d.Name,
                 TotalPoints = d.TotalPoints,
                 //City = d.City,
@@ -48,17 +48,17 @@ namespace Backend_Server.Controllers
         [HttpGet("drivers/{id}")]
         public async Task<IActionResult> GetDriver(int id)
         {
-            var sponsorId = await _userManager.GetUserAsync(User);
-            if (sponsorId == null)
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
             {
                 return Unauthorized("User not found.");
             }
 
             var driver = await _context.Drivers
-                .Where(d => d.DriverID == id && d.UserID == sponsorId.Id)
+                .Where(d => d.UserID == id && d.UserID == user.Id)
                 .Select(d => new DriverListDto
                 {
-                    DriverID = d.DriverID,
+                    UserID = d.UserID,
                     //Name = d.Name,
                     TotalPoints = d.TotalPoints,
                     //City = d.City,
@@ -77,7 +77,7 @@ namespace Backend_Server.Controllers
 
     public record DriverListDto
     {
-        public int DriverID { get; init; }
+        public int UserID { get; init; }
         public string? Name { get; init; } //can't be required yet until database and models are updated
         public int TotalPoints { get; init; }
         public string? City { get; init; }

@@ -44,7 +44,7 @@ namespace Backend_Server.Controllers
         private async Task<bool> Send2FA(Users user)
         {
             string code = await _userManager.GenerateTwoFactorTokenAsync(user, user.NotifyPref.ToString());
-
+            await _userManager.UpdateSecurityStampAsync(user);
             switch (user.NotifyPref)
                 {
                     case NotificationPref.Phone:
@@ -299,7 +299,7 @@ namespace Backend_Server.Controllers
             var roles = await _userManager.GetRolesAsync(user);
             var permissions = await _context.Permissions // <-- Will throw error until I update database & AppDBContext (remove once added/fixed with no errors)
                 .Where(p => roles.Contains(p.Role))
-                .Select(p => p.PermissionName)
+                .Select(p => p.Permission)
                 .Distinct()
                 .ToListAsync();
             return permissions;
@@ -342,11 +342,11 @@ namespace Backend_Server.Controllers
     {
         public required string AccessCode { get; set; } // <-- Access code based on Sponsor (unique specific ones for different Sponsors, but the same code for the same Sponsors)
     }
-}
-public class TwoFactorDto
+    public class TwoFactorDto
     {
         public required string UserId { get; set; }
         public required string Code { get; set; }
+    }
     
     public record ResetPasswordDto 
     {

@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 using Amazon.SecretsManager;
 using Backend_Server.Infrastructure;
 using MySql.Data.MySqlClient;
+// using Amazon.S3;
+// using Amazon.S3.Model;
+
 
 
 /// <summary>
@@ -24,31 +27,31 @@ namespace Backend_Server.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                Directory.CreateDirectory(_backupPath); // <-- creates directory path; gitignore already configured for it. Remove later when S3...
-                await BackupDatabase();
-                //await UploadBackupS3();
-                await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
-            }
+            // while (!stoppingToken.IsCancellationRequested)
+            // {
+            //     Directory.CreateDirectory(_backupPath); // <-- creates directory path; gitignore already configured for it. Remove later when S3...
+            //     await BackupDatabase();
+            //     //await UploadBackupS3();
+            //     await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
+            // }
         }
 
         //Basic setup for backup using MySqlBackup
-        private async Task BackupDatabase()
-        {
-            string backupFile = Path.Combine(_backupPath, $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.sql");
+        // private async Task BackupDatabase()
+        // {
+        //     string backupFile = Path.Combine(_backupPath, $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.sql");
 
-            using var connectionProvider = new DbConnectionProvider(_configuration, _amazonSecrets);
-            using var connection = await connectionProvider.GetDbConnectionAsync();
-            using MySqlCommand cmd = new();
-            using MySqlBackup mb = new(cmd);
-            cmd.Connection = connection;
-            await connection.OpenAsync();
-            mb.ExportToFile(backupFile);
-            // S3 Bucket Storage addition
-        }
+        //     using var connectionProvider = new DbConnectionProvider(_configuration, _amazonSecrets);
+        //     using var connection = await connectionProvider.GetDbConnectionAsync();
+        //     using MySqlCommand cmd = new();
+        //     using MySqlBackup mb = new(cmd);
+        //     cmd.Connection = connection;
+        //     await connection.OpenAsync();
+        //     mb.ExportToFile(backupFile);
+        //     // S3 Bucket Storage addition
+        // }
 
-        // Upload to S3 Bucket implementation later
+        // // Upload to S3 Bucket implementation later
         private async Task UploadBackupS3() {
             
         }

@@ -54,7 +54,7 @@ const Dashboard: React.FC = () => {
       return (
         <Box sx={{ mt: 4 }}>
           <Typography variant="h6">Driver Settings</Typography>
-          {hasPermission("VIEW_POINTS") && ( // <-- hasPermission helper here to check if a permission "VIEW_POINTS" both exisits and only assigns the button/component to drivers when dashboard page renders
+          {(//hasPermission("VIEW_POINTS") && ( // <-- hasPermission helper here to check if a permission "VIEW_POINTS" both exisits and only assigns the button/component to drivers when dashboard page renders
             <Button variant="contained" color="primary">
               View My Points
             </Button>

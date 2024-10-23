@@ -66,13 +66,15 @@ builder.Services.AddScoped<NotifyService>();
     })
     .AddPasswordValidator<AdminPasswordValidator>() //I forgot Identity had this, this is hella based
     .AddEntityFrameworkStores<AppDBContext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddTokenProvider<PhoneNumberTokenProvider<Users>>("phone")
+    .AddTokenProvider<EmailTokenProvider<Users>>("email");
 
     // Add cookie authentication
     builder.Services.ConfigureApplicationCookie(options =>
     {
-        // options.LoginPath = "/api/login";  //will come back to later
-        // options.LogoutPath = "/api/logout"; 
+        options.LoginPath = "/api/user/login";
+        options.LogoutPath = "/api/user/logout"; 
         options.Cookie.HttpOnly = true;
         options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
         options.SlidingExpiration = true;

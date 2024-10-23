@@ -13,11 +13,11 @@ namespace Backend_Server.Models
     }
     public class Purchases
     {
-        public int PurchaseID { get; set; }
-        public int DriverID { get; set; }
+        public int UserID { get; set; }
         public int ProductID { get; set; }
+        public int PurchaseID { get; set; }
         public int PointsSpent { get; set; }
-        public DateTime PurchaseDate { get; set; }
+        public DateOnly PurchaseDate { get; set; }
         public OrderStatus Status { get; set; } = OrderStatus.Ordered;
         public required Drivers Driver { get; set; }
         public required Products Product { get; set; }
