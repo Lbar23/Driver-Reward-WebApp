@@ -14,14 +14,13 @@ namespace Backend_Server.Models
         Product,
         System
     }
+
     public class AuditLog
     {
-        public int LogID { get; set; }
         public int UserID { get; set; }
-        public required string Action { get; set; }
+        public int LogID { get; set; }
         public AuditLogCategory Category { get; set; }
         public string? Description { get; set; }
-        public DateTime Timestamp { get; set; }
-        public required Users User { get; set; }
+        public Date Timestamp { get; set; }
     }
 }
