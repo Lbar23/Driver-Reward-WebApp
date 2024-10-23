@@ -77,7 +77,7 @@ namespace Backend_Server
                 entity.ToTable("Purchases");
                 entity.HasKey(e => e.PurchaseID);
                 entity.HasOne<Users>().WithMany().HasForeignKey(d => d.UserID);
-                entity.HasOne<Purchases>().WithMany().HasForeignKey(d => d.PurchaseID);
+                entity.HasOne<Products>().WithMany().HasForeignKey(d => d.ProductID);
                 entity.Property(e => e.PointsSpent).IsRequired();
                 entity.Property(e => e.PurchaseDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.Status).HasConversion<string>()

@@ -95,13 +95,13 @@ builder.Services.AddScoped<NotifyService>();
     // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
 
-    // Basic Serilog Service build
-    Log.Logger = new LoggerConfiguration()
-        .ReadFrom.Configuration(builder.Configuration)
-        .Enrich.FromLogContext()
-        .CreateLogger();
+    // // Basic Serilog Service build
+    // Log.Logger = new LoggerConfiguration()
+    //     .ReadFrom.Configuration(builder.Configuration)
+    //     .Enrich.FromLogContext()
+    //     .CreateLogger();
 
-    builder.Host.UseSerilog();
+    // builder.Host.UseSerilog();
 
     var app = builder.Build();
 
