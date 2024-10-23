@@ -28,7 +28,7 @@ namespace Backend_Server
             {
                 entity.ToTable("AspNetUsers");
                 entity.Property(e => e.UserType).IsRequired().HasConversion<string>();
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP").HasColumnType("TIMESTAMP");
                 entity.Property(e => e.NotifyPref).HasDefaultValue(NotificationPref.None);
             });
 
@@ -55,6 +55,7 @@ namespace Backend_Server
             modelBuilder.Entity<Drivers>(entity =>
             {
                 entity.ToTable("Drivers");
+                entity.HasKey(e => e.UserID);
                 entity.HasOne<Users>().WithMany().HasForeignKey(d => d.UserID);
                 entity.HasOne<Sponsors>().WithMany().HasForeignKey(d => d.SponsorID);
                 entity.Property(e => e.TotalPoints).HasDefaultValue(0);
@@ -127,6 +128,7 @@ namespace Backend_Server
             modelBuilder.Entity<Admins>(entity =>
             {
                 entity.ToTable("Admins");
+                entity.HasKey(e => e.UserID);
                 entity.HasOne<Users>().WithMany().HasForeignKey(d => d.UserID);
             });
         }
