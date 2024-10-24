@@ -21,9 +21,19 @@ try {
 
     builder.Services.AddAWSService<IAmazonSecretsManager>(awsOptions);
 
-builder.Services.AddScoped<DbConnectionProvider>();
-builder.Services.AddScoped<NotifyService>();
+    // Basic Serilog Service build
+    Log.Logger = new LoggerConfiguration()
+        .ReadFrom.Configuration(builder.Configuration)
+        .Enrich.FromLogContext()
+        .CreateLogger();
 
+    builder.Host.UseSerilog();
+
+
+    builder.Services.AddScoped<DbConnectionProvider>();
+    builder.Services.AddScoped<NotifyService>();
+
+    
     builder.Services.AddControllers();
 
     // Swagger setup
@@ -95,14 +105,6 @@ builder.Services.AddScoped<NotifyService>();
     // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
 
-    // // Basic Serilog Service build
-    // Log.Logger = new LoggerConfiguration()
-    //     .ReadFrom.Configuration(builder.Configuration)
-    //     .Enrich.FromLogContext()
-    //     .CreateLogger();
-
-    // builder.Host.UseSerilog();
-
     var app = builder.Build();
 
     if (app.Environment.IsDevelopment())
@@ -143,6 +145,7 @@ builder.Services.AddScoped<NotifyService>();
 }
 catch (Exception ex)
 {
+    Log.Fatal(ex.ToString());
     Log.Error(ex, "The web server terminated unexpectedly.");
     throw;
 }

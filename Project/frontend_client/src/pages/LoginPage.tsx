@@ -1,6 +1,6 @@
 import React, { useState, FormEvent, ChangeEvent } from 'react';
 import { TextField, Button, Typography, Box, Link as MuiLink, Alert, CircularProgress } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import axios from 'axios';
 
 const LoginPage: React.FC = () => {
@@ -28,6 +28,8 @@ const LoginPage: React.FC = () => {
       else {
         // If login is successful without 2FA
         alert('Login successful!');
+        {<Navigate to="/dashboard" replace />}
+       
       }
     } 
     catch (err: any) {
@@ -53,6 +55,7 @@ const handle2FA = async (e: FormEvent<HTMLFormElement>) => {
     // If 2FA verification is successful
     if (response.data.message === '2FA successful') {
       alert('Login successful!');
+      {<Navigate to="/dashboard" replace />}
     }
   } 
   catch (err: any) {
