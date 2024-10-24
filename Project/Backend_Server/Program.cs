@@ -12,6 +12,14 @@ using Serilog;
 
 
 var builder = WebApplication.CreateBuilder(args);
+
+//Checks if the current build is in "DesignTime" mode (running dotnet with flags other that run/start/etc)
+var isDesignTime = string.Equals(
+    Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+    "Development",
+    StringComparison.OrdinalIgnoreCase) && 
+    AppDomain.CurrentDomain.GetAssemblies().Any(a => a?.FullName?.Contains("Microsoft.EntityFrameworkCore.Design") ?? false);
+
 try {
     // AWS Secrets Manager setup
     var awsOptions = new AWSOptions
@@ -21,8 +29,8 @@ try {
 
     builder.Services.AddAWSService<IAmazonSecretsManager>(awsOptions);
 
-builder.Services.AddScoped<DbConnectionProvider>();
-builder.Services.AddScoped<NotifyService>();
+    builder.Services.AddScoped<DbConnectionProvider>();
+    builder.Services.AddScoped<NotifyService>();
 
     builder.Services.AddControllers();
 
@@ -95,13 +103,16 @@ builder.Services.AddScoped<NotifyService>();
     // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
 
-    // // Basic Serilog Service build
-    // Log.Logger = new LoggerConfiguration()
-    //     .ReadFrom.Configuration(builder.Configuration)
-    //     .Enrich.FromLogContext()
-    //     .CreateLogger();
+    if (!isDesignTime)
+    {
+        // Basic Serilog Service build
+        Log.Logger = new LoggerConfiguration()
+            .ReadFrom.Configuration(builder.Configuration)
+            .Enrich.FromLogContext()
+            .CreateLogger();
 
-    // builder.Host.UseSerilog();
+        builder.Host.UseSerilog();
+    }
 
     var app = builder.Build();
 
@@ -135,18 +146,29 @@ builder.Services.AddScoped<NotifyService>();
 
     app.MapFallbackToFile("/index.html");
 
-    // Enable Serilog Request Logging for API requests
-    app.UseSerilogRequestLogging();
+    if (!isDesignTime)
+    {
+        // Enable Serilog Request Logging for API requests
+        app.UseSerilogRequestLogging();
+        
+        Log.Information("Starting Web Host...");
+    }
 
-    Log.Information("Starting Web Host...");
+    
     app.Run();
 }
 catch (Exception ex)
-{
-    Log.Error(ex, "The web server terminated unexpectedly.");
+{  
+    if (!isDesignTime)
+    {
+        Log.Fatal(ex, "The web server terminated unexpectedly.");
+    }
     throw;
 }
 finally
 {
-    Log.CloseAndFlush();
+    if (!isDesignTime)
+    {
+        Log.CloseAndFlush();
+    }
 }
