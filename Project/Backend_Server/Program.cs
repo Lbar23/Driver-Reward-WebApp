@@ -21,9 +21,19 @@ try {
 
     builder.Services.AddAWSService<IAmazonSecretsManager>(awsOptions);
 
-builder.Services.AddScoped<DbConnectionProvider>();
-builder.Services.AddScoped<NotifyService>();
+    // Basic Serilog Service build
+    Log.Logger = new LoggerConfiguration()
+        .ReadFrom.Configuration(builder.Configuration)
+        .Enrich.FromLogContext()
+        .CreateLogger();
 
+    builder.Host.UseSerilog();
+
+
+    builder.Services.AddScoped<DbConnectionProvider>();
+    builder.Services.AddScoped<NotifyService>();
+
+    
     builder.Services.AddControllers();
 
     // Swagger setup
@@ -66,13 +76,15 @@ builder.Services.AddScoped<NotifyService>();
     })
     .AddPasswordValidator<AdminPasswordValidator>() //I forgot Identity had this, this is hella based
     .AddEntityFrameworkStores<AppDBContext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddTokenProvider<PhoneNumberTokenProvider<Users>>("phone")
+    .AddTokenProvider<EmailTokenProvider<Users>>("email");
 
     // Add cookie authentication
     builder.Services.ConfigureApplicationCookie(options =>
     {
-        // options.LoginPath = "/api/login";  //will come back to later
-        // options.LogoutPath = "/api/logout"; 
+        options.LoginPath = "/api/user/login";
+        options.LogoutPath = "/api/user/logout"; 
         options.Cookie.HttpOnly = true;
         options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
         options.SlidingExpiration = true;
@@ -92,14 +104,6 @@ builder.Services.AddScoped<NotifyService>();
 
     // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
-
-    // Basic Serilog Service build
-    Log.Logger = new LoggerConfiguration()
-        .ReadFrom.Configuration(builder.Configuration)
-        .Enrich.FromLogContext()
-        .CreateLogger();
-
-    builder.Host.UseSerilog();
 
     var app = builder.Build();
 
@@ -141,6 +145,7 @@ builder.Services.AddScoped<NotifyService>();
 }
 catch (Exception ex)
 {
+    Log.Fatal(ex.ToString());
     Log.Error(ex, "The web server terminated unexpectedly.");
     throw;
 }

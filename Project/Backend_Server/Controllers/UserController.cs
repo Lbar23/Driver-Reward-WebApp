@@ -26,9 +26,14 @@ namespace Backend_Server.Controllers
             {
                 UserName = userDto.Username,
                 Email = userDto.Email,
-                UserType = DetermineUserRole(userDto.RegistrationCode),
+                UserType = UserType.Guest.ToString(),
                 CreatedAt = DateTime.UtcNow,
-                LastLogin = DateTime.UtcNow
+                NotifyPref = NotificationPref.None,
+                EmailConfirmed = false,
+                PhoneNumberConfirmed = false,
+                LockoutEnabled = false,
+                TwoFactorEnabled = false,
+                AccessFailedCount = 0
             };
 
             var result = await _userManager.CreateAsync(user, userDto.Password);
@@ -46,20 +51,21 @@ namespace Backend_Server.Controllers
         private async Task<bool> Send2FA(Users user)
         {
             string code = await _userManager.GenerateTwoFactorTokenAsync(user, user.NotifyPref.ToString());
-
+            await _userManager.UpdateSecurityStampAsync(user);
             switch (user.NotifyPref)
                 {
                     case NotificationPref.Phone:
                         // Send via twilio
-                        await _notifyService.SendSmsAsync(user.PhoneNumber, $"Your 2FA code is: {code}");
-                        break;
+                        if(user.PhoneNumber != null)
+                            await _notifyService.SendSmsAsync(user.PhoneNumber, $"Your 2FA code is: {code}");
+                            break;
                     case NotificationPref.Email:
                         // Send via sendgrid
                         var tData = new Dictionary<string, string>
                             {
                                 { "auth_code", code}
                             };
-
+                        if (user.Email != null)
                         await _notifyService.SendTemplateEmail(user.Email, "d-16815c0473d948acb2715a5001907e8c", tData);
                         break;
                     default:
@@ -135,7 +141,7 @@ namespace Backend_Server.Controllers
             }
         }
 
-        [Authorize] // has to be protected
+        // [Authorize] // has to be protected
         [HttpGet("currentuser")]
         public async Task<IActionResult> GetCurrentUser()
         {
@@ -242,13 +248,14 @@ namespace Backend_Server.Controllers
 
             var driver = await _context.Drivers
                 .FirstOrDefaultAsync(d => d.UserID == user.Id);
+            var sponsors = await _context.Sponsors.FirstOrDefaultAsync(s => s.UserID == user.Id);
 
             if (driver == null)
                 return NotFound("Driver not found.");
 
             // Poit transations
             var pointTransactions = await _context.PointTransactions
-                .Where(t => t.DriverID == driver.DriverID)
+                .Where(t => t.UserID == driver.UserID)
                 .OrderByDescending(t => t.TransactionDate)
                 .Select(t => new TransactionDto
                 {
@@ -256,13 +263,13 @@ namespace Backend_Server.Controllers
                     Points = t.PointsChanged,
                     Type = "Point Change",
                     Reason = t.Reason,
-                    SponsorName = t.Sponsor.CompanyName
+                    SponsorName = sponsors!.CompanyName
                 })
                 .ToListAsync();
 
             // Purchases
             var purchases = await _context.Purchases
-                .Where(p => p.DriverID == driver.DriverID)
+                .Where(p => p.UserID == driver.UserID)
                 .OrderByDescending(p => p.PurchaseDate)
                 .Select(p => new TransactionDto
                 {
@@ -284,7 +291,7 @@ namespace Backend_Server.Controllers
             {
                 TotalPoints = driver.TotalPoints,
                 PointValue = 0.01M, // Standalone default vaule; change based on project requirements/bare minimum
-                SponsorName = driver.Sponsor.CompanyName
+                SponsorName = sponsors!.CompanyName
             };
 
             return Ok(new
@@ -300,27 +307,12 @@ namespace Backend_Server.Controllers
         private async Task<List<string>> GetUserPermissions(Users user)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            var permissions = await _context.Permissions // <-- Will throw error until I update database & AppDBContext (remove once added/fixed with no errors)
+            var permissions = await _context.Permissions 
                 .Where(p => roles.Contains(p.Role))
-                .Select(p => p.PermissionName)
+                .Select(p => p.Permission.ToString())
                 .Distinct()
                 .ToListAsync();
             return permissions;
-        }
-
-        //Replaced with unique admin domain email instead of registration code
-        private static string DetermineUserRole(string email)
-        {
-            //Don't have an official one yet. Unless you want me to set it up while I touch S3 as well; 
-            //I did know you brought it AWS Route 53, though.
-            string adminDomain = "admin.domain.com"; // <-- username@admin.domainname.com
-
-            if (adminDomain.Any(domain => email.EndsWith("@" + domain)))
-            {
-                return "Admin";
-            }
-            
-            return "Driver"; // The overall Default role of the 3 users
         }
     }
 
@@ -331,8 +323,6 @@ namespace Backend_Server.Controllers
         public required string Username { get; set; }
         public required string Email { get; set; }
         public required string Password { get; set; }
-        public required string RegistrationCode { get; set; }
-        //public string CompanyName { get; set; }
     }
 
     public record UserLoginDto

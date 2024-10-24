@@ -5,12 +5,11 @@ using System.Threading.Tasks;
 
 namespace Backend_Server.Models
 {
-    public class About
+    public class FeedbackForms
     {
-        public DateOnly Release { get; set; }
-        public int Team { get; set; }
-        public int Version { get; set; }
-        public required string Product { get; set; }
+        public required string Name { get; set; }
+        public required string Email { get; set; }
         public required string Description { get; set; }
+        public DateTime SubmissionDate { get; set; }
     }
 }
