@@ -4,13 +4,14 @@ import { Link, Navigate } from 'react-router-dom';
 import axios from 'axios';
 
 const LoginPage: React.FC = () => {
-  const [step, setStep] = useState<'login' | '2fa'>('login');  
+  const [step, setStep] = useState<'login' | '2fa'>('login');
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false); // Loading state
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [twoFactorCode, setTwoFactorCode] = useState<string>(''); // 2FA code input
-  const [error, setError] = useState<string | null>(null); 
+  const [error, setError] = useState<string | null>(null);
+  const [redirectToDashboard, setRedirectToDashboard] = useState<boolean>(false); // For redirection
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,9 +28,7 @@ const LoginPage: React.FC = () => {
       } 
       else {
         // If login is successful without 2FA
-        alert('Login successful!');
-        {<Navigate to="/dashboard" replace />}
-       
+        setRedirectToDashboard(true); // Set redirect flag
       }
     } 
     catch (err: any) {
@@ -38,33 +37,36 @@ const LoginPage: React.FC = () => {
     finally {
       setLoading(false);
     }
-   
   };
 
-// Handle 2FA form submission
-const handle2FA = async (e: FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setLoading(true);
+  // Handle 2FA form submission
+  const handle2FA = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
 
-  try {
-    const response = await axios.post('/api/user/verify-2fa', {
+    try {
+      const response = await axios.post('/api/user/verify-2fa', {
         userId: String(userId),
         code: twoFactorCode
-    });
+      });
 
-    // If 2FA verification is successful
-    if (response.data.message === '2FA successful') {
-      alert('Login successful!');
-      {<Navigate to="/dashboard" replace />}
+      // If 2FA verification is successful
+      if (response.data.message === '2FA successful') {
+        setRedirectToDashboard(true); // Set redirect flag after 2FA success
+      }
+    } 
+    catch (err: any) {
+      setError(err.response?.data?.message || 'Invalid 2FA code. Please try again.');
+    } 
+    finally {
+      setLoading(false);
     }
-  } 
-  catch (err: any) {
-    setError(err.response?.data?.message || 'Invalid 2FA code. Please try again.');
-  } 
-  finally {
-    setLoading(false);
+  };
+
+  if (redirectToDashboard) {
+    return <Navigate to="/dashboard" replace />;
   }
-};
+
   return (
     <Box
       component="form"
@@ -132,6 +134,7 @@ const handle2FA = async (e: FormEvent<HTMLFormElement>) => {
       >
         {loading ? <CircularProgress size={24} /> : step === 'login' ? 'Log In' : 'Verify 2FA'}
       </Button>
+
       <MuiLink component={Link} to="/register" variant="body2">
         Don't have an account? Sign Up
       </MuiLink>
