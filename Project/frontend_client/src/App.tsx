@@ -1,7 +1,7 @@
 import { Route, Routes, Link, Navigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import FAQ from './pages/FAQ';
+// import FAQ from './pages/FAQ';
 import FeedbackForm from './pages/Feedback';
 import Dashboard from './pages/Dashboard';
 import About from './pages/About';
@@ -43,7 +43,7 @@ const App = () => {
                     <Route path="/about" element={<About />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/faq" element={<FAQ />} />
+                    {/* <Route path="/faq" element={<FAQ />} /> */}
                     <Route path="/feedback" element={<FeedbackForm />} />
                     <Route path="/dashboard" element={<Dashboard/>} />
                     <Route path="/change-password" element={<PasswordChangeForm/>} /> {/* This is just here when profile pages are well and done */}
