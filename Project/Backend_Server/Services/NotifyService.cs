@@ -23,6 +23,7 @@ public class NotifyService
     {
         _secretsManager = secretsManager;
         _configuration = configuration;
+        _logger = logger;
 
         var secrets = LoadSecrets(secretsManager).Result;
 
