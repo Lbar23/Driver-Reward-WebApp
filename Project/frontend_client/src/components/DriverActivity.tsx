@@ -1,7 +1,3 @@
-// Technically speaking, each of the users' components for the dashboard can be like, in a single component tsx file...
-// Like how the library dependencies when importing { foo, foo2, foo3 } do it as well...
-// Too tired to do it right now though; that's a Sprint 9 me problem lmao
-
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -16,7 +12,7 @@ import {
   LinearProgress,
   Card,
   CardContent,
-  Chip
+  Chip,
 } from '@mui/material';
 import axios from 'axios';
 
@@ -33,12 +29,12 @@ interface PointValue {
   totalPoints: number;
   pointValue: number;
   totalValue: number;
-  sponsorName: string;
+  sponsorName?: string;
 }
 
 interface DriverActivity {
-  pointValue: PointValue;
-  transactions: Transaction[];
+  pointValue?: PointValue;
+  transactions?: Transaction[];
 }
 
 const DriverActivity: React.FC = () => {
@@ -70,22 +66,24 @@ const DriverActivity: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       {/* Points Value Card */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Points Value - {data.pointValue.sponsorName}
-          </Typography>
-          <Typography>
-            Current Balance: {data.pointValue.totalPoints.toLocaleString()} points
-          </Typography>
-          <Typography>
-            Point Value: ${data.pointValue.pointValue.toFixed(2)} each
-          </Typography>
-          <Typography variant="h5" sx={{ mt: 2 }}>
-            Total Value: ${data.pointValue.totalValue.toFixed(2)}
-          </Typography>
-        </CardContent>
-      </Card>
+      {data.pointValue && (
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Points Value - {data.pointValue.sponsorName || 'Unknown Sponsor'}
+            </Typography>
+            <Typography>
+              Current Balance: {data.pointValue.totalPoints.toLocaleString()} points
+            </Typography>
+            <Typography>
+              Point Value: ${data.pointValue.pointValue.toFixed(2)} each
+            </Typography>
+            <Typography variant="h5" sx={{ mt: 2 }}>
+              Total Value: ${data.pointValue.totalValue.toFixed(2)}
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Transactions Table */}
       <Typography variant="h6" gutterBottom>
@@ -103,30 +101,46 @@ const DriverActivity: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.transactions.map((transaction, index) => (
-              <TableRow key={index}>
-                <TableCell>
-                  {new Date(transaction.date).toLocaleDateString()}
-                </TableCell>
-                <TableCell>{transaction.type}</TableCell>
-                <TableCell sx={{ 
-                  color: transaction.points > 0 ? 'success.main' : 'error.main' 
-                }}>
-                  {transaction.points > 0 ? '+' : ''}{transaction.points}
-                </TableCell>
-                <TableCell>{transaction.reason}</TableCell>
-                <TableCell>
-                  {transaction.status && (
-                    <Chip 
-                      label={transaction.status} 
-                      color={transaction.status === 'Ordered' ? 'success' : 
-                             transaction.status === 'Cancelled' ? 'error' : 'default'}
-                      size="small"
-                    />
-                  )}
+            {data.transactions && data.transactions.length > 0 ? (
+              data.transactions.map((transaction, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    {transaction.date ? new Date(transaction.date).toLocaleDateString() : 'N/A'}
+                  </TableCell>
+                  <TableCell>{transaction.type}</TableCell>
+                  <TableCell
+                    sx={{
+                      color: transaction.points > 0 ? 'success.main' : 'error.main',
+                    }}
+                  >
+                    {transaction.points > 0 ? '+' : ''}
+                    {transaction.points}
+                  </TableCell>
+                  <TableCell>{transaction.reason}</TableCell>
+                  <TableCell>
+                    {transaction.status && (
+                      <Chip
+                        label={transaction.status}
+                        color={
+                          transaction.status === 'Ordered'
+                            ? 'success'
+                            : transaction.status === 'Cancelled'
+                            ? 'error'
+                            : 'default'
+                        }
+                        size="small"
+                      />
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} align="center">
+                  No transactions available
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </TableContainer>

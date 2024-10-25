@@ -51,7 +51,8 @@ try {
             {
                 builder.WithOrigins("BASE_API_URL", "http://localhost:5041")
                     .AllowAnyMethod()
-                    .AllowAnyHeader();
+                    .AllowAnyHeader()
+                    .AllowCredentials();
             });
     });
 
@@ -60,15 +61,15 @@ try {
     {
         options.SignIn.RequireConfirmedAccount = false;
         options.Tokens.AuthenticatorIssuer = "GitGud";
-        options.Tokens.EmailConfirmationTokenProvider = "email";
-        options.Tokens.ChangePhoneNumberTokenProvider = "phone";
+        options.Tokens.EmailConfirmationTokenProvider = "Email";
+        options.Tokens.ChangePhoneNumberTokenProvider = "Phone";
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireNonAlphanumeric = true;
         options.Password.RequireUppercase = true;
         options.Password.RequiredLength = 8; // Increased to 8 characters for regular (Driver) users
         options.Password.RequiredUniqueChars = 1;
-        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.AllowedForNewUsers = true;
         options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
@@ -119,10 +120,8 @@ try {
 
     app.UseStaticFiles();
     app.UseSpaStaticFiles();
-
-    app.UseRouting();
-
     app.UseCors("AllowSpecificOrigins");
+    app.UseRouting();
 
     app.UseAuthentication();
     app.UseAuthorization();

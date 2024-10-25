@@ -19,8 +19,8 @@ interface Driver {
   id: number;
   name: string;
   totalPoints: number;
-  city: string;
-  state: string;
+  // city: string;
+  // state: string;
 }
 
 const DriverPointsList: React.FC = () => {
@@ -111,8 +111,8 @@ const DriverPointsList: React.FC = () => {
                 <TableRow key={driver.id}>
                   <TableCell>{driver.name}</TableCell>
                   <TableCell>{driver.totalPoints.toLocaleString()}</TableCell>
-                  <TableCell>{driver.city}</TableCell>
-                  <TableCell>{driver.state}</TableCell>
+                  {/* <TableCell>{driver.city}</TableCell>
+                  <TableCell>{driver.state}</TableCell> */}
                 </TableRow>
               ))}
             </TableBody>
