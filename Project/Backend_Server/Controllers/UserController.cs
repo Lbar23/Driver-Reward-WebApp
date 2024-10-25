@@ -27,11 +27,11 @@ namespace Backend_Server.Controllers
                 Email = userDto.Email,
                 UserType = UserType.Guest.ToString(),
                 CreatedAt = DateTime.UtcNow,
-                NotifyPref = NotificationPref.None,
-                EmailConfirmed = false,
+                NotifyPref = NotificationPref.Email,
+                EmailConfirmed = true, //for now
                 PhoneNumberConfirmed = false,
                 LockoutEnabled = false,
-                TwoFactorEnabled = false,
+                TwoFactorEnabled = userDto.Enable2FA, // Set 2FA based on user's choice during registration
                 AccessFailedCount = 0
             };
 
@@ -40,90 +40,131 @@ namespace Backend_Server.Controllers
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, user.UserType);
-                return Ok(new { message = "User registered successfully", role = user.UserType });
-            }
 
-            return BadRequest(result.Errors);
-        }
-
-        // Separate function to send 2FA code
-        private async Task<bool> Send2FA(Users user)
-        {
-            string code = await _userManager.GenerateTwoFactorTokenAsync(user, user.NotifyPref.ToString());
-            await _userManager.UpdateSecurityStampAsync(user);
-            switch (user.NotifyPref)
-                {
-                    case NotificationPref.Phone:
-                        // Send via twilio
-                        if(user.PhoneNumber != null)
-                            await _notifyService.SendSmsAsync(user.PhoneNumber, $"Your 2FA code is: {code}");
-                            break;
-                    case NotificationPref.Email:
-                        // Send via sendgrid
-                        var tData = new Dictionary<string, string>
-                            {
-                                { "auth_code", code}
-                            };
-                        if (user.Email != null)
-                        await _notifyService.SendTemplateEmail(user.Email, "d-16815c0473d948acb2715a5001907e8c", tData);
-                        break;
-                    default:
-                        return false;
-                }
-
-            return true;
-        }
-
-        // Function to verify 2FA code
-        [HttpPost("verify-2fa")]
-        public async Task<IActionResult> Verify2FA([FromBody] TwoFactorDto twoFactorDto)
-        {
-            var user = await _userManager.FindByIdAsync(twoFactorDto.UserId);
-            if (user == null)
-            {
-                return Unauthorized(new { message = "Invalid user" });
-            }
-
-            var result = await _signInManager.TwoFactorSignInAsync(user.NotifyPref.ToString(), twoFactorDto.Code, false, false);
-            if (!result.Succeeded)
-            {
-                return Unauthorized(new { message = "2FA failed" });
-            }
-
-            user.LastLogin = DateTime.UtcNow;
-            await _userManager.UpdateAsync(user);
-
-            return Ok(new { message = "2FA successful", userId = user.Id });
-        }
-
-        [HttpPost("login")]
-        public async Task<IActionResult> Login(UserLoginDto userDto)
-        {
-            var result = await _signInManager.PasswordSignInAsync(userDto.Username, userDto.Password, false, false);
-            var user = await _userManager.FindByNameAsync(userDto.Username);
-            if (result.Succeeded && user != null)
-            {
-                // check for 2fa
-                if (await _userManager.GetTwoFactorEnabledAsync(user))
+                // Optionally, if 2FA is enabled, send the first 2FA code
+                if (userDto.Enable2FA)
                 {
                     var send2FaResult = await Send2FA(user);
                     if (!send2FaResult)
                     {
-                        Console.WriteLine($"Failed to send 2FA code to {user.UserName}");
                         return StatusCode(500, new { message = "Failed to send 2FA code. Please try again later." });
                     }
-
-                    return Ok(new { message = "2FA required", userId = user.Id });
                 }
+
+                return Ok(new { message = "User registered successfully", userId = user.Id, requiresTwoFactor = user.TwoFactorEnabled });
+                }
+
+                return BadRequest(result.Errors);
+            }
+
+            private async Task<bool> Send2FA(Users user)
+            {
+                // Get the security stamp used in token generation
+                var securityStamp = await _userManager.GetSecurityStampAsync(user);
+                Console.WriteLine($"Security Stamp: {securityStamp}");
+
+                // Log the user's notification preference (provider)
+                var provider = user.NotifyPref.ToString();
+                Console.WriteLine($"Provider: {provider}");
+
+                var code = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
+                Console.WriteLine($"Generated 2FA Token: {code}");
+                Console.WriteLine($"Token generated at (UTC): {DateTime.UtcNow}");
+
+
+                switch (user.NotifyPref)
+                {
+                    case NotificationPref.Phone:
+                        if (!string.IsNullOrEmpty(user.PhoneNumber))
+                        {
+                            await _notifyService.SendSmsAsync(user.PhoneNumber, $"Your 2FA code is: {code}");
+                            return true;
+                        }
+                        break;
+
+                    case NotificationPref.Email:
+                        if (!string.IsNullOrEmpty(user.Email))
+                        {
+                            var tData = new Dictionary<string, string> { { "auth_code", code } };
+                            await _notifyService.SendTemplateEmail(user.Email, "d-16815c0473d948acb2715a5001907e8c", tData);
+                            return true;
+                        }
+                        break;
+                }
+
+                return false;
+            }
+
+            [HttpPost("verify-2fa")]
+            public async Task<IActionResult> Verify2FA([FromBody] TwoFactorDto twoFactorDto)
+            {
+                var user = await _userManager.FindByIdAsync(twoFactorDto.UserId);
+                if (user == null)
+                {
+                    return Unauthorized(new { succeeded = false, message = "Invalid user", userId = twoFactorDto.UserId });
+                }
+                // Log the security stamp used during verification
+                var securityStamp = await _userManager.GetSecurityStampAsync(user);
+                Console.WriteLine($"Security Stamp: {securityStamp}");
+
+                // Log the provider being used for the 2FA verification
+                var provider = user.NotifyPref.ToString();
+                Console.WriteLine($"Using Provider: {provider}");
+
+                // Log the entered 2FA code
+                Console.WriteLine($"Entered 2FA Code: {twoFactorDto.Code}");
+                Console.WriteLine($"Token generated at (UTC): {DateTime.UtcNow}");
+                var result = await _signInManager.TwoFactorSignInAsync("Email", twoFactorDto.Code, false, false);
+                if (result.Succeeded)
+                {
+                    user.LastLogin = DateTime.UtcNow;
+                    await _userManager.UpdateAsync(user);
+
+                    return Ok(new { succeeded = true, userId = user.Id });
+                }
+
+                // 2FA failed
+                return Unauthorized(new { succeeded = false, message = "2FA failed", userId = twoFactorDto.UserId });
+            }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(UserLoginDto userDto)
+        {
+            var user = await _userManager.FindByNameAsync(userDto.Username);
+            if (user == null)
+            {
+                return Unauthorized(new { succeeded = false, message = "Invalid username or password" });
+            }
+
+            var result = await _signInManager.PasswordSignInAsync(userDto.Username, userDto.Password, false, false);
+
+            if (result.Succeeded)
+            {
+                // Check if user has 2FA enabled
+                if (await _userManager.GetTwoFactorEnabledAsync(user))
+                {
+                    // Send 2FA code via preferred method (email or phone)
+                    var send2FaResult = await Send2FA(user);
+                    if (!send2FaResult)
+                    {
+                        return StatusCode(500, new { succeeded = false, message = "Failed to send 2FA code. Please try again later." });
+                    }
+
+                    // 2FA is required
+                    return Ok(new { succeeded = false, requiresTwoFactor = true, userId = user.Id });
+                }
+
+                // Login successful without 2FA
                 user.LastLogin = DateTime.UtcNow;
                 await _userManager.UpdateAsync(user);
 
-                Console.WriteLine($"User {user.UserName} logged in successfully.");
-                return Ok(new { message = "Login successful", userId = user.Id, role = user.UserType });
+                return Ok(new { succeeded = true, userId = user.Id, role = user.UserType });
             }
-            Console.WriteLine($"Login failed for user {userDto.Username}");
-            return Unauthorized("Invalid username or password");
+
+            // Failed login attempt
+            return Unauthorized(new { succeeded = false, message = "Invalid username or password" });
         }
+
 
         [HttpGet("test-db-connection")]
         public async Task<IActionResult> TestDbConnection()
@@ -321,6 +362,7 @@ namespace Backend_Server.Controllers
         public required string Username { get; set; }
         public required string Email { get; set; }
         public required string Password { get; set; }
+        public bool Enable2FA { get; set; } 
     }
 
     public record UserLoginDto

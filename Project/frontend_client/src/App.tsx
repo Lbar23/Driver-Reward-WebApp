@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PasswordChangeForm from './pages/PasswordChangeForm';
 import DriverPointsList from './components/PMSDriverList';
+import DriverPointsHistory from './components/DriverPointHistory';
 import DriverActivity from './components/DriverActivity';
 
 const theme = createTheme({
@@ -49,6 +50,8 @@ const App = () => {
                     <Route path="/change-password" element={<PasswordChangeForm/>} /> {/* This is just here when profile pages are well and done */}
                     <Route path="/driver-points" element={<DriverPointsList />} /> {/* Again; remove once dashboard has this and database has some test data; just kind of here as a test that it loads */}
                     <Route path="/driver-activity" element={<DriverActivity />} /> {/* Same thing as above; make this end */}
+                    {/* Stub for auth rework, this will be logged in driver and taken out of main*/}
+                    <Route path="/points-history/:driverId" element={<DriverPointsHistory />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
                 </Routes>
             </Container>
