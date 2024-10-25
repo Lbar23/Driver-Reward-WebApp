@@ -28,6 +28,7 @@ const RegisterPage: React.FC = () => {
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [registrationCode, setRegistrationCode] = useState<string>('');
   const passwordStrength = usePasswordStrength(password);
 
     const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
@@ -37,7 +38,7 @@ const RegisterPage: React.FC = () => {
                 username,
                 email,
                 password,
-                registrationCode: "DRIVER" // or whatever default you want
+                registrationCode // or whatever default you want
             });
             console.log('Registration successful:', response.data);
         } catch (error) {
@@ -105,6 +106,16 @@ const RegisterPage: React.FC = () => {
         fullWidth
         value={password}
         onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+        required
+      />
+      <TextField
+        label="Registration Code"
+        type="registrationCode"
+        variant="outlined"
+        margin="normal"
+        fullWidth
+        value={registrationCode}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => setRegistrationCode(e.target.value)}
         required
       />
       <Box sx={{ width: '100%', mt: 1 }}>

@@ -1,7 +1,8 @@
 import React, { useState, FormEvent, ChangeEvent } from 'react';
 import { TextField, Button, Typography, Box, Link as MuiLink, Alert, CircularProgress } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+
 
 const LoginPage: React.FC = () => {
   const [step, setStep] = useState<'login' | '2fa'>('login');  
@@ -11,6 +12,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState<string>('');
   const [twoFactorCode, setTwoFactorCode] = useState<string>(''); // 2FA code input
   const [error, setError] = useState<string | null>(null); 
+  const navigate = useNavigate();
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,6 +30,7 @@ const LoginPage: React.FC = () => {
       else {
         // If login is successful without 2FA
         alert('Login successful!');
+        navigate("/dashboard");
       }
     } 
     catch (err: any) {
