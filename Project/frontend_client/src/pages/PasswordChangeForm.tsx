@@ -1,5 +1,9 @@
 import React, { useState, FormEvent } from 'react';
-import { TextField, Button, Typography, Box, LinearProgress } from '@mui/material';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import LinearProgress from '@mui/material/LinearProgress';
 import axios from 'axios';
 
 //Reusing the password requirements from RegisterPage
