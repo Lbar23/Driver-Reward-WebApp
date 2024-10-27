@@ -16,7 +16,6 @@ namespace Backend_Server.Controllers
     public class DriverController(UserManager<Users> userManager, SignInManager<Users> signInManager, AppDBContext context) : ControllerBase
     {
         private readonly UserManager<Users> _userManager = userManager;
-        private readonly SignInManager<Users> _signInManager = signInManager;
         private readonly AppDBContext _context = context;
 
         //uh, this is two stories combined, really

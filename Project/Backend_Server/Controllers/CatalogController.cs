@@ -10,6 +10,16 @@ namespace Backend_Server.Controllers
     [Route("api/[controller]")]
     public class CatalogController : ControllerBase
     {
-        
+        //products
+
+        //products/{id}
+
+        //products/sponsor/{id}
+
+        //sync
+
+        //check-availability/{id}
+
+        //price/{id}
     }
 }
