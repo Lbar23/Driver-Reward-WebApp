@@ -352,22 +352,4 @@ namespace Backend_Server.Controllers
         public required string CurrentPassword { get; set; }
         public required string NewPassword { get; set; }
     }
-
-    public record TransactionDto
-    {
-        public DateTime Date { get; init; }
-        public int Points { get; init; }
-        public required string Type { get; init; }
-        public required string Reason { get; init; }
-        public string? SponsorName { get; init; }
-        public string? Status { get; init; }
-    }
-
-    public record PointValueDto
-    {
-        public int TotalPoints { get; init; }
-        public decimal PointValue { get; init; }
-        public required string SponsorName { get; init; }
-        public decimal TotalValue => TotalPoints * PointValue;
-    }
 }

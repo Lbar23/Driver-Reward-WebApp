@@ -26,7 +26,7 @@ namespace Backend_Server.Infrastructure
                     errors.Add(new IdentityError
                     {
                         Code = "AdminPasswordSymbol",
-                        Description = "Admin passwords must contain at least one symbol."
+                        Description = "Admin passwords must contain at least three symbols."
                     });
                 }
             }

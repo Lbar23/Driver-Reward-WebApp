@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Backend_Server.Models;
+using Serilog;
 
 namespace Backend_Server.Controllers
 {
@@ -13,33 +14,46 @@ namespace Backend_Server.Controllers
         private readonly AppDBContext _context = context;
 
         [HttpGet("drivers")]
-        public async Task<IActionResult> GetDrivers([FromQuery] string sortBy = "points", [FromQuery] string sortOrder = "desc")
+        public async Task<IActionResult> GetDrivers()
         {
-            var sponsorId = await _userManager.GetUserAsync(User);
-            if (sponsorId == null)
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
             {
                 return Unauthorized("User not found.");
             }
+            
 
-            var query = _context.Drivers.Where(d => d.UserID == sponsorId.Id);
-
-            //Apply sorting -- currently bugged until models match, but whatever
-            query = sortBy.ToLower() switch
+            // Get sponsor's ID
+            var sponsor = await _context.Sponsors
+                .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+            if (sponsor == null)
             {
-                //"name" when sortOrder.ToLower() == "asc" => query.OrderBy(d => d.Name),
-                //"name" when sortOrder.ToLower() == "desc" => query.OrderByDescending(d => d.Name),
-                "points" when sortOrder.ToLower() == "asc" => query.OrderBy(d => d.TotalPoints),
-                _ => query.OrderByDescending(d => d.TotalPoints)
-            };
+                Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
+                return NotFound("Sponsor information not found.");
+            }
 
-            var drivers = await query.Select(d => new DriverListDto
+            // Let's check what drivers exist first
+            var allDrivers = await _context.Drivers.ToListAsync();
+
+            // Query drivers for this sponsor
+            var query = _context.Drivers
+                .Where(d => d.SponsorID == sponsor.SponsorID);
+
+            var drivers = await query
+                .Select(d => new DriverListDto
+                {
+                    UserID = d.UserID,
+                    Email = currentUser.Email,
+                    TotalPoints = d.TotalPoints
+                })
+                .ToListAsync();
+
+            Log.Information("Found {Count} drivers for sponsor", drivers.Count);
+            if (drivers == null)
             {
-                UserID = d.UserID,
-                //Name = d.Name,
-                TotalPoints = d.TotalPoints,
-                //City = d.City,
-                //State = d.State
-            }).ToListAsync();
+                Log.Warning("No drivers found for sponsor with ID: {SponsorId}", sponsor.SponsorID);
+                return NotFound("No drivers found");
+            }
 
             return Ok(drivers);
         }
@@ -73,14 +87,57 @@ namespace Backend_Server.Controllers
 
             return Ok(driver);
         }
+
+        //This method can be separated into two parts; just put one here as reference
+        [HttpPost("drivers/points/add-or-deduct")]
+        public async Task<IActionResult> AddOrDeductDriverPoints(int driverId, int pointsToAdd)
+        {
+            return Ok(pointsToAdd);
+        }
+
+        [HttpGet("applications")]
+        public async Task<IActionResult> GetDriverApplications()
+        {
+            return Ok();
+        }
+
+        [HttpPost("applications/{id}/process")]
+        public async Task<IActionResult> DriverApplicationProcess(string id)
+        {
+            return Ok();
+        }
+
+        [HttpGet("reports")] //Same here as Admin reports...split into smaller async tasks
+        public async Task<IActionResult> GetReports()
+        {
+            return Ok();
+        }
+
+        [HttpGet("products")]
+        public async Task<IActionResult> GetProducts()
+        {
+            return Ok();
+        }
+
+        [HttpGet("products/{id}")]
+        public async Task<IActionResult> GetProduct(int id)
+        {
+            return Ok();
+        }
+
+
+
+
+        
     }
 
     public record DriverListDto
     {
         public int UserID { get; init; }
-        public string? Name { get; init; } //can't be required yet until database and models are updated
+        public string? Name { get; init; }
+        public string? Email { get; init; }
         public int TotalPoints { get; init; }
-        public string? City { get; init; }
-        public string? State { get; init; }
+        // public string? City { get; init; }
+        // public string? State { get; init; }
     }
 }

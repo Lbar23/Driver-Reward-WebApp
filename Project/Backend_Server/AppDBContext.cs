@@ -19,6 +19,8 @@ namespace Backend_Server
         public DbSet<AuditLog> AuditLog { get; set; }
         public DbSet<Permissions> Permissions { get; set; }
         public DbSet<Admins> Admins { get; set; }
+        public DbSet<SponsorDrivers> SponsorDrivers { get; set; }
+        public DbSet<FeedbackForms> FeedbackForms { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

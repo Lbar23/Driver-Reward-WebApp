@@ -30,7 +30,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userResponse = await axios.get(`/api/User/currentuser`);
+        const userResponse = await axios.get(`/api/user/currentuser`);
         setUserData(userResponse.data);
         setLoading(false);
       } catch (err: any) {
