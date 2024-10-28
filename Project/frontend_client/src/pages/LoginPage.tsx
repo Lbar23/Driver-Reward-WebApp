@@ -20,6 +20,7 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [redirectToDashboard, setRedirectToDashboard] = useState<boolean>(false);
 
+  // Ensure 2FA form shows if redirected from login with query params.
   useEffect(() => {
     if (initialStep === '2fa' && initialUserId) {
       setStep('2fa');
@@ -35,13 +36,16 @@ const LoginPage: React.FC = () => {
     try {
       const response = await axios.post('/api/user/login', { username, password });
 
+      // Identity returns requiresTwoFactor when 2FA is needed
       if (response.data.requiresTwoFactor) {
         setStep('2fa');
-        setUserId(response.data.userId.toString());
-        navigate(`/login?step=2fa&userId=${response.data.userId}`, { replace: true });
-      } else if (response.data.succeeded) {
-        setRedirectToDashboard(true);
-      } else {
+        setUserId(response.data.userId.toString()); // Ensure userId is a string
+        navigate(`/login?step=2fa&userId=${response.data.userId}`, { replace: true }); // Update URL with 2FA step
+      } 
+      else if (response.data.succeeded) {
+        setRedirectToDashboard(true); // User logged in successfully without 2FA
+      } 
+      else {
         setError(response.data.message || 'Login failed. Please try again.');
       }
     } catch (err: any) {
@@ -60,11 +64,11 @@ const LoginPage: React.FC = () => {
         userId: String(userId),
         code: twoFactorCode
       },{
-        withCredentials: true,
+        withCredentials: true, // Make sure cookies are included in the request
       });
 
       if (response.data.succeeded) {
-        setRedirectToDashboard(true);
+        setRedirectToDashboard(true); // Redirect after successful 2FA verification
       } else {
         setError(response.data.message || 'Invalid 2FA code. Please try again.');
       }
@@ -151,13 +155,17 @@ const LoginPage: React.FC = () => {
 
       {step === 'login' && (
         <Box sx={{ textAlign: 'center', mt: 2 }}>
+          {step === 'login' && (
+        <>
           <MuiLink component={Link} to="/register" variant="body2" sx={{ display: 'block', mb: 1 }}>
-            Don't have an account? Sign Up
-          </MuiLink>
-          <MuiLink component={Link} to="/reset-password" variant="body2">
-            Forgot Password? Click here to Reset it
-          </MuiLink>
+                Don't have an account? Sign Up
+              </MuiLink>
+              <MuiLink component={Link} to="/reset-password" variant="body2">
+                Forgot Password? Click here to Reset it
+              </MuiLink>
         </Box>
+      )}
+        </>
       )}
     </Box>
   );
