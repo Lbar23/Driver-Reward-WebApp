@@ -89,41 +89,41 @@ namespace Backend_Server.Controllers
         }
 
         //This method can be separated into two parts; just put one here as reference
-        [HttpPost("drivers/points/add-or-deduct")]
-        public async Task<IActionResult> AddOrDeductDriverPoints(int driverId, int pointsToAdd)
-        {
-            return Ok(pointsToAdd);
-        }
+        // [HttpPost("drivers/points/add-or-deduct")]
+        // public async Task<IActionResult> AddOrDeductDriverPoints(int driverId, int pointsToAdd)
+        // {
+        //     return Ok(pointsToAdd);
+        // }
 
-        [HttpGet("applications")]
-        public async Task<IActionResult> GetDriverApplications()
-        {
-            return Ok();
-        }
+        // [HttpGet("applications")]
+        // public async Task<IActionResult> GetDriverApplications()
+        // {
+        //     return Ok();
+        // }
 
-        [HttpPost("applications/{id}/process")]
-        public async Task<IActionResult> DriverApplicationProcess(string id)
-        {
-            return Ok();
-        }
+        // [HttpPost("applications/{id}/process")]
+        // public async Task<IActionResult> DriverApplicationProcess(string id)
+        // {
+        //     return Ok();
+        // }
 
-        [HttpGet("reports")] //Same here as Admin reports...split into smaller async tasks
-        public async Task<IActionResult> GetReports()
-        {
-            return Ok();
-        }
+        // [HttpGet("reports")] //Same here as Admin reports...split into smaller async tasks
+        // public async Task<IActionResult> GetReports()
+        // {
+        //     return Ok();
+        // }
 
-        [HttpGet("products")]
-        public async Task<IActionResult> GetProducts()
-        {
-            return Ok();
-        }
+        // [HttpGet("products")]
+        // public async Task<IActionResult> GetProducts()
+        // {
+        //     return Ok();
+        // }
 
-        [HttpGet("products/{id}")]
-        public async Task<IActionResult> GetProduct(int id)
-        {
-            return Ok();
-        }
+        // [HttpGet("products/{id}")]
+        // public async Task<IActionResult> GetProduct(int id)
+        // {
+        //     return Ok();
+        // }
 
 
 

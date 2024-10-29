@@ -17,7 +17,7 @@ namespace Backend_Server.Services
         private readonly string _tokenUrl;
         private readonly string _clientId;
         private readonly string _clientSecret;
-        private const string BrowseUrl = "https://api.ebay.com/buy/browse/v1/item_summary/search?category_ids=6030&q=accessories&limit=20";        private static string _cachedToken;
+        private const string BrowseUrl = "https://api.ebay.com/buy/browse/v1/item_summary/search?category_ids=6030&q=accessories&limit=20";        private static string? _cachedToken;
         private static DateTime _tokenExpiration = DateTime.MinValue;
 
         public CatalogService(IHttpClientFactory httpClientFactory, IConfiguration configuration, IAmazonSecretsManager secretsManager, ILogger<CatalogService> logger)
@@ -66,7 +66,7 @@ namespace Backend_Server.Services
             var tokenData = JsonConvert.DeserializeObject<TokenResponse>(result);
 
             // Cache the token and set the expiration time
-            _cachedToken = tokenData.Access_token;
+            _cachedToken = tokenData!.Access_token;
             _tokenExpiration = DateTime.UtcNow.AddSeconds(tokenData.ExpiresIn - 300); // Refresh 5 minutes early for safety buffer
 
             return _cachedToken;
