@@ -81,7 +81,8 @@ const LoginPage: React.FC = () => {
   };
 
   if (redirectToDashboard) {
-    return <Navigate to="/dashboard" replace />;
+    //return <Navigate to="/dashboard" replace />;
+    navigate('/dashboard');
   }
 
   return (

@@ -164,8 +164,8 @@ namespace Backend_Server.Controllers
                 user.LastLogin = DateTime.UtcNow;
                 await _userManager.UpdateAsync(user);
 
-                Log.Information("User {user.UserName} logged in successfully", user.UserName);
-                return Ok(new { message = "Login successful", userId = user.Id, role = user.UserType });
+                Log.Information("User {User} logged in successfully", user.UserName);
+                return Ok(new { message = "Login successful", userId = user.Id, role = user.UserType, succeeded = true });
             }
 
             Log.Error("Login Failed for {UserName}", user?.UserName);
@@ -200,7 +200,7 @@ namespace Backend_Server.Controllers
                 return StatusCode(500, "Failed to log out user");
             }
             
-            return Ok(new { message = "Logged out successfully" });
+            return Ok(new { message = "Logged out successfully", succeeded = true});
         }
 
         // [Authorize] // has to be protected
