@@ -1,26 +1,21 @@
 import { Route, Routes, Link, Navigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
 import AppNavbar from './components/layout/AppNavbar';
 import AppTheme from './components/layout/AppTheme';
-import FAQ from './pages/FAQ';
-import FeedbackForm from './pages/Feedback';
-import Dashboard from './pages/Dashboard';
+// Pages
+import HomePage from './pages/HomePage';
 import About from './pages/About';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import Dashboard from './pages/Dashboard';
+import ProductCatalog from './pages/ProductCatalog';
+import FAQ from './pages/FAQ';
+import FeedbackForm from './pages/Feedback';
+// to be removed bc component
 import PasswordChangeForm from './pages/PasswordChangeForm';
 import DriverPointsList from './components/dashboard/PMSDriverList';
 import DriverPointsHistory from './components/dashboard/DriverPointHistory';
 import DriverActivity from './components/dashboard/DriverActivity';
-
-// const theme = createTheme({
-//     palette: {
-//         primary: {
-//             main: '#1976d2', // Facebook-like blue
-//         },
-//     },
-// });
 
 const App = () => {
     return (
@@ -32,10 +27,11 @@ const App = () => {
                     <Route path="/about" element={<About />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/home" element={<HomePage />} /> {/* This is just here when dashboard has this and database has some test data; just kind of here as a test that it loads */}
-                    {/* <Route path="/faq" element={<FAQ />} /> */}
+                    <Route path="/home" element={<HomePage />} /> {/* Will still be useful to serve for people that are not logged in */}
+                    <Route path="/faq" element={<FAQ />} />
                     <Route path="/feedback" element={<FeedbackForm />} />
                     <Route path="/dashboard" element={<Dashboard/>} />
+                    <Route path="/catalog" element={<ProductCatalog />} />
                     <Route path="/change-password" element={<PasswordChangeForm/>} /> {/* This is just here when profile pages are well and done */}
                     <Route path="/driver-points" element={<DriverPointsList />} /> {/* Again; remove once dashboard has this and database has some test data; just kind of here as a test that it loads */}
                     <Route path="/driver-activity" element={<DriverActivity />} /> {/* Same thing as above; make this end */}

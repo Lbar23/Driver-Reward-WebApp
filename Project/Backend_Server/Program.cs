@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.HttpOverrides;
 using Backend_Server;
 using Backend_Server.Models;
 using Backend_Server.Infrastructure;
@@ -29,6 +30,9 @@ try {
 
     builder.Services.AddAWSService<IAmazonSecretsManager>(awsOptions);
 
+    builder.Services.AddHttpClient();
+
+    builder.Services.AddSingleton<CatalogService>();
     builder.Services.AddScoped<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
 
@@ -99,7 +103,7 @@ try {
     });
 
     // Automated Backup Service
-    builder.Services.AddHostedService<BackupService>();
+    // builder.Services.AddHostedService<BackupService>();
 
     // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
@@ -131,6 +135,12 @@ try {
     app.UseSpaStaticFiles();
     app.UseCors("AllowSpecificOrigins");
     app.UseRouting();
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    });
+
+
 
     app.UseAuthentication();
     app.UseAuthorization();
