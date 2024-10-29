@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Typography, Box, CircularProgress } from '@mui/material';
 import axios from 'axios';
+import OverviewItem from '../components/layout/OverviewItem';
 
-// define the type for the about information
 interface AboutInfo {
     team: string;
     version: number;
@@ -20,7 +20,6 @@ const About: React.FC = () => {
         const fetchAboutInfo = async () => {
             try {
                 const response = await axios.get('/api/admin/about');
-                
                 console.log('API Response:', response.data); 
                 setAboutInfo(response.data);
             } catch (error: any) {
@@ -41,23 +40,22 @@ const About: React.FC = () => {
           sx={{
             maxWidth: 600, 
             margin: 'auto', 
-            padding: 3, 
+            p: 3, 
             boxShadow: 3, 
             borderRadius: 2, 
             backgroundColor: 'background.paper'
           }}
         >
             <Typography variant="h4" gutterBottom>About Information</Typography>
-            <Box sx={{ p: 2, mb: 2, border: '1px solid #ddd', borderRadius: 2 }}>
-                <Typography variant="body1"><strong>Team:</strong> {aboutInfo.team}</Typography>
-                <Typography variant="body1"><strong>Version:</strong> {aboutInfo.version}</Typography>
-                <Typography variant="body1"><strong>Release Date:</strong> {new Date(aboutInfo.release).toLocaleDateString()}</Typography>
-                <Typography variant="body1"><strong>Product:</strong> {aboutInfo.product}</Typography>
-                <Typography variant="body1"><strong>Description:</strong> {aboutInfo.description}</Typography>
+            <Box sx={{ p: 2, mb: 2, border: 1, borderColor: 'divider', borderRadius: 2 }}>
+                <OverviewItem title="Team" value={aboutInfo.team} />
+                <OverviewItem title="Version" value={aboutInfo.version.toString()} />
+                <OverviewItem title="Release Date" value={new Date(aboutInfo.release).toLocaleDateString()} />
+                <OverviewItem title="Product" value={aboutInfo.product} />
+                <OverviewItem title="Description" value={aboutInfo.description} />
             </Box>
         </Box>
     );
-
 };
 
 export default About;

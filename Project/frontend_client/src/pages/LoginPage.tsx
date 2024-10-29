@@ -20,7 +20,6 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [redirectToDashboard, setRedirectToDashboard] = useState<boolean>(false);
 
-  // Ensure 2FA form shows if redirected from login with query params.
   useEffect(() => {
     if (initialStep === '2fa' && initialUserId) {
       setStep('2fa');
@@ -36,14 +35,13 @@ const LoginPage: React.FC = () => {
     try {
       const response = await axios.post('/api/user/login', { username, password });
 
-      // Identity returns requiresTwoFactor when 2FA is needed
       if (response.data.requiresTwoFactor) {
         setStep('2fa');
-        setUserId(response.data.userId.toString()); // Ensure userId is a string
-        navigate(`/login?step=2fa&userId=${response.data.userId}`, { replace: true }); // Update URL with 2FA step
+        setUserId(response.data.userId.toString());
+        navigate(`/login?step=2fa&userId=${response.data.userId}`, { replace: true });
       } 
       else if (response.data.succeeded) {
-        setRedirectToDashboard(true); // User logged in successfully without 2FA
+        setRedirectToDashboard(true);
       } 
       else {
         setError(response.data.message || 'Login failed. Please try again.');
@@ -64,17 +62,20 @@ const LoginPage: React.FC = () => {
         userId: String(userId),
         code: twoFactorCode
       },{
-        withCredentials: true, // Make sure cookies are included in the request
+        withCredentials: true,
       });
 
       if (response.data.succeeded) {
-        setRedirectToDashboard(true); // Redirect after successful 2FA verification
-      } else {
+        setRedirectToDashboard(true);
+      } 
+      else {
         setError(response.data.message || 'Invalid 2FA code. Please try again.');
       }
-    } catch (err: any) {
+    } 
+    catch (err: any) {
       setError(err.response?.data?.message || '2FA verification failed. Please try again.');
-    } finally {
+    } 
+    finally {
       setLoading(false);
     }
   };
@@ -103,7 +104,7 @@ const LoginPage: React.FC = () => {
         {step === 'login' ? 'Login' : '2FA Verification'}
       </Typography>
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {step === 'login' ? (
         <>
@@ -112,6 +113,7 @@ const LoginPage: React.FC = () => {
             variant="outlined"
             margin="normal"
             fullWidth
+            autoComplete="username"
             value={username}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
             required
@@ -122,6 +124,7 @@ const LoginPage: React.FC = () => {
             variant="outlined"
             margin="normal"
             fullWidth
+            autoComplete="current-password"
             value={password}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
             required
@@ -152,14 +155,14 @@ const LoginPage: React.FC = () => {
       </Button>
 
       {step === 'login' && (
-        <>
-          <MuiLink component={Link} to="/register" variant="body2">
+        <Box sx={{ textAlign: 'center', mt: 2 }}>
+          <MuiLink component={Link} to="/register" variant="body2" sx={{ display: 'block', mb: 1 }}>
             Don't have an account? Sign Up
           </MuiLink>
           <MuiLink component={Link} to="/reset-password" variant="body2">
             Forgot Password? Click here to Reset it
           </MuiLink>
-        </>
+        </Box>
       )}
     </Box>
   );

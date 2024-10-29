@@ -1,6 +1,6 @@
 import React from 'react';
 import { Accordion, AccordionSummary, AccordionDetails, Typography } from '@mui/material';
-// import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 interface FAQItemProps {
   question: string;
@@ -10,7 +10,7 @@ interface FAQItemProps {
 const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => (
   <Accordion>
     <AccordionSummary
-      // expandIcon={<ExpandMoreIcon />}
+      expandIcon={<ExpandMoreIcon />}
       aria-controls="panel-content"
       id="panel-header"
     >

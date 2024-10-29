@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.HttpOverrides;
 using Backend_Server;
 using Backend_Server.Models;
 using Backend_Server.Infrastructure;
@@ -12,6 +13,14 @@ using Serilog;
 
 
 var builder = WebApplication.CreateBuilder(args);
+
+//Checks if the current build is in "DesignTime" mode (running dotnet with flags other that run/start/etc)
+var isDesignTime = string.Equals(
+    Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+    "Development",
+    StringComparison.OrdinalIgnoreCase) && 
+    AppDomain.CurrentDomain.GetAssemblies().Any(a => a?.FullName?.Contains("Microsoft.EntityFrameworkCore.Design") ?? false);
+
 try {
     // AWS Secrets Manager setup
     var awsOptions = new AWSOptions
@@ -21,19 +30,12 @@ try {
 
     builder.Services.AddAWSService<IAmazonSecretsManager>(awsOptions);
 
-    // Basic Serilog Service build
-    Log.Logger = new LoggerConfiguration()
-        .ReadFrom.Configuration(builder.Configuration)
-        .Enrich.FromLogContext()
-        .CreateLogger();
+    builder.Services.AddHttpClient();
 
-    builder.Host.UseSerilog();
-
-
+    builder.Services.AddSingleton<CatalogService>();
     builder.Services.AddScoped<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
 
-    
     builder.Services.AddControllers();
 
     // Swagger setup
@@ -101,10 +103,21 @@ try {
     });
 
     // Automated Backup Service
-    builder.Services.AddHostedService<BackupService>();
+    // builder.Services.AddHostedService<BackupService>();
 
     // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
+
+    if (!isDesignTime)
+    {
+        // Basic Serilog Service build
+        Log.Logger = new LoggerConfiguration()
+            .ReadFrom.Configuration(builder.Configuration)
+            .Enrich.FromLogContext()
+            .CreateLogger();
+
+        builder.Host.UseSerilog();
+    }
 
     var app = builder.Build();
 
@@ -122,6 +135,12 @@ try {
     app.UseSpaStaticFiles();
     app.UseCors("AllowSpecificOrigins");
     app.UseRouting();
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    });
+
+
 
     app.UseAuthentication();
     app.UseAuthorization();
@@ -136,19 +155,29 @@ try {
 
     app.MapFallbackToFile("/index.html");
 
-    // Enable Serilog Request Logging for API requests
-    app.UseSerilogRequestLogging();
+    if (!isDesignTime)
+    {
+        // Enable Serilog Request Logging for API requests
+        app.UseSerilogRequestLogging();
+        
+        Log.Information("Starting Web Host...");
+    }
 
-    Log.Information("Starting Web Host...");
+    
     app.Run();
 }
 catch (Exception ex)
-{
-    Log.Fatal(ex.ToString());
-    Log.Error(ex, "The web server terminated unexpectedly.");
+{  
+    if (!isDesignTime)
+    {
+        Log.Fatal(ex, "The web server terminated unexpectedly.");
+    }
     throw;
 }
 finally
 {
-    Log.CloseAndFlush();
+    if (!isDesignTime)
+    {
+        Log.CloseAndFlush();
+    }
 }
