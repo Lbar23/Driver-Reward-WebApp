@@ -12,14 +12,17 @@ namespace Backend_Server.Services
     public class CatalogService
     {
         private readonly HttpClient _httpClient;
+        private readonly ILogger<CatalogService> _logger;
+
         private readonly string _tokenUrl;
         private readonly string _clientId;
         private readonly string _clientSecret;
         private const string BrowseUrl = "https://api.ebay.com/buy/browse/v1/item_summary/search?category_ids=6030&q=accessories&limit=20";        private static string _cachedToken;
         private static DateTime _tokenExpiration = DateTime.MinValue;
 
-        public CatalogService(IHttpClientFactory httpClientFactory, IConfiguration configuration, IAmazonSecretsManager secretsManager)
+        public CatalogService(IHttpClientFactory httpClientFactory, IConfiguration configuration, IAmazonSecretsManager secretsManager, ILogger<CatalogService> logger)
         {
+            _logger = logger;
             _httpClient = httpClientFactory.CreateClient();
             var secrets = LoadSecrets(secretsManager).Result;
             _tokenUrl = secrets["EbayProdOauthUrl"];
@@ -59,6 +62,7 @@ namespace Backend_Server.Services
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadAsStringAsync();
+            
             var tokenData = JsonConvert.DeserializeObject<TokenResponse>(result);
 
             // Cache the token and set the expiration time
@@ -78,6 +82,8 @@ namespace Backend_Server.Services
 
             var content = await response.Content.ReadAsStringAsync();
             var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
+            // _logger.LogInformation("eBay API response: {ResponseContent}", content);
+
 
             return productResponse?.ItemSummaries?.ConvertAll(item => new Product
             {
