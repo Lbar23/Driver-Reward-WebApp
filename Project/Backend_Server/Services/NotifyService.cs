@@ -42,11 +42,11 @@ public class NotifyService
     {
         var secretValueResponse = await secretsManager.GetSecretValueAsync(new GetSecretValueRequest
         {
-            SecretId = "team16/notifyapi/creds" // Replace with your actual secret ID
+            SecretId = "team16/notifyapi/creds" 
         });
 
         return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(secretValueResponse.SecretString)
-            ?? new Dictionary<string, string>(); 
+            ?? []; 
     }
 
     // Send general SMS using Twilio
