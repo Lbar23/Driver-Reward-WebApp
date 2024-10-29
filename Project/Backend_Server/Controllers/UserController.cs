@@ -167,6 +167,7 @@ namespace Backend_Server.Controllers
         }
 
 
+
         [HttpGet("test-db-connection")]
         public async Task<IActionResult> TestDbConnection()
         {
@@ -340,6 +341,63 @@ namespace Backend_Server.Controllers
                 Transactions = allTransactions
             });
         }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            return Ok(new { success = true, message = "Logged out successfully" });
+        }
+
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _userManager.Users.Select(u => new {
+                Id = u.Id,
+                UserName = u.UserName,
+                Email = u.Email,
+                UserType = u.UserType,
+                LastLogin = u.LastLogin
+            }).ToListAsync();
+
+            return Ok(users);
+        }
+
+        [HttpPost("change-user-type")]
+        public async Task<IActionResult> ChangeUserType([FromBody] ChangeUserTypeDto dto)
+        {
+            var user = await _userManager.FindByIdAsync(dto.UserId.ToString());
+            if (user == null)
+            {
+                return NotFound(new { success = false, message = "User not found." });
+            }
+
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            user.UserType = dto.NewUserType;
+            await _userManager.AddToRoleAsync(user, dto.NewUserType);
+            await _userManager.UpdateAsync(user);
+
+            return Ok(new { success = true, message = "User type updated successfully." });
+        }
+
+        [HttpDelete("remove-user/{id}")]
+        public async Task<IActionResult> RemoveUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                return NotFound(new { success = false, message = "User not found." });
+            }
+
+            var result = await _userManager.DeleteAsync(user);
+            if (result.Succeeded)
+            {
+                return Ok(new { success = true, message = "User removed successfully." });
+            }
+
+            return BadRequest(new { success = false, errors = result.Errors });
+        }
         
         /********* ASYNC FUNCTIONS CODE ****************/
 
@@ -409,5 +467,11 @@ namespace Backend_Server.Controllers
         public decimal PointValue { get; init; }
         public required string SponsorName { get; init; }
         public decimal TotalValue => TotalPoints * PointValue;
+    }
+
+    public class ChangeUserTypeDto
+    {
+        public int UserId { get; set; }
+        public string NewUserType { get; set; }
     }
 }

@@ -1,4 +1,4 @@
-import { Route, Routes, Link, Navigate } from 'react-router-dom';
+import { Route, Routes, Link, Navigate, BrowserRouter } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 // import FAQ from './pages/FAQ';
@@ -11,6 +11,7 @@ import PasswordChangeForm from './pages/PasswordChangeForm';
 import DriverPointsList from './components/PMSDriverList';
 import DriverPointsHistory from './components/DriverPointHistory';
 import DriverActivity from './components/DriverActivity';
+import ManageUsers from './pages/ManageUsers';
 
 const theme = createTheme({
     palette: {
@@ -53,6 +54,7 @@ const App = () => {
                     {/* Stub for auth rework, this will be logged in driver and taken out of main*/}
                     <Route path="/points-history/:driverId" element={<DriverPointsHistory />} />
                     <Route path="/" element={<Navigate to="/login" replace />} />
+                    <Route path="/manage-users" element={<ManageUsers />}/>
                 </Routes>
             </Container>
         </ThemeProvider>
