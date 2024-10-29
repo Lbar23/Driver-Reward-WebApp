@@ -40,6 +40,7 @@ const routes = [
   { path: '/register', label: 'Register' },
   { path: '/faq', label: 'FAQ' },
   { path: '/feedback', label: 'Feedback' },
+  { path: '/catalog', label: 'Catalog' },
   // Add more routes as needed
 ];
 

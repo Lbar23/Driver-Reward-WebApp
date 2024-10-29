@@ -1,34 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Grid2, Card, CardMedia, CardContent, CircularProgress, Alert, Link } from '@mui/material';
-import axios from 'axios';
-import OverviewItem from '../components/layout/OverviewItem'; 
+import { Container, Typography, Card, CardMedia, CardContent, CircularProgress, Alert, Box } from '@mui/material';
+import axios, { AxiosResponse } from 'axios';
+import OverviewItem from '../components/layout/OverviewItem';
 
 interface Listing {
-  listing_id: number;
-  title: string;
+  name: string;
   price: string;
-  currency_code: string;
-  url: string;
-  image_url: string; 
+  imageUrl: string;
 }
+
+const CACHE_KEY = 'productCatalog';
+const CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 const ProductCatalog: React.FC = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchListings = async () => {
+    try {
+      const response: AxiosResponse<Listing[]> = await axios.get(`/api/catalog/products`);
+      setListings(response.data);
+      setLoading(false);
+
+      // Cache data and timestamp
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ listings: response.data, timestamp: Date.now() }));
+    } catch (error: any) {
+      setError(error.response?.data || 'Failed to load products.');
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchListings = async () => {
-      try {
-        const response = await axios.get(`/api/catalog/products`);
-        setListings(response.data.results || []); 
-      } catch (error: any) {
-        setError(error.response?.data || 'Failed to load products.');
-      } finally {
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    if (cachedData) {
+      const { listings, timestamp } = JSON.parse(cachedData);
+      if (Date.now() - timestamp < CACHE_EXPIRY) {
+        setListings(listings);
         setLoading(false);
+        return;
       }
-    };
-    
+    }
+
+    // Fetch fresh data if no valid cache is available
     fetchListings();
   }, []);
 
@@ -40,28 +54,46 @@ const ProductCatalog: React.FC = () => {
       <Typography variant="h4" component="h1" gutterBottom>
         Product Catalog
       </Typography>
-      <Grid2 container spacing={3}>
-        {listings.map((listing) => (
-          <Grid2 key={listing.listing_id}>
-            <Card>
-              <CardMedia
-                component="img"
-                height="200"
-                image={listing.image_url || '/placeholder.jpg'} // Fallback image if no URL
-                alt={listing.title}/>
-              <CardContent>
-                <OverviewItem title="Title" value={listing.title} />
-                <OverviewItem title="Price" value={`${listing.currency_code} ${listing.price}`} />
-                <Typography variant="body2" color="primary">
-                  <Link href={listing.url} target="_blank" rel="noopener noreferrer">
-                    View on Etsy
-                  </Link>
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid2>
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 2,
+          justifyContent: 'flex-start', 
+        }}
+      >
+        {listings.map((listing, index) => (
+          <Card
+            key={index}
+            sx={{
+              width: 'calc(33.333% - 16px)',
+              maxWidth: 'calc(33.333% - 16px)',
+              marginBottom: 2,
+            }}>
+            <CardMedia
+              component="img"
+              height="200"
+              image={listing.imageUrl}
+              alt={listing.name}
+              sx={{ objectFit: 'cover' }}
+            />
+            <CardContent>
+              <Typography
+                variant="h6"
+                component="p"
+                sx={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {listing.name}
+              </Typography>
+              <OverviewItem title="Price" value={listing.price} />
+            </CardContent>
+          </Card>
         ))}
-      </Grid2>
+      </Box>
     </Container>
   );
 };

@@ -1,10 +1,8 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Backend_Server.Models;
 using Backend_Server.Services;
+using static Backend_Server.Services.CatalogService;
 
 namespace Backend_Server.Controllers
 {
@@ -14,9 +12,9 @@ namespace Backend_Server.Controllers
     {
         private readonly CatalogService _catalogService;
 
-        public CatalogController(CatalogService catService)
+        public CatalogController(CatalogService catalogService)
         {
-            _catalogService = catService;
+            _catalogService = catalogService;
         }
 
         [HttpGet("products")]
@@ -27,7 +25,7 @@ namespace Backend_Server.Controllers
             {
                 return NotFound("No products found.");
             }
-            return Ok(products);
+            return Ok(products); 
         }
     }
 }
