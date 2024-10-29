@@ -34,7 +34,7 @@ try {
 
     builder.Services.AddHttpClient();
 
-    //builder.Services.AddSingleton<CatalogService>();
+    builder.Services.AddSingleton<CatalogService>();
     builder.Services.AddScoped<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
 

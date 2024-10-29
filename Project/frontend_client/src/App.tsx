@@ -18,6 +18,8 @@ import DriverPointsHistory from './components/dashboard/DriverPointHistory';
 import DriverActivity from './components/dashboard/DriverActivity';
 import SponsorDrivers from './components/dashboard/SponsorDriverList';
 import SponsorRegistrationPage from './components/dashboard/SponsorRegistrationForDriver';
+import DriverApplication from './components/DriverApplication';
+import ApplicationManager from './components/ApplicationManager';
 
 const App = () => {
     return (
@@ -34,6 +36,8 @@ const App = () => {
                     <Route path="/feedback" element={<FeedbackForm />} />
                     <Route path="/dashboard" element={<Dashboard/>} />
                     <Route path="/catalog" element={<ProductCatalog />} />
+                    <Route path="/application" element={<DriverApplication />} />
+                    <Route path="/application-manager" element={<ApplicationManager />} />
                     <Route path="/change-password" element={<PasswordChangeForm/>} /> {/* This is just here when profile pages are well and done */}
                     <Route path="/driver-points" element={<DriverPointsList />} /> {/* Again; remove once dashboard has this and database has some test data; just kind of here as a test that it loads */}
                     <Route path="/driver-activity" element={<DriverActivity />} /> {/* Same thing as above; make this end */}
