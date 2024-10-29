@@ -7,11 +7,9 @@ namespace Backend_Server.Models
 {
     public class Drivers
     {
-        public int DriverID { get; set; }
         public int UserID { get; set; }
         public int SponsorID { get; set; }
         public int TotalPoints { get; set; }
-        public Users User { get; set; }
-        public Sponsors Sponsor { get; set; }
+        public ICollection<SponsorDrivers> SponsorDriver { get; set; } = []; //Added after adding bridge entity for connection
     }
 }

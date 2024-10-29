@@ -21,5 +21,16 @@ export default defineConfig({
     outDir: path.resolve(__dirname, '../Backend_Server/wwwroot'),
     emptyOutDir: true, // Clears the output directory before each build
     assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            // Create separate chunks for large libraries
+            if (id.includes('@mui')) return 'mui';
+            return 'vendor';
+          }
+        }
+      }
+    },
   }
 })

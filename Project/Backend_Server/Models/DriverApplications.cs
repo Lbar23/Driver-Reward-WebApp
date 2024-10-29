@@ -5,16 +5,21 @@ using System.Threading.Tasks;
 
 namespace Backend_Server.Models
 {
+    public enum AppStatus
+    {
+        Submitted, 
+        Approved,
+        Rejected,
+    }
+
     public class DriverApplications
     {
         public int ApplicationID { get; set; }
-        public int DriverID { get; set; }
+        public int UserID { get; set; }
         public int SponsorID { get; set; }
-        public string Status { get; set; }
-        public DateTime ApplyDate { get; set; }
-        public DateTime? ProcessedDate { get; set; }
-        public string Reason { get; set; }
-        public Drivers Driver { get; set; }
-        public Sponsors Sponsor { get; set; }
+        public AppStatus Status { get; set; } = AppStatus.Submitted;
+        public DateOnly ApplyDate { get; set; }
+        public DateOnly? ProcessedDate { get; set; }
+        public string Reason { get; set; } = string.Empty;
     }
 }
