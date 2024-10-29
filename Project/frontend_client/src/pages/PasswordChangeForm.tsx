@@ -1,20 +1,13 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
 import axios from 'axios';
-
-//Reusing the password requirements from RegisterPage
-const passwordRequirements = [
-  { check: (pw: string) => pw.length >= 8, message: "At least 8 characters long" },
-  { check: (pw: string) => /[0-9]/.test(pw), message: "Contains at least one digit" },
-  { check: (pw: string) => /[a-z]/.test(pw), message: "Contains at least one lowercase letter" },
-  { check: (pw: string) => /[A-Z]/.test(pw), message: "Contains at least one uppercase letter" },
-  { check: (pw: string) => /[^A-Za-z0-9]/.test(pw), message: "Contains at least one special character" },
-  { check: (pw: string) => new Set(pw).size >= 1, message: "Contains at least 1 unique character" },
-];
+import { getPasswordRequirements } from '../service/passwordRequirements';
 
 const PasswordChangeForm: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -22,19 +15,42 @@ const PasswordChangeForm: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState<string>('Driver');
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const response = await axios.get('/api/user/currentuser');
+        setUserRole(response.data.userType);
+      } catch (err) {
+        console.error('Error fetching user role:', err);
+      }
+    };
+    fetchUserRole();
+  }, []);
+
+  const passwordRequirements = getPasswordRequirements(userRole);
+
+  const validatePassword = (password: string): boolean => {
+    return passwordRequirements.every(req => req.check(password));
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setSuccess(false);
+    setLoading(true);
 
     if (newPassword !== confirmPassword) {
       setError("New passwords do not match");
+      setLoading(false);
       return;
     }
 
-    if (!passwordRequirements.every(req => req.check(newPassword))) {
+    if (!validatePassword(newPassword)) {
       setError("New password does not meet all requirements");
+      setLoading(false);
       return;
     }
 
@@ -44,18 +60,18 @@ const PasswordChangeForm: React.FC = () => {
         newPassword,
       });
 
-      if (response.data && response.data.success) {
-        setSuccess(true);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      }
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) {
-        setError(error.response.data.message || 'Failed to change password');
+      setSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || 'Failed to change password');
       } else {
         setError('An unexpected error occurred');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,15 +82,15 @@ const PasswordChangeForm: React.FC = () => {
       </Typography>
 
       {error && (
-        <Typography color="error" sx={{ mt: 2, mb: 2 }}>
+        <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
           {error}
-        </Typography>
+        </Alert>
       )}
 
       {success && (
-        <Typography color="success.main" sx={{ mt: 2, mb: 2 }}>
+        <Alert severity="success" sx={{ mt: 2, mb: 2 }}>
           Password changed successfully!
-        </Typography>
+        </Alert>
       )}
 
       <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
@@ -118,17 +134,19 @@ const PasswordChangeForm: React.FC = () => {
         />
 
         <Box sx={{ mt: 4 }}>
-          <Typography variant="h6">Password Requirements:</Typography>
+          <Typography variant="h6">
+            Password Requirements for {userRole}:
+          </Typography>
           {passwordRequirements.map((req, index) => (
             <Box key={index} sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-              <Box sx={{ width: '100%', mr: 1 }}>
+              <Box sx={{ flexGrow: 1, mr: 1 }}>
                 <LinearProgress
                   variant="determinate"
                   value={req.check(newPassword) ? 100 : 0}
                   color={req.check(newPassword) ? 'success' : 'error'}
                 />
               </Box>
-              <Box sx={{ minWidth: 35 }}>
+              <Box sx={{ minWidth: 200 }}>
                 <Typography variant="body2" color="text.secondary">
                   {req.message}
                 </Typography>
@@ -142,8 +160,9 @@ const PasswordChangeForm: React.FC = () => {
           fullWidth
           variant="contained"
           sx={{ mt: 3, mb: 2 }}
+          disabled={loading}
         >
-          Change Password
+          {loading ? <CircularProgress size={24} /> : 'Change Password'}
         </Button>
       </Box>
     </Box>

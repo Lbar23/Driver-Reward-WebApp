@@ -79,7 +79,7 @@ try {
         options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
         options.User.RequireUniqueEmail = true;
     })
-    .AddPasswordValidator<AdminPasswordValidator>() //I forgot Identity had this, this is hella based
+    .AddPasswordValidator<UserPasswordValidator>() //I forgot Identity had this, this is hella based
     .AddEntityFrameworkStores<AppDBContext>()
     .AddDefaultTokenProviders()
     .AddTokenProvider<PhoneNumberTokenProvider<Users>>("phone")
