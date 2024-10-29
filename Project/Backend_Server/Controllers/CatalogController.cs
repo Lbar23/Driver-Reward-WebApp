@@ -12,22 +12,22 @@ namespace Backend_Server.Controllers
     [Route("api/[controller]")]
     public class CatalogController : ControllerBase
     {
-        private readonly CatalogService _catalogService;
+        // private readonly CatalogService _catalogService;
 
-        public CatalogController(CatalogService catService)
-        {
-            _catalogService = catService;
-        }
+        // public CatalogController(CatalogService catService)
+        // {
+        //     _catalogService = catService;
+        // }
 
-        [HttpGet("products")]
-        public async Task<ActionResult<List<Product>>> GetProducts()
-        {
-            var products = await _catalogService.GetProductsAsync();
-            if (products == null || products.Count == 0)
-            {
-                return NotFound("No products found.");
-            }
-            return Ok(products);
-        }
+        // [HttpGet("products")]
+        // public async Task<ActionResult<List<Product>>> GetProducts()
+        // {
+        //     var products = await _catalogService.GetProductsAsync();
+        //     if (products == null || products.Count == 0)
+        //     {
+        //         return NotFound("No products found.");
+        //     }
+        //     return Ok(products);
+        // }
     }
 }
