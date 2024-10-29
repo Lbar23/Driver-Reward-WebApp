@@ -146,11 +146,11 @@ export default function CustomizedTreeView() {
   return (
     <Card
       variant="outlined"
-      sx={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1 }}
+      sx={{ display: 'block', flexDirection: 'column', gap: '8px', flexGrow: 0 }}
     >
       <CardContent>
         <Typography component="h2" variant="subtitle2">
-          Product tree
+          Website Tree
         </Typography>
         <RichTreeView
           items={ITEMS}
