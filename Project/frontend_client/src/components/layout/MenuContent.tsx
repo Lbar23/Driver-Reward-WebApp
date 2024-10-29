@@ -12,10 +12,14 @@ import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import HelpRoundedIcon from '@mui/icons-material/HelpRounded';
+import FeedbackIcon from '@mui/icons-material/Feedback';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import ApprovalIcon from '@mui/icons-material/Approval';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const mainListItems = [
-  { text: 'Home', icon: <HomeRoundedIcon />, path: '/dashboard'}, //added navigation pathing
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard'}, //added navigation pathing
   // { text: 'Analytics', icon: <AnalyticsRoundedIcon /> },
   // { text: 'Clients', icon: <PeopleRoundedIcon /> },
   // { text: 'Tasks', icon: <AssignmentRoundedIcon /> },
@@ -23,11 +27,15 @@ const mainListItems = [
 
 //Methods below, except for settings, probably, should have a "back to dashboard" button redirect...
 //Unless make them components instead of individual pages, bit unideal...
+// will add to nav bar ^
 const secondaryListItems = [
   { text: 'Settings', icon: <SettingsRoundedIcon /> },
   { text: 'About', icon: <InfoRoundedIcon />, path: '/about' }, //same
   { text: 'FAQ', icon: <HelpRoundedIcon />, path: '/faq' }, //same
-  { text: 'Feedback', icon: <HelpRoundedIcon />, path: '/feedback' }, //same
+  { text: 'Catalog', icon: <ShoppingBagIcon />, path: '/catalog' }, //same
+  { text: 'Driver Application', icon: <ApprovalIcon />, path: '/application' }, //same
+  { text: 'Manage Applications', icon: <ApprovalIcon />, path: '/application-manager' }, //same
+  { text: 'Feedback', icon: <FeedbackIcon />, path: '/feedback' }, //same
 ];
 
 export default function MenuContent() {

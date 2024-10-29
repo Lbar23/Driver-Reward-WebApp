@@ -13,7 +13,7 @@ export default function MainGrid() {
       <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
         Overview
       </Typography>
-      <Grid container spacing={2} columns={12}>
+      <Grid container spacing={2} columns={2}>
         <Grid size={{ xs: 12, lg: 9 }}>
         </Grid>
         <Grid size={{ xs: 12, lg: 3 }}>

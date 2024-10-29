@@ -95,18 +95,72 @@ namespace Backend_Server.Controllers
         //     return Ok(pointsToAdd);
         // }
 
-        // [HttpGet("applications")]
-        // public async Task<IActionResult> GetDriverApplications()
-        // {
-        //     return Ok();
-        // }
+        [HttpGet("applications")]
+        public async Task<IActionResult> GetDriverApplications()
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                return Unauthorized("User not found.");
+            }
 
-        // [HttpPost("applications/{id}/process")]
-        // public async Task<IActionResult> DriverApplicationProcess(string id)
-        // {
-        //     return Ok();
-        // }
+            // Get sponsor's ID
+            var sponsor = await _context.Sponsors.FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+            if (sponsor == null)
+            {
+                Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
+                return NotFound("Sponsor information not found.");
+            }
 
+            // Get all applications for the sponsor, regardless of status
+            var applications = await _context.DriverApplications
+                .Where(app => app.SponsorID == sponsor.SponsorID)
+                .Select(app => new
+                {
+                    app.ApplicationID,
+                    app.UserID,
+                    app.ApplyDate,
+                    app.Status,
+                    app.Reason
+                })
+                .ToListAsync();
+
+            Log.Information("Found {Count} applications for sponsor", applications.Count);
+            if (!applications.Any())
+            {
+                return NotFound("No applications found.");
+            }
+
+            return Ok(applications);
+        }
+
+        [HttpPost("applications/{applicationID}/process")]
+        public async Task<IActionResult> ProcessApplication(int applicationID, [FromQuery] string action)
+        {
+            var application = await _context.DriverApplications.FindAsync(applicationID);
+            if (application == null)
+            {
+                return NotFound("Application not found.");
+            }
+
+            if (action == "approve")
+            {
+                application.Status = AppStatus.Approved;
+                application.ProcessedDate = DateOnly.FromDateTime(DateTime.Now);
+            }
+            else if (action == "reject")
+            {
+                application.Status = AppStatus.Rejected;
+                application.ProcessedDate = DateOnly.FromDateTime(DateTime.Now);
+            }
+            else
+            {
+                return BadRequest("Invalid action specified. Use 'approve' or 'reject'.");
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok($"Application {action}ed successfully.");
+        }
         // [HttpGet("reports")] //Same here as Admin reports...split into smaller async tasks
         // public async Task<IActionResult> GetReports()
         // {
