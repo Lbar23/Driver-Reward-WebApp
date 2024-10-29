@@ -163,7 +163,7 @@ namespace Backend_Server.Controllers
         [HttpGet("system-stat-logs")] //Sprint 9, utilize a terminal console UI React component... :)
 
 
-
+        [AllowAnonymous]
         [HttpGet("about")]
         public async Task<IActionResult> GetAbout()
         {

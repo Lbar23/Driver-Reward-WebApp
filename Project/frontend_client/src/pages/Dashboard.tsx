@@ -58,23 +58,41 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
   const [userData, setUserData] = React.useState<UserData | null>(null);
   const [userRole, setUserRole] = React.useState<string>('Guest');
 
+
+  //Constantly fetched data, even if on a different page from dashboard...mounted check to essentially "clean up" fetches
   React.useEffect(() => {
-    console.log("Component mounted, starting data fetch...");
-      const fetchData = async () => {
-        try {
-          console.log("Fetching user data from API...");
-          const userResponse = await axios.get(`/api/User/currentuser`, { timeout: 8000 });
+    let isMounted = true;
+
+    const fetchData = async () => {
+      try {
+        console.log("Fetching user data from API...");
+        const userResponse = await axios.get('/api/user/currentuser', {
+          withCredentials: true 
+        });
+
+        if (isMounted) {
           console.log("User data fetched:", userResponse.data);
           setUserData(userResponse.data);
           setLoading(false);
-        } 
-        catch (err: any) {
+        }
+      } 
+      catch (err: any) {
+        if (isMounted) {
           console.error("Error fetching user data:", err);
-          setError(err.response?.status === 401 ? 'You are not logged in.' : 'Failed to load dashboard data.');
+          if (err.name !== 'CanceledError') {
+            setError(err.response?.status === 401 ? 'You are not logged in.' : 'Failed to load dashboard data.');
+          }
           setLoading(false);
         }
-      };      
-      fetchData();
+      }
+    };      
+
+    fetchData();
+
+    //Cleanup function; fetches data back only when redirected to page instead of constantly reloading to/from dashboard
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // const handleRoleChange = (event: React.ChangeEvent<{ value: unknown }>) => {

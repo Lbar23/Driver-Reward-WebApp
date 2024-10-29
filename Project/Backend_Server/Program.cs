@@ -10,6 +10,7 @@ using Amazon;
 using Amazon.SecretsManager;
 using Amazon.Extensions.NETCore.Setup;
 using Serilog;
+using Amazon.S3;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,10 +30,11 @@ try {
     };
 
     builder.Services.AddAWSService<IAmazonSecretsManager>(awsOptions);
+    builder.Services.AddAWSService<IAmazonS3>(awsOptions);
 
     builder.Services.AddHttpClient();
 
-    builder.Services.AddSingleton<CatalogService>();
+    //builder.Services.AddSingleton<CatalogService>();
     builder.Services.AddScoped<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
 
@@ -103,7 +105,7 @@ try {
     });
 
     // Automated Backup Service
-    // builder.Services.AddHostedService<BackupService>();
+    builder.Services.AddHostedService<BackupService>();
 
     // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");

@@ -27,7 +27,7 @@ const HomePage: React.FC = () => {
           onClick={() => navigate('/register')}
           sx={{ mr: 2 }}
         >
-          Apply as Driver
+          Sign Up
         </Button>
         <Button 
           variant="outlined" 

@@ -16,10 +16,11 @@ const About: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
+    //Add another clean check here...
     useEffect(() => {
         const fetchAboutInfo = async () => {
             try {
-                const response = await axios.get('/api/admin/about');
+                const response = await axios.get('/api/admin/about', { withCredentials: true});
                 console.log('API Response:', response.data); 
                 setAboutInfo(response.data);
             } catch (error: any) {
