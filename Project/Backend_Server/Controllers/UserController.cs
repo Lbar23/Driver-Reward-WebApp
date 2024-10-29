@@ -292,6 +292,9 @@ namespace Backend_Server.Controllers
             // Generate reset token
             var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
             var result = await _userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
+            Log.Information("Token generated.");
+
+            Log.Information("Waiting on Notification System...");
 
             if (!result.Succeeded)
             {

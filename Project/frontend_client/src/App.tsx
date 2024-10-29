@@ -16,6 +16,8 @@ import PasswordChangeForm from './pages/PasswordChangeForm';
 import DriverPointsList from './components/dashboard/PMSDriverList';
 import DriverPointsHistory from './components/dashboard/DriverPointHistory';
 import DriverActivity from './components/dashboard/DriverActivity';
+import SponsorDrivers from './components/dashboard/SponsorDriverList';
+import SponsorRegistrationPage from './components/dashboard/SponsorRegistrationForDriver';
 
 const App = () => {
     return (
@@ -35,6 +37,8 @@ const App = () => {
                     <Route path="/change-password" element={<PasswordChangeForm/>} /> {/* This is just here when profile pages are well and done */}
                     <Route path="/driver-points" element={<DriverPointsList />} /> {/* Again; remove once dashboard has this and database has some test data; just kind of here as a test that it loads */}
                     <Route path="/driver-activity" element={<DriverActivity />} /> {/* Same thing as above; make this end */}
+                    <Route path="/sponsor-driver-test" element={<SponsorDrivers />} />
+                    <Route path="/sponsor-reg-test" element={<SponsorRegistrationPage/>} />
                     {/* Stub for auth rework, this will be logged in driver and taken out of main*/}
                     <Route path="/points-history/:driverId" element={<DriverPointsHistory />} />
                     <Route path="/" element={<Navigate to="/home" replace />} />
