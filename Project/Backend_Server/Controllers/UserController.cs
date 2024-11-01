@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Backend_Server.Models;
 using Microsoft.AspNetCore.Authorization;
 using Backend_Server.Services;
+using Serilog;
 
 namespace Backend_Server.Controllers
 {
@@ -22,6 +23,7 @@ namespace Backend_Server.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserRegisterDto userDto)
         {
+            // do later lmao if (isAdminDomain) user's email == web app default admin domain; UserType = UserType.Admin.ToString()
             var user = new Users
             {
                 UserName = userDto.Username,
@@ -41,6 +43,7 @@ namespace Backend_Server.Controllers
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, user.UserType);
+                Log.Information("UserID: {UserID}, Category: User, Description: User registered correctly! {Username}, {Id}",user.Id, user.UserName, user.Id);
 
                 // Optionally, if 2FA is enabled, send the first 2FA code
                 if (userDto.Enable2FA)
@@ -54,7 +57,7 @@ namespace Backend_Server.Controllers
 
                 return Ok(new { message = "User registered successfully", userId = user.Id, requiresTwoFactor = user.TwoFactorEnabled });
                 }
-
+                Log.Error("UserID: N/A, Category: User, Description: User registration failed");
                 return BadRequest(result.Errors);
             }
 
@@ -62,6 +65,7 @@ namespace Backend_Server.Controllers
             {
                 // Get the security stamp used in token generation
                 var securityStamp = await _userManager.GetSecurityStampAsync(user);
+
                 Console.WriteLine($"Security Stamp: {securityStamp}");
 
                 // Log the user's notification preference (provider)
@@ -148,6 +152,7 @@ namespace Backend_Server.Controllers
                     var send2FaResult = await Send2FA(user);
                     if (!send2FaResult)
                     {
+                        Log.Error("UserID: {UserID}, Category: System, Description: Failed to send 2FA code to {User}",user.Id, user.UserName);
                         return StatusCode(500, new { succeeded = false, message = "Failed to send 2FA code. Please try again later." });
                     }
 
@@ -159,27 +164,43 @@ namespace Backend_Server.Controllers
                 user.LastLogin = DateTime.UtcNow;
                 await _userManager.UpdateAsync(user);
 
-                return Ok(new { succeeded = true, userId = user.Id, role = user.UserType });
+                Log.Information("UserID: {UserID}, Category: User, Description: User {User} logged in successfully", user.Id, user.UserName);
+                return Ok(new { message = "Login successful", userId = user.Id, role = user.UserType, succeeded = true });
             }
 
-            // Failed login attempt
+            Log.Error("UserID: {UserID}, Category: User, Description: Login Failed for {UserName}",user?.Id, user?.UserName);
             return Unauthorized(new { succeeded = false, message = "Invalid username or password" });
         }
 
 
-
-        [HttpGet("test-db-connection")]
-        public async Task<IActionResult> TestDbConnection()
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
         {
-            try
+
+            //Get the user before signing out
+            var user = await _userManager.GetUserAsync(User);
+
+            //Identity manager signs out user
+            await _signInManager.SignOutAsync();
+
+            //Deletes all cookies first
+            foreach (var cookie in Request.Cookies.Keys)
             {
-                var userCount = await _userManager.Users.CountAsync();
-                return Ok($"Connection successful. User count: {userCount}");
+                Response.Cookies.Delete(cookie);
             }
-            catch (Exception ex)
+
+            if (user != null)
             {
-                return StatusCode(500, $"Database connection failed: {ex.Message}");
+                Log.Information("UserID: {UserID}, Category: User, Description: {Username} of type {User} has successfully logged out", user?.Id, user?.UserName, user?.UserType.ToString());
+                await _context.SaveChangesAsync();
             }
+            else
+            {
+                Log.Error("UserID: {UserID}, Category: User, Description: {Username} of type {User} has failed to log out correctly", user?.Id, user?.UserName, user?.UserType.ToString());
+                return StatusCode(500, "Failed to log out user");
+            }
+            
+            return Ok(new { message = "Logged out successfully", succeeded = true});
         }
 
         // [Authorize] // has to be protected
@@ -239,6 +260,7 @@ namespace Backend_Server.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
+                Log.Error("UserID: N/A, Category: User, Description: There is no user with username, please try again");
                 return NotFound("User not found, Please try again.");
             }
 
@@ -248,10 +270,12 @@ namespace Backend_Server.Controllers
 
             if (!result.Succeeded)
             {
+                Log.Error("UserID: {UserID}, Category: User, Description: Password changed failed for {User}",user.Id, user.UserName);
                 return BadRequest(result.Errors.Select(e => e.Description));
             }
             //Ugh, in Sprint 9 of project, do manual logging for better logging levels; as of now, basic http requests auto logging
             //for EVERY return, wooooooooooooooooo
+            Log.Information("UserID: {UserID}, Category: User, Description: Password changed successfully for {User}",user.Id, user.UserName);
             return Ok(new { message = "Password changed successfully." });
         }
 
@@ -273,81 +297,10 @@ namespace Backend_Server.Controllers
             {
                 return BadRequest(result.Errors.Select(e => e.Description));
             }
-
+            Log.Information("UserID: {UserID}, Category: User, Description: Password for {User} has been reset successfully", user.Id, user.UserName);
             return Ok(new { message = "Password reset successfully." });
         }
 
-        //uh, this is two stories combined, really
-        //Since transactions and purchases are one, and really, getting the default value doesn't need a separate method
-        //we ball with dis
-        [HttpGet("activity")]
-        public async Task<IActionResult> GetDriverActivity()
-        {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-                return Unauthorized("User not found.");
-
-            var driver = await _context.Drivers
-                .FirstOrDefaultAsync(d => d.UserID == user.Id);
-            var sponsors = await _context.Sponsors.FirstOrDefaultAsync(s => s.UserID == user.Id);
-
-            if (driver == null)
-                return NotFound("Driver not found.");
-
-            // Poit transations
-            var pointTransactions = await _context.PointTransactions
-                .Where(t => t.UserID == driver.UserID)
-                .OrderByDescending(t => t.TransactionDate)
-                .Select(t => new TransactionDto
-                {
-                    Date = t.TransactionDate,
-                    Points = t.PointsChanged,
-                    Type = "Point Change",
-                    Reason = t.Reason,
-                    SponsorName = sponsors!.CompanyName
-                })
-                .ToListAsync();
-
-            // Purchases
-            var purchases = await _context.Purchases
-                .Where(p => p.UserID == driver.UserID)
-                .OrderByDescending(p => p.PurchaseDate)
-                .Select(p => new TransactionDto
-                {
-                    Date = p.PurchaseDate,
-                    Points = -p.PointsSpent, // negative points be like (spent)
-                    Type = "Purchase",
-                    Reason = $"Purchased {p.Product.Name}",
-                    Status = p.Status.ToString()
-                })
-                .ToListAsync();
-
-            // Sorting transactions
-            var allTransactions = pointTransactions.Concat(purchases)
-                .OrderByDescending(t => t.Date)
-                .ToList();
-
-            // Le Sponsor point value
-            var pointValue = new PointValueDto
-            {
-                TotalPoints = driver.TotalPoints,
-                PointValue = 0.01M, // Standalone default vaule; change based on project requirements/bare minimum
-                SponsorName = sponsors!.CompanyName
-            };
-
-            return Ok(new
-            {
-                PointValue = pointValue,
-                Transactions = allTransactions
-            });
-        }
-
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            await _signInManager.SignOutAsync();
-            return Ok(new { success = true, message = "Logged out successfully" });
-        }
 
         [HttpGet("all")]
         public async Task<IActionResult> GetAllUsers()
@@ -359,7 +312,7 @@ namespace Backend_Server.Controllers
                 UserType = u.UserType,
                 LastLogin = u.LastLogin
             }).ToListAsync();
-
+            Log.Information("UserID: N/A, Category: User, Description: Retrieved all users");
             return Ok(users);
         }
 
@@ -377,7 +330,7 @@ namespace Backend_Server.Controllers
             user.UserType = dto.NewUserType;
             await _userManager.AddToRoleAsync(user, dto.NewUserType);
             await _userManager.UpdateAsync(user);
-
+            Log.Information("UserID: {UserID}, Category: User, Description: Successfully changed the role of {user}", user.Id, user.UserName);
             return Ok(new { success = true, message = "User type updated successfully." });
         }
 
@@ -449,24 +402,6 @@ namespace Backend_Server.Controllers
     {
         public required string CurrentPassword { get; set; }
         public required string NewPassword { get; set; }
-    }
-
-    public record TransactionDto
-    {
-        public DateTime Date { get; init; }
-        public int Points { get; init; }
-        public required string Type { get; init; }
-        public required string Reason { get; init; }
-        public string? SponsorName { get; init; }
-        public string? Status { get; init; }
-    }
-
-    public record PointValueDto
-    {
-        public int TotalPoints { get; init; }
-        public decimal PointValue { get; init; }
-        public required string SponsorName { get; init; }
-        public decimal TotalValue => TotalPoints * PointValue;
     }
 
     public class ChangeUserTypeDto

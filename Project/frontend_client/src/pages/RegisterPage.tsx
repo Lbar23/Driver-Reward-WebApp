@@ -55,11 +55,16 @@ const RegisterPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post(`/api/user/register`, {
+      const response = await axios.post('/api/user/register', {
         username,
         email,
         password,
         enable2FA // Send the 2FA preference during registration
+      });
+
+      const loginResponse = await axios.post('/api/user/login', {
+        username,
+        password
       });
 
       if (response.data.requiresTwoFactor) {

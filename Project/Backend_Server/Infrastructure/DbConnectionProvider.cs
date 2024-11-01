@@ -68,6 +68,7 @@ namespace Backend_Server.Infrastructure
 
         private async Task SetupSshTunnel(Dictionary<string, JsonElement> dbSecrets, Dictionary<string, string> sshSecrets)
         {
+            Dispose();
             _tempKeyPath = await CreateTempSshKey(sshSecrets["keypath"]);
             _sshClient = new SshClient(sshSecrets["host"], sshSecrets["username"], new PrivateKeyFile(_tempKeyPath));
             _sshClient.Connect();

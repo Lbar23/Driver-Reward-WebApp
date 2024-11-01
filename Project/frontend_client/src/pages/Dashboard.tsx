@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
+import { alpha } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import AppNavbar from '../components/layout/AppNavbar';
+import Header from '../components/layout/Header';
+import MainGrid from '../components/dashboard/MainGrid';
+import SideMenu from '../components/layout/SideMenu';
+import AppTheme from '../components/layout/AppTheme';
+import Section from '../components/form-elements/Section';
+import OverviewItem from '../components/layout/OverviewItem';
+import { Typography, Alert, CircularProgress } from '@mui/material';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
-import {
-  Typography,
-  Box,
-  Alert,
-  AccessibleSelect,
-  LoadingSpinner,
-  Section,
-  OverviewItem
-} from '../components/MuiComponents';
 import type { SelectChangeEvent } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,297 +27,112 @@ interface UserData {
   permissions: string[];
 }
 
-const Dashboard: React.FC = () => {
-  const [loading, setLoading] = useState<boolean>(true);
-  const [data, setData] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [userRole, setUserRole] = useState<string>('Guest');
-  const [announcement, setAnnouncement] = useState<string>('');
-  const navigate = useNavigate();
+export default function Dashboard(props: { disableCustomTheme?: boolean }) {
+  console.log("Dashboard component has started rendering");
 
-  // Manage focus when loading state changes
-  useEffect(() => {
-    if (!loading) {
-      const mainContent = document.getElementById('main-content');
-      if (mainContent) {
-        mainContent.focus();
-      }
-    }
-  }, [loading]);
+  const [loading, setLoading] = React.useState<boolean>(true);
+  const [data, setData] = React.useState<any[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
+  const [userData, setUserData] = React.useState<UserData | null>(null);
+  const [userRole, setUserRole] = React.useState<string>('Guest');
 
-  useEffect(() => {
+  React.useEffect(() => {
+    let isMounted = true;
+
     const fetchData = async () => {
       try {
-        const userResponse = await axios.get(`/api/User/currentuser`);
-        setUserData(userResponse.data);
-        // Announce when data is loaded
-        setAnnouncement('Dashboard data has been loaded');
-        setLoading(false);
-      } catch (err: any) {
-        const errorMessage = err.response?.status === 401 
-          ? 'You are not logged in.' 
-          : 'Failed to load dashboard data.';
-        setError(errorMessage);
-        setAnnouncement(`Error: ${errorMessage}`);
-        setLoading(false);
+        console.log("Fetching user data from API...");
+        const userResponse = await axios.get('/api/user/currentuser', {
+          withCredentials: true 
+        });
+
+        if (isMounted) {
+          console.log("User data fetched:", userResponse.data);
+          setUserData(userResponse.data);
+          setLoading(false);
+        }
+      } 
+      catch (err: any) {
+        if (isMounted) {
+          console.error("Error fetching user data:", err);
+          if (err.name !== 'CanceledError') {
+            setError(err.response?.status === 401 ? 'You are not logged in.' : 'Failed to load dashboard data.');
+          }
+          setLoading(false);
+        }
       }
-    };
+    };      
+
     fetchData();
 
-    // Cleanup function
     return () => {
-      setAnnouncement('');
+      isMounted = false;
     };
   }, []);
 
-  const handleRoleChange = (event: SelectChangeEvent<string>) => {
-    const newRole = event.target.value as string;
-    setUserRole(newRole);
-    // Announce role change
-    setAnnouncement(`Dashboard view changed to ${newRole} role`);
-  };
+  const renderGeneralSection = React.useCallback(() => {
+    console.log("Rendering general section");
+    return (
+      <Section
+        title="General Settings"
+        buttons={[
+          { label: 'Change My Password', path: '/change-password' },
+          { label: 'Update Profile', path: '/update-profile' },
+          { label: 'View Profile', path: '/profile' },
+          { label: 'Change Settings', path: '/settings' },
+        ]}
+      />
+    );
+  }, []); 
 
-  const roleOptions = [
-    { value: 'Guest', label: 'Guest User' },
-    { value: 'Driver', label: 'Driver Account' },
-    { value: 'Sponsor', label: 'Sponsor Account' },
-    { value: 'Admin', label: 'Administrator' }
-  ];
-
-  const handleKeyboardNavigation = (event: React.KeyboardEvent, path: string) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      navigate(path);
-    }
-  };
-
-  const renderGeneralSection = () => (
-    <Section
-      title="General Settings"
-      buttons={[
-        { label: 'Change My Password', path: '/change-password' },
-        { label: 'Update Profile', path: '/update-profile' },
-        { label: 'View Profile', path: '/profile' },
-        { label: 'Change Settings', path: '/settings' },
-      ]}
-      description="Manage your account settings and preferences"
-      ariaLabel="General account settings section"
-    />
-  );
-
-  const renderRoleSpecificSections = () => {
-    const sections = [];
-    
-    if (userRole === 'Guest') {
-      sections.push(
-        <Section 
-          key="guest" 
-          title="Applicant Options" 
-          buttons={[{ label: 'Apply for Driver Program', path: '/apply' }]}
-          description="Start your application process for the driver program"
-          ariaLabel="Guest user application options"
-        />
-      );
-    }
-    
-    if (userRole === 'Driver') {
-      sections.push(
-        <Section
-          key="driver"
-          title="Driver Settings"
-          buttons={[
-            { label: 'View Points History', path: '/points-history:12' },
-            { label: 'Manage My Orders', path: '/orders' },
-          ]}
-          description="Access your driver account features and history"
-          ariaLabel="Driver account settings and features"
-        />
-      );
-    }
-    
-    if (userRole === 'Sponsor') {
-      sections.push(
-        <Section
-          key="sponsor"
-          title="Sponsor Settings"
-          buttons={[
-            { label: 'Manage Sponsor Company', path: '/manage-sponsor' },
-            { label: 'Driver Activity', path: '/driver-activity' },
-            { label: 'Manage Incentives', path: '/incentives' },
-            { label: 'Generate Custom Reports', path: '/reports' },
-          ]}
-          description="Manage your sponsor account and view driver activities"
-          ariaLabel="Sponsor management options"
-        />
-      );
-    }
-    
-    if (userRole === 'Admin') {
-      sections.push(
-        <Section
-          key="admin"
-          title="Admin Controls"
-          buttons={[
-            { label: 'Manage Users', path: '/manage-users' },
-            { label: 'View System Logs', path: '/logs' },
-          ]}
-          color="secondary"
-          description="Access administrative controls and system management"
-          ariaLabel="Administrative controls section"
-        />
-      );
-    }
-    return sections;
-  };
+  console.log("Rendering Dashboard component, loading:", loading);
 
   return (
-    <main>
-      {/* Live region for announcements */}
-      <div 
-        aria-live="polite" 
-        aria-atomic="true" 
-        className="sr-only"
-        style={{ position: 'absolute', height: 1, width: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}
-      >
-        {announcement}
-      </div>
-
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          maxWidth: 800,
-          margin: 'auto',
-          padding: 4,
-          boxShadow: 3,
-          borderRadius: 2,
-          backgroundColor: 'background.paper',
-        }}
-      >
+    <AppTheme disableCustomTheme={props.disableCustomTheme}>
+      <CssBaseline enableColorScheme />
+      {/* Add role and aria-label */}
+      <SideMenu />
+      <Box 
+        sx={{ display: 'flex-start', ml: '80px', width: '100%' }}
+        role="main"
+        aria-label="Dashboard content">
+        <AppNavbar padding={240} />
         <Box
-          component="header"
-          sx={{
+          component="main"
+          sx={(theme) => ({
+            flexGrow: 1,
             display: 'flex',
-            justifyContent: 'space-between',
-            width: '100%',
-            alignItems: 'center',
-            mb: 3,
-          }}
+            backgroundColor: alpha(theme.palette.background.default, 1),
+            // Ensure sufficient color contrast ratio (4.5:1 minimum)
+            color: theme.palette.text.primary,
+          })}
+          tabIndex={0} // Make the main content area focusable
         >
-          <Typography 
-            variant="h1" 
-            sx={{ 
-              fontSize: 'h4.fontSize',
-              color: 'text.primary',
-              fontWeight: 'bold',
-            }}
-          >
-            Dashboard
-          </Typography>
-
-          <AccessibleSelect
-            id="role-selector"
-            label="View as Role"
-            value={userRole}
-            onChange={handleRoleChange}
-            options={roleOptions}
-            helpText="Change the dashboard view based on user role"
-          />
-        </Box>
-
-        {loading ? (
-          <LoadingSpinner />
-        ) : error ? (
-          <Alert 
-            severity="error" 
-            role="alert"
+          <Stack
+            spacing={1}
             sx={{
-              width: '100%',
-              '& .MuiAlert-message': {
-                color: '#5f2120', // Ensuring sufficient contrast
-              }
+              alignItems: 'flex-start',
+              width: '100%'
             }}
-          >
-            {error}
-          </Alert>
-        ) : !userData ? (
-          <Alert 
-            severity="warning" 
-            sx={{ 
-              mt: 4,
-              width: '100%',
-              '& .MuiAlert-message': {
-                color: '#663c00', // Ensuring sufficient contrast
-              }
-            }} 
-            role="alert"
-          >
-            <span>You are not logged in. Please </span>
-            <a 
-              href="/login"
-              style={{ 
-                color: '#2b4bd3',
-                textDecoration: 'underline',
-                fontWeight: 'bold'
-              }}
-              onKeyDown={(e) => handleKeyboardNavigation(e, '/login')}
-            >
-              log in
-            </a>
-            <span> to access your dashboard.</span>
-          </Alert>
-        ) : (
-          <Box 
-            sx={{ width: '100%', mt: 2 }} 
-            component="section" 
-            aria-label="Dashboard content"
-            id="main-content"
-            tabIndex={-1}
-          >
-            <Typography 
-              variant="h2" 
-              sx={{ 
-                fontSize: 'h6.fontSize',
-                color: 'text.primary',
-                mb: 2
-              }}
-            >
-              Overview
-            </Typography>
-
-            {data.length > 0 ? (
-              <div role="feed" aria-label="Dashboard overview items">
-                {data.map((item, index) => (
-                  <OverviewItem 
-                    key={index} 
-                    title={item.title} 
-                    value={item.value}
-                  />
-                ))}
-              </div>
+            role="region"
+            aria-label="Dashboard content">
+            {loading ? (
+              <CircularProgress aria-label="Loading dashboard content" />
+            ) : error ? (
+              <Alert severity="error" role="alert">{error}</Alert>
+            ) : !userData ? (
+              <Alert severity="warning" role="alert">
+                You are not logged in. Please <Link to="/login" aria-label="Log in to access dashboard">log in</Link> to access your dashboard.
+              </Alert>
             ) : (
-              <Typography 
-                role="status"
-                sx={{
-                  color: 'text.secondary',
-                  fontSize: '1rem',
-                  textAlign: 'center',
-                  py: 2
-                }}
-              >
-                No dashboard data available
-              </Typography>
+              <>
+                <Header />
+                <MainGrid />
+              </>
             )}
-
-            {renderGeneralSection()}
-            {renderRoleSpecificSections()}
-          </Box>
-        )}
+          </Stack>
+        </Box>
       </Box>
-    </main>
+    </AppTheme>
   );
-};
-
-export default Dashboard;
+}
