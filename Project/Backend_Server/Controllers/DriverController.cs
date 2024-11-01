@@ -13,7 +13,7 @@ namespace Backend_Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class DriverController(UserManager<Users> userManager, SignInManager<Users> signInManager, AppDBContext context) : ControllerBase
+    public class DriverController(UserManager<Users> userManager, AppDBContext context) : ControllerBase
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly AppDBContext _context = context;
@@ -104,47 +104,151 @@ namespace Backend_Server.Controllers
             });
         }
 
-        [HttpGet("points")]
-        public async Task<IActionResult> GetDriverPoints()
+        [HttpGet("available-sponsors")]
+        public async Task<IActionResult> GetAvailableSponsors()
         {
-            return Ok();
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                Log.Warning("No user found.");
+                return Unauthorized("User not found.");
+            }
+
+            try
+            {
+                Log.Information("Current user ID: {UserId}", user.Id);
+
+                // All Sponsors Driver is Reg'd with
+                var currentSponsorIds = await _context.Drivers
+                    .Where(d => d.UserID == user.Id)
+                    .Select(d => d.SponsorID)
+                    .ToListAsync();
+
+                Log.Information("Current sponsor IDs: {SponsorIds}", string.Join(", ", currentSponsorIds));
+
+                // Sponsors user isn't Reg'd with; This is the part that shows
+                var availableSponsors = await _context.Sponsors
+                    .Where(s => !currentSponsorIds.Contains(s.SponsorID))
+                    .Select(s => new SponsorDto
+                    {
+                        SponsorID = s.SponsorID,
+                        CompanyName = s.CompanyName,
+                        PointDollarValue = s.PointDollarValue
+                    })
+                    .ToListAsync();
+
+                Log.Information("Found {Count} available sponsors", availableSponsors.Count);
+                foreach (var sponsor in availableSponsors)
+                {
+                    Log.Information("Sponsor: ID={ID}, Name={Name}, Value={Value}", sponsor.SponsorID, sponsor.CompanyName, sponsor.PointDollarValue);
+                }
+
+                return Ok(availableSponsors);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting available sponsors");
+                return StatusCode(500, "An error occurred while fetching sponsors.");
+            }
         }
 
-        [HttpGet("purchases")]
-        public async Task<IActionResult> GetDriverPurchases()
+        [HttpPost("register-sponsors")]
+        public async Task<IActionResult> RegisterWithSponsors([FromBody] List<int> sponsorIds)
         {
-            return Ok();
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                Log.Warning("No user found.");
+                return Unauthorized("User not found.");
+            }
+
+            try
+            {
+                foreach (var sponsorId in sponsorIds)
+                {
+                    // Check if sponsor exists
+                    var sponsorExists = await _context.Sponsors
+                        .AnyAsync(s => s.SponsorID == sponsorId);
+
+                    if (!sponsorExists)
+                    {
+                        return BadRequest($"Sponsor with ID {sponsorId} not found.");
+                    }
+
+                    // Check if already registered
+                    var alreadyRegistered = await _context.Drivers
+                        .AnyAsync(d => d.UserID == user.Id && d.SponsorID == sponsorId);
+
+                    if (!alreadyRegistered)
+                    {
+                        var newDriverSponsor = new Drivers
+                        {
+                            UserID = user.Id,
+                            SponsorID = sponsorId,
+                            TotalPoints = 0  // Initial points
+                        };
+                        _context.Drivers.Add(newDriverSponsor);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok("Successfully registered with selected sponsors.");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error registering driver with sponsors");
+                return StatusCode(500, "An error occurred while registering with sponsors.");
+            }
         }
 
-        [HttpGet("transactions")]
-        public async Task<IActionResult> GetDriverTransactions()
-        {
-            return Ok();
-        }
+        // [HttpGet("points")]
+        // public async Task<IActionResult> GetDriverPoints()
+        // {
+        //     return Ok();
+        // }
 
-        [HttpGet("purchase")]
-        public async Task<IActionResult> GetDriverPurchase(int id)
-        {
-            return Ok();
-        }
+        // [HttpGet("purchases")]
+        // public async Task<IActionResult> GetDriverPurchases()
+        // {
+        //     return Ok();
+        // }
 
-        [HttpPut("purchase/{id}")]
-        public async Task<IActionResult> CancelPurchase(int id)
-        {
-            return Ok();
-        }
+        // [HttpGet("transactions")]
+        // public async Task<IActionResult> GetDriverTransactions()
+        // {
+        //     return Ok();
+        // }
 
-        [HttpGet("sponsor/{id}")]
-        public async Task<IActionResult> GetSponsor(int id)
-        {
-            return Ok();
-        }
+        // [HttpGet("purchase")]
+        // public async Task<IActionResult> GetDriverPurchase(int id)
+        // {
+        //     return Ok();
+        // }
 
-        [HttpGet("profile")]
-        public async Task<IActionResult> GetDriverProfile()
-        {
-            return Ok();
-        }
+        // [HttpPut("purchase/{id}")]
+        // public async Task<IActionResult> CancelPurchase(int id)
+        // {
+        //     return Ok();
+        // }
+
+        // [HttpGet("sponsor/{id}")]
+        // public async Task<IActionResult> GetSponsor(int id)
+        // {
+        //     return Ok();
+        // }
+
+        // [HttpGet("profile")]
+        // public async Task<IActionResult> GetDriverProfile()
+        // {
+        //     return Ok();
+        // }
+    }
+
+    public record SponsorDto //mainly here so Drivers can switch between different sponsors
+    {
+        public int SponsorID { get; init; }
+        public required string CompanyName { get; init; }
+        public decimal PointDollarValue { get; init; }
     }
 
     public record PointValueDto
