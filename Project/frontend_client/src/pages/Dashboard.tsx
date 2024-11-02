@@ -25,29 +25,6 @@ interface UserData {
   roles: string[];
   permissions: string[];
 }
-// {loading ? (
-//   <CircularProgress />
-// ) : error ? (
-//   <Alert severity="error">{error}</Alert>
-// ) : !userData ? (
-//   <Alert severity="warning">
-//     You are not logged in. Please <Link to="/login">log in</Link> to access your dashboard.
-//   </Alert>
-// ) : (
-//   <Box sx={{ width: '100%'}}>
-
-//     {/* {data.length ? (
-//       data.map((item, index) => (
-//         <OverviewItem key={index} title={item.title} value={item.value} />
-//       ))
-//     ) : (
-//       <Typography>No data available</Typography>
-//     )} */}
-
-//     {/* {renderGeneralSection()} */}
-//     {/* {renderRoleSpecificSections()} */}
-//   </Box>
-// )}
 
 export default function Dashboard(props: { disableCustomTheme?: boolean }) {
   console.log("Dashboard component has started rendering");
@@ -94,44 +71,6 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
       isMounted = false;
     };
   }, []);
-
-  // const handleRoleChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-  //   const newRole = event.target.value as string;
-  //   console.log("Role changed to:", newRole);
-  //   setUserRole(newRole);
-  // };
-
-  const renderGeneralSection = React.useCallback(() => {
-    console.log("Rendering general section");
-    return (
-      <Section
-        title="General Settings"
-        buttons={[
-          { label: 'Change My Password', path: '/change-password' },
-          { label: 'Update Profile', path: '/update-profile' },
-          { label: 'View Profile', path: '/profile' },
-          { label: 'Change Settings', path: '/settings' },
-        ]}
-      />
-    );
-  }, []); 
-
-  // const renderRoleSpecificSections = () => {
-  //   console.log("Rendering role-specific sections for role:", userRole);
-  //   const sections = [];
-  //   if (userRole === 'Driver') {
-  //     sections.push(
-  //       <Section
-  //         key="driver"
-  //         title="Driver Settings"
-  //         buttons={[
-  //           { label: 'View Points History', path: '/points-history:3'},
-  //         ]}
-  //       />
-  //     );
-  //   }
-  //   return sections;
-  // };
 
   console.log("Rendering Dashboard component, loading:", loading);
 
