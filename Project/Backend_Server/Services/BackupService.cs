@@ -25,6 +25,8 @@ namespace Backend_Server.Services
         private readonly IConfiguration _configuration;
         private readonly IAmazonSecretsManager _amazonSecrets;
         private readonly IAmazonS3 _s3Client;
+        private readonly IServiceScopeFactory _scopeFactory;
+
         private readonly string _backupPath;
         private readonly string _bucketName;
         private const int BACKUP_RETENTION_DAYS = 7;
@@ -32,11 +34,14 @@ namespace Backend_Server.Services
         public BackupService(
             IConfiguration configuration, 
             IAmazonSecretsManager amazonSecrets,
-            IAmazonS3 s3Client)
+            IAmazonS3 s3Client,
+            IServiceScopeFactory scopeFactory)
         {
             _configuration = configuration;
             _amazonSecrets = amazonSecrets;
             _s3Client = s3Client;
+            _scopeFactory = scopeFactory;
+            
             _backupPath = "var/backups/database";
             _bucketName = _configuration["AWS:BackupBucketName"] ?? "team16-db-backups";
         }
@@ -74,14 +79,16 @@ namespace Backend_Server.Services
         {
             string backupFile = Path.Combine(_backupPath, $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.sql");
 
-            using var connectionProvider = new DbConnectionProvider(_configuration, _amazonSecrets);
-            using var connection = await connectionProvider.GetDbConnectionAsync();
-            using var cmd = new MySqlCommand { Connection = connection };
-            using var mb = new MySqlBackup(cmd);
-            
-            await connection.OpenAsync();
-            mb.ExportToFile(backupFile);
+            // added scoping here to stop duplicated db
+            using (var scope = _scopeFactory.CreateScope()){
+                var connectionProvider = scope.ServiceProvider.GetRequiredService<DbConnectionProvider>();
+                using var connection = await connectionProvider.GetDbConnectionAsync();
+                using var cmd = new MySqlCommand { Connection = connection };
+                using var mb = new MySqlBackup(cmd);
+                await connection.OpenAsync();
+                mb.ExportToFile(backupFile);
 
+            }
             return backupFile;
         }
 
