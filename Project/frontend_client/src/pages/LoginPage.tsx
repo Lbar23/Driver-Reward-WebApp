@@ -85,6 +85,10 @@ const LoginPage: React.FC = () => {
     navigate('/dashboard');
   }
 
+  const formAriaLabel = step === 'login' 
+  ? 'Login Form' 
+  : 'Two-Factor Authentication Form';
+
   return (
     <Box
       component="form"
@@ -100,12 +104,15 @@ const LoginPage: React.FC = () => {
         borderRadius: 2,
         backgroundColor: 'background.paper',
       }}
+      role = "form"
+      aria-label={formAriaLabel}
     >
-      <Typography variant="h4" component="h1" gutterBottom>
+      <Typography variant="h1"
+      sx={{fontSize: 'h4.fontSize', mb: 2, color: 'text.primary'}}>
         {step === 'login' ? 'Login' : '2FA Verification'}
       </Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }} role="alert" aria-live="assertive">{error}</Alert>}
 
       {step === 'login' ? (
         <>
@@ -118,6 +125,8 @@ const LoginPage: React.FC = () => {
             value={username}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
             required
+            inputProps={{ 'aria-label': 'Username', 'aria-required': 'true'}}
+            helperText="Enter your username"
           />
           <TextField
             label="Password"
@@ -129,6 +138,8 @@ const LoginPage: React.FC = () => {
             value={password}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
             required
+            inputProps={{'aria-label': 'Password', 'aria-required': 'true'}}
+            helperText="Enter your password"
           />
         </>
       ) : (
@@ -140,6 +151,8 @@ const LoginPage: React.FC = () => {
           value={twoFactorCode}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setTwoFactorCode(e.target.value)}
           required
+          inputProps={{'aria-label': 'Password', 'aria-required': 'true', maxLength: 6, inputMode: 'numeric', pattern: '[0-9]*'}}
+          helperText="Enter the 6-digit code from your authenticator app"
         />
       )}
 
@@ -151,16 +164,28 @@ const LoginPage: React.FC = () => {
         fullWidth
         sx={{ mt: 3, mb: 2 }}
         disabled={loading}
+        aria-busy={loading}
       >
-        {loading ? <CircularProgress size={24} /> : step === 'login' ? 'Log In' : 'Verify 2FA'}
+        {loading ?( <>
+        <CircularProgress size={24} aria-label="Loading"/>
+        <span className ="sr-only">Processing...</span>
+        </>
+        ) 
+         :( step === 'login' ? 'Log In' : 'Verify 2FA')}
       </Button>
 
       {step === 'login' && (
-        <Box sx={{ textAlign: 'center', mt: 2 }}>
-          <MuiLink component={Link} to="/register" variant="body2" sx={{ display: 'block', mb: 1 }}>
+        <Box sx={{ textAlign: 'center', mt: 2 }}
+             role = "navigation"
+             aria-label = "Additional Account Options">
+          <MuiLink component={Link} to="/register" variant="body2" sx={{ display: 'block', mb: 1, textDecoration: 'underline' }}
+          aria-label="Create new account"
+          >
             Don't have an account? Sign Up
           </MuiLink>
-          <MuiLink component={Link} to="/reset-password" variant="body2">
+          <MuiLink component={Link} to="/reset-password" variant="body2" sx={{ textDecoration: 'underline' }}
+          aria-label="Reset password"
+          >
             Forgot Password? Click here to Reset it
           </MuiLink>
         </Box>

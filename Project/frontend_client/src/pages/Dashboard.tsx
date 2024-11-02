@@ -136,31 +136,59 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
   console.log("Rendering Dashboard component, loading:", loading);
 
   return (
-    <AppTheme disableCustomTheme={props.disableCustomTheme}>
-      <CssBaseline enableColorScheme />
-      <SideMenu />
-      <Box sx={{ display: 'flex-start',ml:'80px', width: '100%' }}>
-        <AppNavbar padding={240}/>
-        <Box
-          component="main"
-          sx={(theme) => ({
-            flexGrow: 1,
-            display: 'flex',
-            backgroundColor: alpha(theme.palette.background.default, 1), // Fixed color for background
-            // mt: 8,
-            // p:3
-          })}>
-          <Stack
-            spacing={1}
-            sx={{
-              alignItems: 'flex-start',
-              width: '100%'
-            }}>
-            <Header />
-            <MainGrid />
-          </Stack>
-        </Box>
-      </Box>
-    </AppTheme>
+<AppTheme disableCustomTheme={props.disableCustomTheme}>
+  <CssBaseline enableColorScheme />
+  
+  {/* Side navigation with proper role and label */}
+  <nav role="navigation" aria-label="Main navigation">
+    <SideMenu />
+  </nav>
+
+  <Box 
+    sx={{ 
+      display: 'flex-start',
+      ml: '80px', 
+      width: '100%' 
+    }}
+  >
+    {/* Top navigation bar with proper role */}
+    <header role="banner">
+      <AppNavbar padding={240} />
+    </header>
+
+    {/* Main content area with proper landmarks */}
+    <Box
+      component="main"
+      id="main-content"
+      role="main"
+      aria-label="Dashboard content"
+      tabIndex={-1}
+      sx={(theme) => ({
+        flexGrow: 1,
+        display: 'flex',
+        backgroundColor: alpha(theme.palette.background.default, 1),
+        outline: 'none', // Removes focus outline while keeping it focusable
+      })}
+    >
+      <Stack
+        spacing={1}
+        sx={{
+          alignItems: 'flex-start',
+          width: '100%'
+        }}
+      >
+        {/* Page header with proper heading level */}
+        <header role="heading" aria-level={1}>
+          <Header />
+        </header>
+
+        {/* Main grid content */}
+        <section aria-label="Dashboard metrics">
+          <MainGrid />
+        </section>
+      </Stack>
+    </Box>
+  </Box>
+</AppTheme>
   );
 }
