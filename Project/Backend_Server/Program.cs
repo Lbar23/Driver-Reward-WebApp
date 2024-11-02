@@ -104,6 +104,10 @@ try {
             mySqlOptions => mySqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null));
     });
 
+    //Audit Log Service
+    builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+
+
     // Automated Backup Service
     builder.Services.AddSingleton<IHostedService, BackupService>();
 
