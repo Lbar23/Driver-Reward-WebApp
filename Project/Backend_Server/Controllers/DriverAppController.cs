@@ -46,6 +46,7 @@ namespace Backend_Server.Controllers
             {
                 return NotFound("Application not found.");
             }
+            return Ok(application.Status);
         }
 
         //update applicaiton
