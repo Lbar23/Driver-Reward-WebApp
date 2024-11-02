@@ -105,7 +105,7 @@ try {
     });
 
     // Automated Backup Service
-    builder.Services.AddHostedService<BackupService>();
+    builder.Services.AddSingleton<IHostedService, BackupService>();
 
     // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");

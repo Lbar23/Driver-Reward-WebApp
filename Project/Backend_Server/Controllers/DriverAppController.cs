@@ -20,12 +20,23 @@ namespace Backend_Server.Controllers
         [HttpPost("apply")]
         public async Task<IActionResult> Apply([FromBody] DriverApplications application)
         {
+            var user = await _userManager.GetUserAsync(User); // Get the current logged-in user
+
+            if (user == null)
+            {
+                return Unauthorized("User not found.");
+            }
+
+            // automatically assign the user's ID to the application 
+            application.UserID = user.Id;
             application.Status = AppStatus.Submitted;
             application.ApplyDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
             _context.DriverApplications.Add(application);
             await _context.SaveChangesAsync();
             return Ok("Application submitted successfully!");
         }
+        
         //status of application
         [HttpGet("status/{id}")]
         public async Task<IActionResult> GetApplicationStatus(int id)
@@ -35,7 +46,6 @@ namespace Backend_Server.Controllers
             {
                 return NotFound("Application not found.");
             }
-            return Ok(application.Status);
         }
 
         //update applicaiton
