@@ -51,6 +51,7 @@ const ProductCatalog: React.FC = () => {
 
   return (
     <Container>
+      {/* Product Catalog */}
       <Typography variant="h4" component="h1" gutterBottom>
         Product Catalog
       </Typography>
@@ -59,7 +60,7 @@ const ProductCatalog: React.FC = () => {
           display: 'flex',
           flexWrap: 'wrap',
           gap: 2,
-          justifyContent: 'flex-start', 
+          justifyContent: 'flex-start',
         }}
       >
         {listings.map((listing, index) => (
@@ -69,7 +70,8 @@ const ProductCatalog: React.FC = () => {
               width: 'calc(33.333% - 16px)',
               maxWidth: 'calc(33.333% - 16px)',
               marginBottom: 2,
-            }}>
+            }}
+          >
             <CardMedia
               component="img"
               height="200"
