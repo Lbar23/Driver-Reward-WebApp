@@ -1,131 +1,55 @@
-import React, { useState, useEffect, createContext } from 'react';
-import { Route, Routes, Link, Navigate, useNavigate } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Container, Menu, MenuItem } from '@mui/material';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import FAQ from './components/FAQ';
-import FeedbackForm from './components/Feedback';
-import LoginPage from './components/LoginPage';
-import RegisterPage from './components/RegisterPage';
-import TestPage from './components/TestPage';
-import Home from './components/Home';
-import DriverPoints from './components/DriverPoints';
-import Application from './components/Application';
-import AdminDashboard from './components/AdminDashboard';
-import SponsorDashboard from './components/SponsorDashboard';
-import UserManagement from './components/UserManagement';
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-  },
-});
-
-export const UserContext = createContext({
-  userType: '',
-  setUserType: (type: string) => {},
-});
-
-const NavBar = ({ isLoggedIn, handleLogout, userType }) => {
-  const [anchorEl, setAnchorEl] = useState(null);
-
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  return (
-    <AppBar position="static">
-      <Toolbar>
-        <Typography variant="h6" style={{ flexGrow: 1 }}>
-          Incentive Application
-        </Typography>
-        {isLoggedIn ? (
-          <>
-            <Button color="inherit" component={Link} to="/">Home</Button>
-            <Button color="inherit" component={Link} to="/driver-points">Driver Points</Button>
-            {userType === 'Admin' && (
-              <>
-                <Button color="inherit" onClick={handleMenuOpen}>Admin</Button>
-                <Menu
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={handleMenuClose}
-                >
-                  <MenuItem component={Link} to="/admin/dashboard" onClick={handleMenuClose}>Dashboard</MenuItem>
-                  <MenuItem component={Link} to="/admin/user-management" onClick={handleMenuClose}>User Management</MenuItem>
-                  <MenuItem component={Link} to="/driver-view" onClick={handleMenuClose}>Driver View</MenuItem>
-                </Menu>
-              </>
-            )}
-            {userType === 'Sponsor' && (
-              <Button color="inherit" component={Link} to="/sponsor/dashboard">Sponsor Dashboard</Button>
-            )}
-            <Button color="inherit" onClick={handleLogout}>Logout</Button>
-          </>
-        ) : (
-          <>
-            <Button color="inherit" component={Link} to="/login">Login</Button>
-            <Button color="inherit" component={Link} to="/register">Register</Button>
-          </>
-        )}
-        <Button color="inherit" component={Link} to="/faq">FAQ</Button>
-        <Button color="inherit" component={Link} to="/feedback">Feedback</Button>
-      </Toolbar>
-    </AppBar>
-  );
-};
+import { Route, Routes, Link, Navigate } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
+import AppNavbar from './components/layout/AppNavbar';
+import AppTheme from './components/layout/AppTheme';
+// Pages
+import HomePage from './pages/HomePage';
+import About from './pages/About';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import Dashboard from './pages/Dashboard';
+import ProductCatalog from './pages/ProductCatalog';
+import FAQ from './pages/FAQ';
+import FeedbackForm from './pages/Feedback';
+// to be removed bc component
+import PasswordChangeForm from './pages/PasswordChangeForm';
+import DriverPointsList from './components/dashboard/PMSDriverList';
+import DriverPointsHistory from './components/dashboard/DriverPointHistory';
+import DriverActivity from './components/dashboard/DriverActivity';
+import SponsorDrivers from './components/dashboard/SponsorDriverList';
+import SponsorRegistrationPage from './components/dashboard/SponsorRegistrationForDriver';
+import DriverApplication from './components/DriverApplication';
+import ApplicationManager from './components/ApplicationManager';
 
 const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userType, setUserType] = useState('');
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    console.log(localStorage.getItem('userType'));
-    const token = localStorage.getItem('userToken');
-    const storedUserType = localStorage.getItem('userType');
-    if (token === 'loggedIn' && storedUserType) {
-      setIsLoggedIn(true);
-      setUserType(storedUserType);
-    }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('userToken');
-    localStorage.removeItem('userType');
-    setIsLoggedIn(false);
-    setUserType('');
-    navigate('/login');
-  };
-
-  return (
-    <ThemeProvider theme={theme}>
-      <UserContext.Provider value={{ userType, setUserType }}>
-        <NavBar isLoggedIn={isLoggedIn} handleLogout={handleLogout} userType={userType} />
-        <Container>
-          <Routes>
-            <Route path="/" element={isLoggedIn ? <Home /> : <Navigate to="/login" />} />
-            <Route path="/login" element={<LoginPage setIsLoggedIn={setIsLoggedIn} setUserType={setUserType} />}  />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/faq" element={<FAQ />} />
-            <Route path="/feedback" element={<FeedbackForm />} />
-            <Route path="/driver-points" element={isLoggedIn ? <DriverPoints /> : <Navigate to="/login" />} />
-            <Route path="/application" element={isLoggedIn ? <Application /> : <Navigate to="/login" />} />
-            <Route path="/admin/dashboard" element={userType === 'Admin' ? <AdminDashboard /> : <Navigate to="/" />} />
-            <Route path="/admin/user-management" element={userType === 'Admin' ? <UserManagement /> : <Navigate to="/" />} />
-            <Route path="/sponsor/dashboard" element={userType === 'Sponsor' ? <SponsorDashboard /> : <Navigate to="/" />} />
-            <Route path="/driver-view" element={(userType === 'Admin' || userType === 'Sponsor') ? <DriverPoints isDriverView={true} /> : <Navigate to="/" />} />
-            <Route path="/test" element={<TestPage />} />
-          </Routes>
-        </Container>
-      </UserContext.Provider>
-    </ThemeProvider>
-  );
+    return (
+        <AppTheme>
+            <AppNavbar />
+            <Toolbar /> {/* Spacer for the AppBar height */}
+            <Container maxWidth="md" sx={{ mt: 4 }}>
+                <Routes>
+                    <Route path="/about" element={<About />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/home" element={<HomePage />} /> {/* Will still be useful to serve for people that are not logged in */}
+                    <Route path="/faq" element={<FAQ />} />
+                    <Route path="/feedback" element={<FeedbackForm />} />
+                    <Route path="/dashboard" element={<Dashboard/>} />
+                    <Route path="/catalog" element={<ProductCatalog />} />
+                    <Route path="/application" element={<DriverApplication />} />
+                    <Route path="/application-manager" element={<ApplicationManager />} />
+                    <Route path="/change-password" element={<PasswordChangeForm/>} /> {/* This is just here when profile pages are well and done */}
+                    <Route path="/driver-points" element={<DriverPointsList />} /> {/* Again; remove once dashboard has this and database has some test data; just kind of here as a test that it loads */}
+                    <Route path="/driver-activity" element={<DriverActivity />} /> {/* Same thing as above; make this end */}
+                    <Route path="/sponsor-driver-test" element={<SponsorDrivers />} />
+                    <Route path="/sponsor-reg-test" element={<SponsorRegistrationPage/>} />
+                    {/* Stub for auth rework, this will be logged in driver and taken out of main*/}
+                    <Route path="/points-history/:driverId" element={<DriverPointsHistory />} />
+                    <Route path="/" element={<Navigate to="/home" replace />} />
+                </Routes>
+            </Container>
+        </AppTheme>
+    );
 };
 
 export default App;

@@ -8,8 +8,10 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.0-preview" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.0-preview" />
     <PackageReference Include="AWSSDK.SecretsManager" Version="4.0.0-preview" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.SpaProxy" Version="8.0.10" />
@@ -20,15 +22,22 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.10" />
+    <PackageReference Include="MySql.Data" Version="9.1.0" />
+    <PackageReference Include="MySqlBackup.NET" Version="2.3.8" />
+    <PackageReference Include="MySqlBackup.NET.MySqlConnector" Version="2.3.8" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.2" />
-    <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
+    <PackageReference Include="SendGrid" Version="9.29.3" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="SSH.NET" Version="2024.1.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.8.1" />
+    <PackageReference Include="Twilio" Version="7.6.0" />
   </ItemGroup>
   <!-- had to add this so the server can connect front and back -->
   <Target Name="PrePublish" BeforeTargets="Publish">
-    <Exec WorkingDirectory="../frontend_client" Command="npm install" />
+    <!-- <Exec WorkingDirectory="../frontend_client" Command="npm install" />  server can't handle this rn-->
     <Exec WorkingDirectory="../frontend_client" Command="npm run build" />
   </Target>
 
