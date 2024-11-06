@@ -14,7 +14,7 @@ export default function CardAlert() {
           Something
         </Typography>
         <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-          Save your points by driving safe!
+          Earn points by driving safe!
         </Typography>
         <Button variant="contained" size="small" fullWidth>
           Make the pledge

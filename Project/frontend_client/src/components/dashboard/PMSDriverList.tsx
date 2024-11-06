@@ -14,10 +14,8 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 
-//Will definitely be broken, considering no city, state, and name since db changes (can remove to test with actual data later)
 interface Driver {
-  id: number;
-  name: string;
+  userID: number;
   totalPoints: number;
   // city: string;
   // state: string;
@@ -27,7 +25,7 @@ const DriverPointsList: React.FC = () => {
     const [drivers, setDrivers] = useState<Driver[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [sortBy, setSortBy] = useState<'points' | 'name'>('points');
+    const [sortBy, setSortBy] = useState<'points' | 'userID'>('points');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
     useEffect(() => {
@@ -53,7 +51,7 @@ const DriverPointsList: React.FC = () => {
       }
     };
   
-    const handleSort = (field: 'points' | 'name') => {
+    const handleSort = (field: 'points' | 'userID') => {
       if (sortBy === field) {
         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
       } else {
@@ -86,10 +84,9 @@ const DriverPointsList: React.FC = () => {
               <TableRow>
                 <TableCell>
                   <TableSortLabel
-                    active={sortBy === 'name'}
-                    direction={sortBy === 'name' ? sortOrder : 'asc'}
-                    onClick={() => handleSort('name')}
-                  >
+                    active={sortBy === 'userID'}
+                    direction={sortBy === 'userID' ? sortOrder : 'asc'}
+                    onClick={() => handleSort('userID')}>
                     Driver Name
                   </TableSortLabel>
                 </TableCell>
@@ -97,19 +94,15 @@ const DriverPointsList: React.FC = () => {
                   <TableSortLabel
                     active={sortBy === 'points'}
                     direction={sortBy === 'points' ? sortOrder : 'asc'}
-                    onClick={() => handleSort('points')}
-                  >
+                    onClick={() => handleSort('points')}>
                     Total Points
                   </TableSortLabel>
                 </TableCell>
-                <TableCell>City</TableCell>
-                <TableCell>State</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {drivers.map((driver) => (
-                <TableRow key={driver.id}>
-                  <TableCell>{driver.name}</TableCell>
+                <TableRow key={driver.userID}>
                   <TableCell>{driver.totalPoints.toLocaleString()}</TableCell>
                   {/* <TableCell>{driver.city}</TableCell>
                   <TableCell>{driver.state}</TableCell> */}

@@ -1,10 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Button, TextField, Typography, Alert, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  Button,
+  TextField,
+  Typography,
+  Alert,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
+  Box,
+} from '@mui/material';
 import { SelectChangeEvent } from '@mui/material';
 import axios from 'axios';
 
 interface ApplicationFormData {
-  sponsorId: number;
+  sponsorId: number | ''; // Allow empty string to avoid 0 by default
   reason: string;
 }
 
@@ -15,7 +25,7 @@ interface Sponsor {
 }
 
 const DriverApplication: React.FC = () => {
-  const [applicationData, setApplicationData] = useState<ApplicationFormData>({ sponsorId: 0, reason: '' });
+  const [applicationData, setApplicationData] = useState<ApplicationFormData>({ sponsorId: '', reason: '' });
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +36,7 @@ const DriverApplication: React.FC = () => {
       setSponsors(response.data);
       setError(null); // Clear any error if data loads successfully
     } catch (error) {
-      setError('Failed to load data. Please try again.');
+      setError('Failed to load sponsors. Please try again.');
     }
   }, []);
 
@@ -39,11 +49,15 @@ const DriverApplication: React.FC = () => {
     setApplicationData({ ...applicationData, [name]: value });
   };
 
-  const handleSponsorChange = (event: SelectChangeEvent<number>) => {
-    setApplicationData({ ...applicationData, sponsorId: parseInt(event.target.value as string) });
+  const handleSponsorChange = (event: SelectChangeEvent<number | ''>) => {
+    setApplicationData({ ...applicationData, sponsorId: event.target.value === '' ? '' : Number(event.target.value) });
   };
 
   const submitApplication = async () => {
+    if (applicationData.sponsorId === '') {
+      setError('Please select a sponsor.');
+      return;
+    }
     try {
       const response = await axios.post('/api/driverapp/apply', applicationData);
       setStatus(response.data.message || 'Application submitted successfully!');
@@ -53,8 +67,17 @@ const DriverApplication: React.FC = () => {
     }
   };
 
+  const sponsorOptions = useMemo(
+    () => sponsors.map((sponsor) => (
+      <MenuItem key={sponsor.sponsorID} value={sponsor.sponsorID}>
+        {sponsor.companyName}
+      </MenuItem>
+    )),
+    [sponsors]
+  );
+
   return (
-    <div>
+    <Box>
       <Typography variant="h5">Driver Application</Typography>
 
       {error && <Alert severity="error">{error}</Alert>}
@@ -68,11 +91,7 @@ const DriverApplication: React.FC = () => {
           onChange={handleSponsorChange}
           fullWidth
         >
-          {sponsors.map((sponsor) => (
-            <MenuItem key={sponsor.sponsorID} value={sponsor.sponsorID}>
-              {sponsor.companyName}
-            </MenuItem>
-          ))}
+          {sponsorOptions}
         </Select>
       </FormControl>
 
@@ -88,7 +107,7 @@ const DriverApplication: React.FC = () => {
       <Button variant="contained" color="primary" onClick={submitApplication}>
         Submit Application
       </Button>
-    </div>
+    </Box>
   );
 };
 
