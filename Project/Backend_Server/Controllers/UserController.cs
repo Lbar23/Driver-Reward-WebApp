@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Backend_Server.Models;
-using Microsoft.AspNetCore.Authorization;
 using Backend_Server.Services;
 using Serilog;
 

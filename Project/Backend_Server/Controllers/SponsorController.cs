@@ -24,8 +24,8 @@ namespace Backend_Server.Controllers
             
 
             // Get sponsor's ID
-            var sponsor = await _context.Sponsors
-                .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+            var sponsor = await _context.SponsorDrivers
+                .FirstOrDefaultAsync(s => s.SponsorID == currentUser.Id);
             if (sponsor == null)
             {
                 Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
