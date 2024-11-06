@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import DriverApplication from '../DriverApplication';
-import ApplicationManager from '../ApplicationManager';
+import DriverApplication from './DriverApplication';
+import ApplicationManager from './ApplicationManager';
 import PasswordChangeForm from '../../pages/PasswordChangeForm';
 import DriverPointsList from '../dashboard/PMSDriverList';
 import DriverActivity from '../dashboard/DriverActivity';

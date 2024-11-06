@@ -57,6 +57,7 @@ try {
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
+                    
             });
     });
 
@@ -131,6 +132,7 @@ try {
     else
     {
         app.UseHsts();
+        app.UseHttpsRedirection();
     }
 
     app.UseStaticFiles();
@@ -141,8 +143,6 @@ try {
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
     });
-
-
 
     app.UseAuthentication();
     app.UseAuthorization();
@@ -164,7 +164,6 @@ try {
         
         Log.Information("Starting Web Host...");
     }
-
     
     app.Run();
 }

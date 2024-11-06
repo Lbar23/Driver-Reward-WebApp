@@ -15,7 +15,7 @@ export default defineConfig({
           '/api': {
               target: API_BASE_URL, 
               changeOrigin: true,
-              secure: false,
+              secure: true,
           }
       }
   },
