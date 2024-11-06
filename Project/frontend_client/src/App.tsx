@@ -59,13 +59,14 @@ const App = () => (
           <Route path="/home" element={<HomePage />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/feedback" element={<FeedbackForm />} />
+          <Route path="/order" element={<Order />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/catalog" element={<ProductCatalog />} />
             <Route path="/change-password" element={<PasswordChangeForm />} />
-            <Route path="/order" element={<Order />} />
+            
           </Route>
         </Routes>
       </Box>
