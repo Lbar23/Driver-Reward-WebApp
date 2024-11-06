@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard';
 import ProductCatalog from './pages/ProductCatalog';
 import FAQ from './pages/FAQ';
 import FeedbackForm from './pages/Feedback';
+import Order from './pages/Order';
 // Other pages for authenticated routes
 import PasswordChangeForm from './pages/PasswordChangeForm';
 
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/catalog" element={<ProductCatalog />} />
             <Route path="/change-password" element={<PasswordChangeForm />} />
+            <Route path="/order" element={<Order />} />
           </Route>
         </Routes>
       </Box>
