@@ -22,7 +22,7 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { format } from 'date-fns';
-
+import SideMenu from '../components/layout/SideMenu';
 // Types
 interface AuditLog {
   logID: number;
@@ -118,116 +118,136 @@ const AuditLogDashboard: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Typography variant="h4" gutterBottom>
-            Audit Log Dashboard
-          </Typography>
-        </Grid>
-        
-        {/* Filters */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label="User ID"
-                  type="number"
-                  value={filter.userID || ''}
-                  onChange={(e) => setFilter(prev => ({
-                    ...prev,
-                    userID: e.target.value ? parseInt(e.target.value) : undefined,
-                    page: 0,
-                  }))}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
-                  <Select
-                    value={filter.category?.toString() || ''}
-                    label="Category"
-                    onChange={handleCategoryChange}
-                  >
-                    <MenuItem value="">All</MenuItem>
-                    {Object.keys(AuditLogCategory).map((key) => (
-                      <MenuItem key={key} value={key}>
-                        {AuditLogCategory[parseInt(key)]}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Search Description"
-                  value={filter.searchTerm || ''}
-                  onChange={(e) => setFilter(prev => ({
-                    ...prev,
-                    searchTerm: e.target.value || undefined,
-                    page: 0,
-                  }))}
-                />
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
+    <Box sx={{ display: 'flex' }}>
+      {/* Side navigation with proper role and label */}
+      <Box
+        component="nav"
+        role="navigation"
+        aria-label="Main navigation"
+        sx={{
+          width: 240,
+          flexShrink: 0,
+          borderRight: '1px solid',
+          borderColor: 'divider'
+        }}
+      >
+        <SideMenu />
+      </Box>
 
-        {/* Logs Table */}
-        <Grid item xs={12}>
-          <Paper>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2 }}>
-              <IconButton onClick={() => fetchLogs()} disabled={loading}>
-                <RefreshIcon />
-              </IconButton>
-            </Box>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Log ID</TableCell>
-                    <TableCell>User ID</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Timestamp</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {logs.map((log) => (
-                    <TableRow key={log.logID}>
-                      <TableCell>{log.logID}</TableCell>
-                      <TableCell>{log.userID}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getCategoryName(log.category)}
-                          size="small"
-                          color={getCategoryColor(log.category)}
-                        />
-                      </TableCell>
-                      <TableCell>{log.description}</TableCell>
-                      <TableCell>
-                        {format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <TablePagination
-              component="div"
-              count={totalCount}
-              page={filter.page}
-              onPageChange={handlePageChange}
-              rowsPerPage={filter.pageSize}
-              onRowsPerPageChange={handleRowsPerPageChange}
-              rowsPerPageOptions={[5, 10, 25, 50]}
-            />
-          </Paper>
-        </Grid>
-      </Grid>
+      {/* Main content */}
+      <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ p: 3 }}>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="h4" gutterBottom>
+                Audit Log Dashboard
+              </Typography>
+            </Grid>
+            
+            {/* Filters */}
+            <Grid item xs={12}>
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} sm={6} md={3}>
+                    <TextField
+                      fullWidth
+                      label="User ID"
+                      type="number"
+                      value={filter.userID || ''}
+                      onChange={(e) => setFilter(prev => ({
+                        ...prev,
+                        userID: e.target.value ? parseInt(e.target.value) : undefined,
+                        page: 0,
+                      }))}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <FormControl fullWidth>
+                      <InputLabel>Category</InputLabel>
+                      <Select
+                        value={filter.category?.toString() || ''}
+                        label="Category"
+                        onChange={handleCategoryChange}
+                      >
+                        <MenuItem value="">All</MenuItem>
+                        {Object.keys(AuditLogCategory).map((key) => (
+                          <MenuItem key={key} value={key}>
+                            {AuditLogCategory[parseInt(key)]}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Search Description"
+                      value={filter.searchTerm || ''}
+                      onChange={(e) => setFilter(prev => ({
+                        ...prev,
+                        searchTerm: e.target.value || undefined,
+                        page: 0,
+                      }))}
+                    />
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Grid>
+
+            {/* Logs Table */}
+            <Grid item xs={12}>
+              <Paper>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2 }}>
+                  <IconButton onClick={() => fetchLogs()} disabled={loading}>
+                    <RefreshIcon />
+                  </IconButton>
+                </Box>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Log ID</TableCell>
+                        <TableCell>User ID</TableCell>
+                        <TableCell>Category</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell>Timestamp</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {logs.map((log) => (
+                        <TableRow key={log.logID}>
+                          <TableCell>{log.logID}</TableCell>
+                          <TableCell>{log.userID}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={getCategoryName(log.category)}
+                              size="small"
+                              color={getCategoryColor(log.category)}
+                            />
+                          </TableCell>
+                          <TableCell>{log.description}</TableCell>
+                          <TableCell>
+                            {format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <TablePagination
+                  component="div"
+                  count={totalCount}
+                  page={filter.page}
+                  onPageChange={handlePageChange}
+                  rowsPerPage={filter.pageSize}
+                  onRowsPerPageChange={handleRowsPerPageChange}
+                  rowsPerPageOptions={[5, 10, 25, 50]}
+                />
+              </Paper>
+            </Grid>
+          </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 };
