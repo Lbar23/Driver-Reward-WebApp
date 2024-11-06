@@ -29,7 +29,7 @@ const mainListItems = [
 //Unless make them components instead of individual pages, bit unideal...
 // will add to nav bar ^
 const secondaryListItems = [
-  { text: 'Settings', icon: <SettingsRoundedIcon /> },
+  { text: 'Settings', icon: <SettingsRoundedIcon />, path: '/settings' },
   { text: 'About', icon: <InfoRoundedIcon />, path: '/about' }, //same
   { text: 'FAQ', icon: <HelpRoundedIcon />, path: '/faq' }, //same
   { text: 'Catalog', icon: <ShoppingBagIcon />, path: '/catalog' }, //same

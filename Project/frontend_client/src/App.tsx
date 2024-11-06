@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import ProductCatalog from './pages/ProductCatalog';
 import FAQ from './pages/FAQ';
 import FeedbackForm from './pages/Feedback';
+import Settings from './pages/Settings';
 // to be removed bc component
 import PasswordChangeForm from './pages/PasswordChangeForm';
 import DriverPointsList from './components/dashboard/PMSDriverList';
@@ -43,6 +44,7 @@ const App = () => {
                     <Route path="/driver-activity" element={<DriverActivity />} /> {/* Same thing as above; make this end */}
                     <Route path="/sponsor-driver-test" element={<SponsorDrivers />} />
                     <Route path="/sponsor-reg-test" element={<SponsorRegistrationPage/>} />
+                    <Route path="/settings" element={<Settings/>} />
                     {/* Stub for auth rework, this will be logged in driver and taken out of main*/}
                     <Route path="/points-history/:driverId" element={<DriverPointsHistory />} />
                     <Route path="/" element={<Navigate to="/home" replace />} />
