@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-
+using Backend_Server.Models;
 namespace Backend_Server.Services
 {
     public class AuditLogFilter
@@ -34,16 +34,16 @@ namespace Backend_Server.Services
 
     public class AuditLogService : IAuditLogService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly AppDBContext _context;
 
-        public AuditLogService(ApplicationDbContext context)
+        public AuditLogService(AppDBContext context)
         {
             _context = context;
         }
 
         public async Task<AuditLogResult> GetAuditLogsAsync(AuditLogFilter filter)
         {
-            var query = _context.AuditLogs.AsQueryable();
+            var query = _context.AuditLog.AsQueryable();
 
             // Apply filters
             if (filter.UserID.HasValue)
@@ -54,16 +54,6 @@ namespace Backend_Server.Services
             if (filter.Category.HasValue)
             {
                 query = query.Where(log => log.Category == filter.Category.Value);
-            }
-
-            if (filter.StartDate.HasValue)
-            {
-                query = query.Where(log => log.Timestamp >= filter.StartDate.Value);
-            }
-
-            if (filter.EndDate.HasValue)
-            {
-                query = query.Where(log => log.Timestamp <= filter.EndDate.Value);
             }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
@@ -93,7 +83,7 @@ namespace Backend_Server.Services
 
         public async Task<List<AuditLog>> GetUserAuditLogsAsync(int userId)
         {
-            return await _context.AuditLogs
+            return await _context.AuditLog
                 .Where(log => log.UserID == userId)
                 .OrderByDescending(log => log.Timestamp)
                 .ToListAsync();
@@ -101,7 +91,7 @@ namespace Backend_Server.Services
 
         public async Task<List<AuditLog>> GetCategoryAuditLogsAsync(AuditLogCategory category)
         {
-            return await _context.AuditLogs
+            return await _context.AuditLog
                 .Where(log => log.Category == category)
                 .OrderByDescending(log => log.Timestamp)
                 .ToListAsync();

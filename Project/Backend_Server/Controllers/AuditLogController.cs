@@ -1,3 +1,12 @@
+using System;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Backend_Server.Models;
+using Microsoft.AspNetCore.Authorization;
+using Backend_Server.Services;
+
+
 [ApiController]
 [Route("api/[controller]")]
 public class AuditLogController : ControllerBase

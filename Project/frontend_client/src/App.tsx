@@ -20,7 +20,7 @@ import SponsorDrivers from './components/dashboard/SponsorDriverList';
 import SponsorRegistrationPage from './components/dashboard/SponsorRegistrationForDriver';
 import DriverApplication from './components/DriverApplication';
 import ApplicationManager from './components/ApplicationManager';
-
+import AuditLogDashboard from './pages/AuditLogDashboard';
 const App = () => {
     return (
         <AppTheme>
@@ -45,6 +45,7 @@ const App = () => {
                     <Route path="/sponsor-reg-test" element={<SponsorRegistrationPage/>} />
                     {/* Stub for auth rework, this will be logged in driver and taken out of main*/}
                     <Route path="/points-history/:driverId" element={<DriverPointsHistory />} />
+                    <Route path="/audit-logs" element={<AuditLogDashboard/>} />
                     <Route path="/" element={<Navigate to="/home" replace />} />
                 </Routes>
             </Container>
