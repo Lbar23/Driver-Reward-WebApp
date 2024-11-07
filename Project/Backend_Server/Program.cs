@@ -35,8 +35,19 @@ try {
     builder.Services.AddHttpClient();
 
     builder.Services.AddSingleton<CatalogService>();
-    builder.Services.AddScoped<DbConnectionProvider>();
+    builder.Services.AddSingleton<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
+
+    //Service for handling Logging more efficiently with custom services or methods relating to DB Connection
+    builder.Services.AddLogging(configure => {
+        configure.AddConsole();
+        configure.AddDebug();
+        configure.SetMinimumLevel(LogLevel.Information);
+    });
+
+    //Added caching for queries and requests
+    
+    builder.Services.AddMemoryCache();
 
     builder.Services.AddControllers();
 
@@ -102,7 +113,16 @@ try {
         var connection = dbProvider.GetDbConnectionAsync().Result;
         options.UseMySql(connection.ConnectionString,
             ServerVersion.AutoDetect(connection.ConnectionString),
-            mySqlOptions => mySqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null));
+            mySqlOptions => 
+            {
+                mySqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null);
+                mySqlOptions.CommandTimeout(30);
+                mySqlOptions.EnableStringComparisonTranslations();
+                mySqlOptions.MigrationsAssembly("Backend_Server");
+            });
     });
 
     // Automated Backup Service
