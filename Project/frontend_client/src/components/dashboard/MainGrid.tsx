@@ -9,7 +9,7 @@ import DriverActivity from '../dashboard/DriverActivity';
 import SponsorDrivers from '../dashboard/SponsorDriverList';
 import SponsorRegistrationPage from '../dashboard/SponsorRegistrationForDriver';
 import DriverPointsHistory from '../dashboard/DriverPointHistory';
-import ManageDriverSponsors from '../ManageDriverSponsors';
+import ManageDriverSponsors from './ManageDriverSponsors';
 import { useView } from '../../service/viewContext';
 
 // Link the current view to the corresponding component

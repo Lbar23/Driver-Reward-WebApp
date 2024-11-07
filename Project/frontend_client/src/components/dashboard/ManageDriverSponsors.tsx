@@ -14,8 +14,19 @@ import Alert from '@mui/material/Alert';
 import Chip from '@mui/material/Chip';
 import Tooltip from '@mui/material/Tooltip';
 import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import SearchIcon from '@mui/icons-material/SearchRounded';
+import IconButton from '@mui/material/IconButton';
+
+interface Driver {
+  userId: number;
+  name: string;
+  email: string;
+  sponsorRelationships: {
+    sponsorId: number;
+    sponsorName: string;
+    points: number;
+  }[];
+}
 
 interface Driver {
   userId: number;
@@ -62,7 +73,6 @@ const ManageDriverSponsors: React.FC = () => {
       )
     : [];
 
-    
   if (loading) {
     return (
       <Box sx={{ width: '100%', mt: 2 }}>
@@ -85,21 +95,18 @@ const ManageDriverSponsors: React.FC = () => {
         Driver-Sponsor Associations
       </Typography>
 
-      <TextField
-        fullWidth
-        variant="outlined"
-        placeholder="Search by driver name, email, or sponsor..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        sx={{ mb: 3 }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchRoundedIcon fontSize="small" />
-            </InputAdornment>
-          ),
-        }}
-      />
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Search by driver name, email, or sponsor..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <IconButton sx={{ ml: -4 }}>
+          <SearchIcon />
+        </IconButton>
+      </Box>
 
       <TableContainer component={Paper}>
         <Table>
