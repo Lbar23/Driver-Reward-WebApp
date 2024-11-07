@@ -1,7 +1,10 @@
-import { Route, Routes, Link, Navigate } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material';
+import { Route, Routes, Navigate, Outlet } from 'react-router-dom';
+import { Toolbar, Box } from '@mui/material';
 import AppNavbar from './components/layout/AppNavbar';
 import AppTheme from './components/layout/AppTheme';
+import { AuthProvider, useAuth } from './service/authContext';
+import { ViewProvider } from './service/viewContext';
+import SideMenu from './components/layout/SideMenu';
 // Pages
 import HomePage from './pages/HomePage';
 import About from './pages/About';
@@ -11,17 +14,15 @@ import Dashboard from './pages/Dashboard';
 import ProductCatalog from './pages/ProductCatalog';
 import FAQ from './pages/FAQ';
 import FeedbackForm from './pages/Feedback';
+<<<<<<< HEAD
 import Settings from './pages/Settings';
 // to be removed bc component
+=======
+// Other pages for authenticated routes
+>>>>>>> origin/finalMain
 import PasswordChangeForm from './pages/PasswordChangeForm';
-import DriverPointsList from './components/dashboard/PMSDriverList';
-import DriverPointsHistory from './components/dashboard/DriverPointHistory';
-import DriverActivity from './components/dashboard/DriverActivity';
-import SponsorDrivers from './components/dashboard/SponsorDriverList';
-import SponsorRegistrationPage from './components/dashboard/SponsorRegistrationForDriver';
-import DriverApplication from './components/DriverApplication';
-import ApplicationManager from './components/ApplicationManager';
 
+<<<<<<< HEAD
 const App = () => {
     return (
         <AppTheme>
@@ -51,7 +52,61 @@ const App = () => {
                 </Routes>
             </Container>
         </AppTheme>
+=======
+const ProtectedRoute = () => {
+    const { isAuthenticated } = useAuth();
+    return isAuthenticated ? (
+        <Box sx={{ display: 'flex' }}>
+          {/* Sidebar added here */}
+            <SideMenu /> 
+            <Box sx={{ flexGrow: 1}}>
+                <Outlet />
+            </Box>
+        </Box>
+    ) : (
+        <Navigate to="/" replace />
+>>>>>>> origin/finalMain
     );
 };
+
+// conditional check to change default redirect based on auth status
+const ConditionalRedirect = () => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/home" replace />;
+};
+
+const App = () => (
+  <AuthProvider>
+    <ViewProvider>
+    <AppTheme>
+      <AppNavbar />
+      {/* Spacer for AppBar height */}
+      <Toolbar /> 
+      <Box sx={{ mt: 1, width: '100%' }}> 
+        {/* Main container for routes */}
+        <Routes>
+          {/* Default Route */}
+          <Route path="/" element={<ConditionalRedirect />} />
+
+          {/* Public Routes */}
+          <Route path="/about" element={<About />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/feedback" element={<FeedbackForm />} />
+
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/catalog" element={<ProductCatalog />} />
+            <Route path="/change-password" element={<PasswordChangeForm />} />
+          </Route>
+        </Routes>
+      </Box>
+    </AppTheme>
+    </ViewProvider>
+  </AuthProvider>
+);
 
 export default App;

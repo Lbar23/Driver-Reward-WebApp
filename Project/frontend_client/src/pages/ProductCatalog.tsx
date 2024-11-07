@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Card, CardMedia, CardContent, TextField, Checkbox, FormControlLabel, CircularProgress, Alert, Box, Button, Snackbar
-} from '@mui/material';
+import { Container, Typography, Card, CardMedia, CardContent, CircularProgress, Alert, Box } from '@mui/material';
 import axios, { AxiosResponse } from 'axios';
 import OverviewItem from '../components/layout/OverviewItem';
 
@@ -8,7 +7,6 @@ interface Listing {
   name: string;
   price: string;
   imageUrl: string;
-  isOutOfStock?: boolean;
 }
 
 const CACHE_KEY = 'productCatalog';
@@ -18,7 +16,6 @@ const ProductCatalog: React.FC = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<boolean>(false); // State to handle save success feedback
 
   const fetchListings = async () => {
     try {
@@ -37,40 +34,22 @@ const ProductCatalog: React.FC = () => {
   useEffect(() => {
     const cachedData = localStorage.getItem(CACHE_KEY);
     if (cachedData) {
-      const { listings, timestamp } = JSON.parse(cachedData);
+      const { listings: cachedListings, timestamp } = JSON.parse(cachedData);
       if (Date.now() - timestamp < CACHE_EXPIRY) {
-        setListings(listings);
+        setListings(cachedListings);
         setLoading(false);
         return;
       }
     }
 
+    // Fetch fresh data if no valid cache is available
     fetchListings();
   }, []);
 
-  const handlePriceChange = (index: number, newPrice: string) => {
-    const updatedListings = [...listings];
-    updatedListings[index].price = newPrice;
-    setListings(updatedListings);
-  };
-
-  const handleStockStatusChange = (index: number, isOutOfStock: boolean) => {
-    const updatedListings = [...listings];
-    updatedListings[index].isOutOfStock = isOutOfStock;
-    setListings(updatedListings);
-  };
-
-  const updateProducts = async () => {
-    try {
-      await axios.put(`/api/catalog/products`, listings);
-      setSaveSuccess(true); // Show success message on successful save
-    } catch (error: any) {
-      setError(error.response?.data || 'Failed to save product changes.');
-    }
-  };
-
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
+
+  const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
 
   return (
     <Container>
@@ -82,7 +61,7 @@ const ProductCatalog: React.FC = () => {
           display: 'flex',
           flexWrap: 'wrap',
           gap: 2,
-          justifyContent: 'flex-start',
+          justifyContent: 'flex-start', 
         }}
       >
         {listings.map((listing, index) => (
@@ -131,21 +110,24 @@ const ProductCatalog: React.FC = () => {
                 label="Out of Stock"
               />
               <OverviewItem title="Price" value={listing.price} />
+              <OverviewItem 
+                title="Point Cost" 
+                value={`${listing.pointCost?.toLocaleString() || 0} points`} 
+              />
+              <Button
+                fullWidth
+                variant="contained"
+                color="primary"
+                onClick={() => handlePurchase(listing)}
+                disabled={!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints}
+                sx={{ mt: 2 }}
+              >
+                Redeem with Points
+              </Button>
             </CardContent>
           </Card>
         ))}
       </Box>
-      <Button variant="contained" color="primary" onClick={updateProducts}>
-        Save Changes
-      </Button>
-
-      {/* Snackbar to show save success message */}
-      <Snackbar
-        open={saveSuccess}
-        autoHideDuration={3000}
-        onClose={() => setSaveSuccess(false)}
-        message="Changes saved successfully!"
-      />
     </Container>
   );
 };

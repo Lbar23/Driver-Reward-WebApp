@@ -6,9 +6,9 @@ import App from './App'
 // import reportWebVitals from './reportWebVitals'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
+    // <React.StrictMode>
         <BrowserRouter>
             <App />
-        </BrowserRouter>
-    </React.StrictMode>,
+        </BrowserRouter>,
+    // </React.StrictMode>, // don't use this b/c it duplicates api calls and adds too much strain on servers
 )

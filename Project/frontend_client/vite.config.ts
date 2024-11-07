@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import path from 'path'
-import { API_BASE_URL } from './config'
+const API_BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'http://localhost:5000'  // prod url
+  : 'http://localhost:5041'; // dev url
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -11,9 +13,9 @@ export default defineConfig({
       //open: true,
       proxy: {
           '/api': {
-              target: API_BASE_URL,
+              target: API_BASE_URL, 
               changeOrigin: true,
-              secure: false,
+              secure: true,
           }
       }
   },

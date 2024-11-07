@@ -3,15 +3,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Backend_Server.Models;
-using Microsoft.AspNetCore.Authorization;
 using Backend_Server.Services;
 using Serilog;
+using Backend_Server.Infrastructure;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.Mvc.TagHelpers.Cache;
 
 namespace Backend_Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(UserManager<Users> userManager, SignInManager<Users> signInManager, AppDBContext context, NotifyService notifyService) : ControllerBase
+    public class UserController(UserManager<Users> userManager, SignInManager<Users> signInManager, AppDBContext context, NotifyService notifyService, IMemoryCache cache) : CachedBaseController(cache)
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly SignInManager<Users> _signInManager = signInManager;
@@ -215,8 +217,6 @@ namespace Backend_Server.Controllers
             }
 
             var roles = await _userManager.GetRolesAsync(user);
-            var permissions = await GetUserPermissions(user);
-
             return Ok(new
             {
                 user.Id,
@@ -226,7 +226,6 @@ namespace Backend_Server.Controllers
                 user.CreatedAt,
                 user.LastLogin,
                 Roles = roles,
-                Permissions = permissions
             });
         }
 
@@ -239,7 +238,6 @@ namespace Backend_Server.Controllers
                 return NotFound();
             }
             var roles = await _userManager.GetRolesAsync(user);
-            var permissions = await GetUserPermissions(user);
             return Ok(new
             {
                 user.Id,
@@ -249,7 +247,6 @@ namespace Backend_Server.Controllers
                 user.CreatedAt,
                 user.LastLogin,
                 Roles = roles,
-                Permissions = permissions
             });
             
         }
@@ -306,16 +303,32 @@ namespace Backend_Server.Controllers
         
         /********* ASYNC FUNCTIONS CODE ****************/
 
+        // commented out b/c permissions table removed
         //Permission task to grab the entire list of specific permissions for the specified user(s)
-        private async Task<List<string>> GetUserPermissions(Users user)
+        // private async Task<List<string>> GetUserPermissions(Users user)
+        // {
+        //     var roles = await _userManager.GetRolesAsync(user);
+        //     var permissions = await _context.Permissions 
+        //         .Where(p => roles.Contains(p.Role))
+        //         .Select(p => p.Permission.ToString())
+        //         .Distinct()
+        //         .ToListAsync();
+        //     return permissions;
+        // }
+
+        //Replaced with unique admin domain email instead of registration code
+        private static string DetermineUserRole(string email)
         {
-            var roles = await _userManager.GetRolesAsync(user);
-            var permissions = await _context.Permissions 
-                .Where(p => roles.Contains(p.Role))
-                .Select(p => p.Permission.ToString())
-                .Distinct()
-                .ToListAsync();
-            return permissions;
+            //Don't have an official one yet. Unless you want me to set it up while I touch S3 as well; 
+            //I did know you brought it AWS Route 53, though.
+            string adminDomain = "admin.domain.com"; // <-- username@admin.domainname.com
+
+            if (adminDomain.Any(domain => email.EndsWith("@" + domain)))
+            {
+                return "Admin";
+            }
+            
+            return "Driver"; // The overall Default role of the 3 users
         }
     }
 
