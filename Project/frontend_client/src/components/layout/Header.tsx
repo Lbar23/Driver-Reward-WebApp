@@ -4,7 +4,6 @@ import Stack from '@mui/material/Stack';
 import CustomDatePicker from '../form-elements/CustomDatePicker';
 import NavbarBreadcrumbs from './NavbarBreadcrumbs';
 // import MenuButton from './MenuButton';
-import ColorModeIconDropdown from './ColorModeIconDropdown';
 import Search from '../form-elements/Search';
 
 export default function Header() {
@@ -24,7 +23,7 @@ export default function Header() {
       <NavbarBreadcrumbs />
       <Stack direction="row" sx={{ gap: 1 }}>
         <Search />
-        <CustomDatePicker />
+        {/* <CustomDatePicker /> */}
       </Stack>
     </Stack>
   );
