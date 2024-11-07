@@ -9,6 +9,7 @@ import DriverActivity from '../dashboard/DriverActivity';
 import SponsorDrivers from '../dashboard/SponsorDriverList';
 import SponsorRegistrationPage from '../dashboard/SponsorRegistrationForDriver';
 import DriverPointsHistory from '../dashboard/DriverPointHistory';
+import ManageDriverSponsors from '../ManageDriverSponsors';
 import { useView } from '../../service/viewContext';
 
 // Link the current view to the corresponding component
@@ -23,6 +24,7 @@ const viewComponents: Record<string, JSX.Element> = {
   CHANGE_PASSWORD: <PasswordChangeForm />,
   // Admin Components
   MANAGE_USERS: <Typography>Manage Users</Typography>,
+  MANAGE_DRIVERS: <ManageDriverSponsors />,
   ADMIN_SALES_REPORTS: <Typography>Sales Reports</Typography>,
   ADMIN_INVOICE_REPORTS: <Typography>Invoice Reports</Typography>,
   ADMIN_AUDIT_REPORTS: <Typography>Audit Reports</Typography>,
