@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
   Container,
   Typography,
   Card,
@@ -117,9 +118,7 @@ const ProductCatalog: React.FC = () => {
 
     if (selectedSponsor.totalPoints < listing.pointCost) {
       setSnackbarMessage(`Not enough points! You need ${listing.pointCost} points but have ${selectedSponsor.totalPoints}`);
-    } else {
-      setSnackbarMessage(`Successfully purchased ${listing.name} for ${listing.pointCost} points!`);
-    }
+    } 
     setShowSnackbar(true);
   };
 
@@ -129,88 +128,120 @@ const ProductCatalog: React.FC = () => {
   const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
 
   return (
-    <Container>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Product Catalog
-      </Typography>
+    <>
+      <Container>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Product Catalog
+        </Typography>
 
-      <FormControl fullWidth sx={{ mb: 4 }}>
-        <InputLabel>Select Sponsor</InputLabel>
-        <Select
-          value={selectedSponsorId}
-          label="Select Sponsor"
-          onChange={(e) => setSelectedSponsorId(e.target.value as number)}
-        >
-          {sponsorPoints.map((sp) => (
-            <MenuItem key={sp.sponsorId} value={sp.sponsorId}>
-              {sp.sponsorName} - {sp.totalPoints.toLocaleString()} points available
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+        <FormControl fullWidth sx={{ mb: 4 }}>
+          <InputLabel>Select Sponsor</InputLabel>
+          <Select
+            value={selectedSponsorId}
+            label="Select Sponsor"
+            onChange={(e) => setSelectedSponsorId(e.target.value as number)}
+          >
+            {sponsorPoints.map((sp) => (
+              <MenuItem key={sp.sponsorId} value={sp.sponsorId}>
+                {sp.sponsorName} - {sp.totalPoints.toLocaleString()} points available
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-      {selectedSponsor && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          You have {selectedSponsor.totalPoints.toLocaleString()} points available with {selectedSponsor.sponsorName}.
-          Point Value: ${selectedSponsor.pointDollarValue.toFixed(2)} per point
-        </Alert>
-      )}
+        {selectedSponsor && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            You have {selectedSponsor.totalPoints.toLocaleString()} points available with {selectedSponsor.sponsorName}.
+            Point Value: ${selectedSponsor.pointDollarValue.toFixed(2)} per point
+          </Alert>
+        )}
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'flex-start' }}>
-        {listings.map((listing, index) => (
-          <Card
-            key={index}
-            sx={{
-              width: 'calc(33.333% - 16px)',
-              maxWidth: 'calc(33.333% - 16px)',
-              marginBottom: 2,
-            }}>
-            <CardMedia
-              component="img"
-              height="200"
-              image={listing.imageUrl}
-              alt={listing.name}
-              sx={{ objectFit: 'cover' }}
-            />
-            <CardContent>
-              <Typography
-                variant="h6"
-                component="p"
-                sx={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {listing.name}
-              </Typography>
-              <OverviewItem title="Price" value={listing.price} />
-              <OverviewItem 
-                title="Point Cost" 
-                value={`${listing.pointCost?.toLocaleString() || 0} points`} 
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'flex-start' }}>
+          {listings.map((listing, index) => (
+            <Card
+              key={index}
+              sx={{
+                width: 'calc(33.333% - 16px)',
+                maxWidth: 'calc(33.333% - 16px)',
+                marginBottom: 2,
+              }}>
+              <CardMedia
+                component="img"
+                height="200"
+                image={listing.imageUrl}
+                alt={listing.name}
+                sx={{ objectFit: 'cover' }}
               />
-              <Button
-                fullWidth
-                variant="contained"
-                color="primary"
-                onClick={() => handlePurchase(listing)}
-                disabled={!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints}
-                sx={{ mt: 2 }}
-              >
-                Redeem with Points
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </Box>
+              <CardContent>
+                <Typography
+                  variant="h6"
+                  component="p"
+                  sx={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {listing.name}
+                </Typography>
+                <OverviewItem title="Price" value={listing.price} />
+                <OverviewItem 
+                  title="Point Cost" 
+                  value={`${listing.pointCost?.toLocaleString() || 0} points`} 
+                />
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  onClick={() => {
+                    handlePurchase(listing);
+                    addToCart(listing);
+                  }}
+                  disabled={!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints}
+                  sx={{ mt: 2 }}
+                >
+                  Add to Cart
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </Box>
 
-      <Snackbar
-        open={showSnackbar}
-        autoHideDuration={3000}
-        onClose={() => setShowSnackbar(false)}
-        message={snackbarMessage}
-      />
-    </Container>
+        <Snackbar
+          open={showSnackbar}
+          autoHideDuration={3000}
+          onClose={() => setShowSnackbar(false)}
+          message={snackbarMessage}
+        />
+
+        {/* Cart and Clear Cart Buttons Below Cards */}
+        <Box display="flex" justifyContent="center" flexDirection="column" alignItems="center" mt={4} gap={2}>
+            <Button variant="contained" color="secondary" onClick={openCart}>
+              View Cart
+            </Button>
+            <Button variant="outlined" color="error" onClick={clearCart}>
+              Clear Cart
+            </Button>
+        </Box>
+      </Container>
+
+      <Dialog open={isCartOpen} onClose={closeCart}>
+        <DialogTitle>Your Cart</DialogTitle>
+        <DialogContent>
+          {cart.length > 0 ? (
+            <List>
+              {cart.map((item, index) => (
+                <ListItem key={index}>
+                  <ListItemText primary={item.name} secondary={`Price: ${parseFloat(item.pointCost).toFixed(2)}`} />
+                </ListItem>
+              ))}
+            </List>
+          ) : (
+            <Typography variant="body1">Your cart is empty.</Typography>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
