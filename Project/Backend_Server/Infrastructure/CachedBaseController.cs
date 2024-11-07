@@ -12,14 +12,9 @@ using Serilog;
 namespace Backend_Server.Infrastructure
 {
     [Route("[controller]")]
-    public abstract class CachedBaseController : ControllerBase
+    public abstract class CachedBaseController(IMemoryCache cache) : ControllerBase
     {
-        protected readonly IMemoryCache _cache;
-        
-        protected CachedBaseController(IMemoryCache cache)
-        {
-            _cache = cache;
-        }
+        protected readonly IMemoryCache _cache = cache;
 
         protected async Task<T> GetCachedAsync<T>(
             string cacheKey, 

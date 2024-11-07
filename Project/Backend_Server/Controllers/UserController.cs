@@ -5,12 +5,15 @@ using Microsoft.EntityFrameworkCore;
 using Backend_Server.Models;
 using Backend_Server.Services;
 using Serilog;
+using Backend_Server.Infrastructure;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.Mvc.TagHelpers.Cache;
 
 namespace Backend_Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(UserManager<Users> userManager, SignInManager<Users> signInManager, AppDBContext context, NotifyService notifyService) : ControllerBase
+    public class UserController(UserManager<Users> userManager, SignInManager<Users> signInManager, AppDBContext context, NotifyService notifyService, IMemoryCache cache) : CachedBaseController(cache)
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly SignInManager<Users> _signInManager = signInManager;

@@ -3,19 +3,16 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Backend_Server.Services;
 using static Backend_Server.Services.CatalogService;
+using Microsoft.Extensions.Caching.Memory;
+using Backend_Server.Infrastructure;
 
 namespace Backend_Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CatalogController : ControllerBase
+    public class CatalogController(CatalogService catalogService, IMemoryCache cache) : CachedBaseController(cache)
     {
-        private readonly CatalogService _catalogService;
-
-        public CatalogController(CatalogService catalogService)
-        {
-            _catalogService = catalogService;
-        }
+        private readonly CatalogService _catalogService = catalogService;
 
         [HttpGet("products")]
         public async Task<ActionResult<List<Product>>> GetProducts()
