@@ -111,6 +111,9 @@ try {
     // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
 
+    //Audit Log Service
+    builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+
     if (!isDesignTime)
     {
         // Basic Serilog Service build

@@ -16,6 +16,7 @@ import FAQ from './pages/FAQ';
 import FeedbackForm from './pages/Feedback';
 // Other pages for authenticated routes
 import PasswordChangeForm from './pages/PasswordChangeForm';
+import AuditLogDashboard from './pages/AuditLogDashboard';
 
 const ProtectedRoute = () => {
     const { isAuthenticated } = useAuth();
@@ -58,6 +59,8 @@ const App = () => (
           <Route path="/home" element={<HomePage />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/feedback" element={<FeedbackForm />} />
+          <Route path="/audit-logs" element={<AuditLogDashboard />} />
+
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
