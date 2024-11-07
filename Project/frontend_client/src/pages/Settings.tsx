@@ -14,7 +14,7 @@ const Settings: React.FC = () => {
         title="Account Settings"
         buttons={[
           { label: 'Update Email', path: '/update-email' },
-          { label: 'Change Password', path: '/change-password' }, // Only Change Password button here
+          { label: 'Change Password', path: '/change-password' },
         ]}
       />
 

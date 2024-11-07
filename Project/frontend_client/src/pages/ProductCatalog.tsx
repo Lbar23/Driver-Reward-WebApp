@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Card, CardMedia, CardContent, CircularProgress, Alert, Box } from '@mui/material';
+import { Container, Typography, Card, CardMedia, CardContent, TextField, Checkbox, FormControlLabel, CircularProgress, Alert, Box, Button, Snackbar
+} from '@mui/material';
 import axios, { AxiosResponse } from 'axios';
 import OverviewItem from '../components/layout/OverviewItem';
 
@@ -7,6 +8,7 @@ interface Listing {
   name: string;
   price: string;
   imageUrl: string;
+  isOutOfStock?: boolean;
 }
 
 const CACHE_KEY = 'productCatalog';
@@ -16,6 +18,7 @@ const ProductCatalog: React.FC = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false); // State to handle save success feedback
 
   const fetchListings = async () => {
     try {
@@ -42,16 +45,35 @@ const ProductCatalog: React.FC = () => {
       }
     }
 
-    // Fetch fresh data if no valid cache is available
     fetchListings();
   }, []);
+
+  const handlePriceChange = (index: number, newPrice: string) => {
+    const updatedListings = [...listings];
+    updatedListings[index].price = newPrice;
+    setListings(updatedListings);
+  };
+
+  const handleStockStatusChange = (index: number, isOutOfStock: boolean) => {
+    const updatedListings = [...listings];
+    updatedListings[index].isOutOfStock = isOutOfStock;
+    setListings(updatedListings);
+  };
+
+  const updateProducts = async () => {
+    try {
+      await axios.put(`/api/catalog/products`, listings);
+      setSaveSuccess(true); // Show success message on successful save
+    } catch (error: any) {
+      setError(error.response?.data || 'Failed to save product changes.');
+    }
+  };
 
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <Container>
-      {/* Product Catalog */}
       <Typography variant="h4" component="h1" gutterBottom>
         Product Catalog
       </Typography>
@@ -91,11 +113,39 @@ const ProductCatalog: React.FC = () => {
               >
                 {listing.name}
               </Typography>
+              <TextField
+                label="Price"
+                variant="outlined"
+                value={listing.price}
+                onChange={(e) => handlePriceChange(index, e.target.value)}
+                fullWidth
+                margin="dense"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={listing.isOutOfStock || false}
+                    onChange={(e) => handleStockStatusChange(index, e.target.checked)}
+                  />
+                }
+                label="Out of Stock"
+              />
               <OverviewItem title="Price" value={listing.price} />
             </CardContent>
           </Card>
         ))}
       </Box>
+      <Button variant="contained" color="primary" onClick={updateProducts}>
+        Save Changes
+      </Button>
+
+      {/* Snackbar to show save success message */}
+      <Snackbar
+        open={saveSuccess}
+        autoHideDuration={3000}
+        onClose={() => setSaveSuccess(false)}
+        message="Changes saved successfully!"
+      />
     </Container>
   );
 };
