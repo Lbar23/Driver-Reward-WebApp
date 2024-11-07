@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Card, CardMedia, CardContent, CircularProgress, Alert, Box } from '@mui/material';
+import { Container, Typography, Card, CardMedia, CardContent, CircularProgress, Alert, Box, TextField, FormControlLabel, Checkbox, Button } from '@mui/material';
 import axios, { AxiosResponse } from 'axios';
 import OverviewItem from '../components/layout/OverviewItem';
 
@@ -7,6 +7,8 @@ interface Listing {
   name: string;
   price: string;
   imageUrl: string;
+  isOutOfStock?: boolean;
+  pointCost?: number;
 }
 
 const CACHE_KEY = 'productCatalog';
@@ -20,15 +22,31 @@ const ProductCatalog: React.FC = () => {
   const fetchListings = async () => {
     try {
       const response: AxiosResponse<Listing[]> = await axios.get(`/api/catalog/products`);
-      setListings(response.data);
+      const fetchedListings = response.data.map(listing => ({
+        ...listing,
+        isOutOfStock: listing.isOutOfStock || false,
+      }));
+      setListings(fetchedListings);
       setLoading(false);
 
       // Cache data and timestamp
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ listings: response.data, timestamp: Date.now() }));
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ listings: fetchedListings, timestamp: Date.now() }));
     } catch (error: any) {
       setError(error.response?.data || 'Failed to load products.');
       setLoading(false);
     }
+  };
+
+  const handlePriceChange = (index: number, newPrice: string) => {
+    const updatedListings = [...listings];
+    updatedListings[index].price = newPrice;
+    setListings(updatedListings);
+  };
+
+  const handleStockStatusChange = (index: number, isOutOfStock: boolean) => {
+    const updatedListings = [...listings];
+    updatedListings[index].isOutOfStock = isOutOfStock;
+    setListings(updatedListings);
   };
 
   useEffect(() => {
@@ -92,6 +110,7 @@ const ProductCatalog: React.FC = () => {
               >
                 {listing.name}
               </Typography>
+              {/* Editable Price Input */}
               <TextField
                 label="Price"
                 variant="outlined"
@@ -100,6 +119,7 @@ const ProductCatalog: React.FC = () => {
                 fullWidth
                 margin="dense"
               />
+              {/* Out of Stock Checkbox */}
               <FormControlLabel
                 control={
                   <Checkbox
@@ -109,17 +129,19 @@ const ProductCatalog: React.FC = () => {
                 }
                 label="Out of Stock"
               />
+              {/* Displayed Overview Items */}
               <OverviewItem title="Price" value={listing.price} />
               <OverviewItem 
                 title="Point Cost" 
                 value={`${listing.pointCost?.toLocaleString() || 0} points`} 
               />
+              {/* Redeem with Points Button */}
               <Button
                 fullWidth
                 variant="contained"
                 color="primary"
                 onClick={() => handlePurchase(listing)}
-                disabled={!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints}
+                disabled={!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints || listing.isOutOfStock}
                 sx={{ mt: 2 }}
               >
                 Redeem with Points
