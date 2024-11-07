@@ -213,11 +213,11 @@ namespace Backend_Server.Controllers
         //     return Ok();
         // }
 
-        // [HttpGet("transactions")]
-        // public async Task<IActionResult> GetDriverTransactions()
-        // {
-        //     return Ok();
-        // }
+        [HttpGet("transactions")]
+        public async Task<IActionResult> GetDriverTransactions()
+        {
+            return Ok();
+        }
 
         // [HttpGet("purchase")]
         // public async Task<IActionResult> GetDriverPurchase(int id)

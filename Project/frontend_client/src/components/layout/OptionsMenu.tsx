@@ -1,49 +1,49 @@
 import * as React from 'react';
 import { styled } from '@mui/material/styles';
-import Divider, { dividerClasses } from '@mui/material/Divider';
+import Divider from '@mui/material/Divider';
 import Menu from '@mui/material/Menu';
 import MuiMenuItem from '@mui/material/MenuItem';
-import { paperClasses } from '@mui/material/Paper';
-import { listClasses } from '@mui/material/List';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemIcon, { listItemIconClasses } from '@mui/material/ListItemIcon';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import MenuButton from './MenuButton';
-import { authService } from '../../service/authContextServices';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../service/authContext';
+import ListItemText from '@mui/material/ListItemText';
+import { Link as RouterLink } from 'react-router-dom';
 
 const MenuItem = styled(MuiMenuItem)({
-  margin: '2px 0',
+  margin: '2px',
 });
+
+// Utility component to use RouterLink within MenuItem
+const MenuItemLink = React.forwardRef<HTMLAnchorElement, { to: string; children: React.ReactNode; onClick?: () => void }>(
+  ({ to, children, onClick }, ref) => (
+    <MuiMenuItem component={RouterLink} to={to} ref={ref} onClick={onClick}>
+      {children}
+    </MuiMenuItem>
+  )
+);
 
 export default function OptionsMenu() {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const navigate = useNavigate();
+  const { logout } = useAuth();
   const open = Boolean(anchorEl);
+
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
+
   const handleClose = () => {
     setAnchorEl(null);
   };
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-      navigate('/login', { replace: true });
-    } catch (error) {
-      // Handle error (show notification, etc.)
-      console.error('Logout failed:', error);
-    }
-    handleClose(); 
-  }
+
+  const handleLogoutClick = () => {
+    logout();
+    handleClose();
+  };
+
   return (
-    <React.Fragment>
-      <MenuButton
-        aria-label="Open menu"
-        onClick={handleClick}
-        sx={{ borderColor: 'transparent' }}
-      >
+    <>
+      <MenuButton aria-label="Open menu" onClick={handleClick} sx={{ borderColor: 'transparent' }}>
         <MoreVertRoundedIcon />
       </MenuButton>
       <Menu
@@ -51,42 +51,29 @@ export default function OptionsMenu() {
         id="menu"
         open={open}
         onClose={handleClose}
-        onClick={handleClose}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         sx={{
-          [`& .${listClasses.root}`]: {
-            padding: '4px',
-          },
-          [`& .${paperClasses.root}`]: {
-            padding: 0,
-          },
-          [`& .${dividerClasses.root}`]: {
-            margin: '4px -4px',
-          },
+          [`& .MuiList-root`]: { padding: '4px' },
+          [`& .MuiPaper-root`]: { padding: 0 },
         }}
       >
-        <MenuItem onClick={handleClose}>Profile</MenuItem>
-        <MenuItem onClick={handleClose}>My account</MenuItem>
+        <MenuItemLink to="/profile" onClick={handleClose}>
+          Profile
+        </MenuItemLink>
         <Divider />
-        <MenuItem onClick={handleClose}>Add another account</MenuItem>
-        <MenuItem onClick={handleClose}>Settings</MenuItem>
+        <MenuItemLink to="/settings" onClick={handleClose}>
+          Settings
+        </MenuItemLink>
+        <MenuItemLink to="/feedback" onClick={handleClose}>
+          Feedback
+        </MenuItemLink>
         <Divider />
-        <MenuItem
-          onClick={handleLogout} //Changed to handle Logout feature
-          sx={{
-            [`& .${listItemIconClasses.root}`]: {
-              ml: 'auto',
-              minWidth: 0,
-            },
-          }}
-        >
+        <MenuItem onClick={handleLogoutClick}>
+          <LogoutRoundedIcon fontSize="small" />
           <ListItemText>Logout</ListItemText>
-          <ListItemIcon>
-            <LogoutRoundedIcon fontSize="small" />
-          </ListItemIcon>
         </MenuItem>
       </Menu>
-    </React.Fragment>
+    </>
   );
 }

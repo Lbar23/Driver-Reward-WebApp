@@ -6,7 +6,7 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="md">
       {/* Hero Section */}
       <Box sx={{ 
         textAlign: 'center', 

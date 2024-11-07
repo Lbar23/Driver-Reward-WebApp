@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { TextField, Button, Typography, Box, Link as MuiLink, LinearProgress, Alert, CircularProgress, Checkbox, FormControlLabel } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom'; // Updated to use useNavigate
+import { Link, useNavigate } from 'react-router-dom'; 
 import axios from 'axios';
 
 const usePasswordStrength = (password: string): number => {
@@ -93,7 +93,6 @@ const RegisterPage: React.FC = () => {
     <Box
       component="form"
       onSubmit={handleRegister}
-      aria-label="Registration form"
       sx={{
         display: 'flex',
         flexDirection: 'column',
@@ -106,29 +105,12 @@ const RegisterPage: React.FC = () => {
         backgroundColor: 'background.paper',
       }}
     >
-      <Typography variant="h1" sx={{fontSize:'h4.fontSize',
-         mb:2, 
-         color:'text.primary'}} 
-         component="h1" 
-         gutterBottom>
+      <Typography variant="h4" component="h1" gutterBottom>
         Create Account
       </Typography>
 
-      {error && 
-      <Alert severity="error"
-      sx={{width: '100%', mb: 2}}
-      role="alert"
-      aria-live="assertive"
-      >
-      {error}</Alert>}
-      {passwordError && 
-      <Alert severity="warning"
-      sx={{ width: '100%', mb: 2 }}
-      role = "alert"
-      aria-live = "polite"
-      >
-      {passwordError}
-      </Alert>}
+      {error && <Alert severity="error">{error}</Alert>}
+      {passwordError && <Alert severity="warning">{passwordError}</Alert>}
 
       <TextField
         label="Username"
@@ -138,13 +120,6 @@ const RegisterPage: React.FC = () => {
         value={username}
         onChange={(e: ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
         required
-        autoComplete='username'
-        inputProps={{
-          'aria-label':'Username',
-          'aria-required': true,
-          'aria-describedby': 'username-helper-text'
-          }}
-        helperText="Choose a username for your account."
       />
       <TextField
         label="Email"
@@ -155,13 +130,6 @@ const RegisterPage: React.FC = () => {
         value={email}
         onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
         required
-        autoComplete="email"
-        inputProps={{
-          'aria-label': 'Email address',
-          'aria-required': 'true',
-          'aria-describedby': 'email-helper-text'
-        }}
-        helperText="Enter your email address"
       />
       <TextField
         label="Password"
@@ -172,12 +140,6 @@ const RegisterPage: React.FC = () => {
         value={password}
         onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
         required
-        inputProps={{
-          'aria-label': 'Password',
-          'aria-required': 'true',
-          'aria-describedby': 'password-requirements password-strength'
-        }}
-        helperText="Password must contain at least 8 characters, including uppercase, lowercase, numbers, and special characters"
       />
       <Box sx={{ width: '100%', mt: 1 }}>
         <LinearProgress

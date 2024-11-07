@@ -57,6 +57,7 @@ try {
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
+                    
             });
     });
 
@@ -104,10 +105,6 @@ try {
             mySqlOptions => mySqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null));
     });
 
-    //Audit Log Service
-    builder.Services.AddScoped<IAuditLogService, AuditLogService>();
-
-
     // Automated Backup Service
     builder.Services.AddSingleton<IHostedService, BackupService>();
 
@@ -135,6 +132,7 @@ try {
     else
     {
         app.UseHsts();
+        app.UseHttpsRedirection();
     }
 
     app.UseStaticFiles();
@@ -145,8 +143,6 @@ try {
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
     });
-
-
 
     app.UseAuthentication();
     app.UseAuthorization();
@@ -168,7 +164,6 @@ try {
         
         Log.Information("Starting Web Host...");
     }
-
     
     app.Run();
 }
