@@ -1,3 +1,5 @@
+
+/*
 using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
@@ -32,3 +34,4 @@ public class AuditLogController : ControllerBase
         return Ok(logs);
     }
 }
+*/
