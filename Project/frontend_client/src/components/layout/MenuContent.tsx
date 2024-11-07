@@ -17,6 +17,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useAuth } from '../../service/authContext';
 import { useView, ViewProvider } from '../../service/viewContext';
+import { Person } from '@mui/icons-material';
 
 type ListItemType = {
   text: string;
@@ -39,7 +40,16 @@ const menuConfig: Record<string, ListItemType[]> = {
     // { text: 'Points History', icon: <InfoRoundedIcon />, view: 'DRIVER_POINTS_HISTORY' }, <-- this is outdated
   ],
   Admin: [
-    { text: 'Manage Users', icon: <PeopleIcon />, view: 'MANAGE_USERS' },
+    { 
+      text: 'Manage Users', 
+      icon: <PeopleIcon />, 
+      nestedItems: [
+        { text: "Drivers", icon: <Person />, view: 'MANAGE_DRIVERS' },
+        { text: "Sponsors", icon: <Person />, view: 'MANAGE_USERS' },
+        { text: "Admins", icon: <Person />, view: 'MANAGE_USERS' },
+
+      ],
+    },
     {
       text: 'Reports Views',
       icon: <HelpRoundedIcon />,

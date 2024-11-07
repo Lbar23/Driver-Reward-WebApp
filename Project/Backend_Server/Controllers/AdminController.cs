@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Identity;
 using Backend_Server.Services;
 using Serilog;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Caching.Memory;
+using Backend_Server.Infrastructure;
 
 namespace Backend_Server.Controllers
 {
@@ -14,18 +16,11 @@ namespace Backend_Server.Controllers
 
     [ApiController]
     [Route("api/[controller]")]
-    public class AdminController : ControllerBase
+    public class AdminController(AppDBContext context, UserManager<Users> userManager, NotifyService notifyService, IMemoryCache cache) : CachedBaseController(cache)
     {
-        private readonly AppDBContext _context;
-        private readonly UserManager<Users> _userManager;
-        private readonly NotifyService _notifyService;
-
-        public AdminController(AppDBContext context, UserManager<Users> userManager, NotifyService notifyService)
-        {
-            _context = context;
-            _userManager = userManager;
-            _notifyService = notifyService;
-        }
+        private readonly AppDBContext _context = context;
+        private readonly UserManager<Users> _userManager = userManager;
+        private readonly NotifyService _notifyService = notifyService;
 
         /// <summary>
         /// Creates a new user of any kind (admin privileges)
@@ -121,8 +116,8 @@ namespace Backend_Server.Controllers
                                 var driver = new Drivers
                                 {
                                     UserID = user.Id,
-                                    SponsorID = model.SponsorID.Value,
-                                    TotalPoints = 0
+                                    // SponsorID = model.SponsorID.Value,
+                                    // TotalPoints = 0
                                 };
                                 await _context.Drivers.AddAsync(driver);
                                 break;
@@ -190,6 +185,52 @@ namespace Backend_Server.Controllers
             {
                 return StatusCode(500, $"Database connection failed: {ex.Message}");
             }
+        }
+
+        [HttpGet("drivers/details")]
+        [Authorize(Roles = "Admin, Sponsor")]
+        public async Task<IActionResult> GetDriversWithDetails()
+        {
+            return await ExecuteQueryWithRetryAsync(async () =>
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                string cacheKey = $"drivers_details_{currentUser?.Id}";
+                
+                return await GetCachedAsync(cacheKey, async () =>
+                {
+                    try
+                    {
+                        var driversWithDetails = await _context.Users
+                            .Where(u => u.UserType == "Driver")
+                            .Select(u => new
+                            {
+                                userId = u.Id,
+                                name = u.UserName,
+                                email = u.Email,
+                                sponsorRelationships = _context.SponsorDrivers
+                                    .Where(sd => sd.DriverID == u.Id)
+                                    .Select(sd => new
+                                    {
+                                        sponsorId = sd.SponsorID,
+                                        sponsorName = _context.Sponsors
+                                            .Where(s => s.SponsorID == sd.SponsorID)
+                                            .Select(s => s.CompanyName)
+                                            .FirstOrDefault(),
+                                        points = sd.Points
+                                    })
+                                    .ToList()
+                            })
+                            .ToListAsync();
+
+                        return Ok(driversWithDetails);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error fetching drivers with details");
+                        return StatusCode(500, "Error retrieving driver details");
+                    }
+                }, TimeSpan.FromMinutes(15));
+            });
         }
 
         //Method to whenever Admin needs to change or reset a user's password to random jumble
