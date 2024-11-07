@@ -132,7 +132,7 @@ try {
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
 
     //Audit Log Service
-    builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+    //builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
     if (!isDesignTime)
     {
