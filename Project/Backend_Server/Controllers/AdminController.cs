@@ -191,83 +191,47 @@ namespace Backend_Server.Controllers
         [Authorize(Roles = "Admin, Sponsor")]
         public async Task<IActionResult> GetDriversWithDetails()
         {
-            try
+            return await ExecuteQueryWithRetryAsync(async () =>
             {
-                var driversWithDetails = await _context.Users
-                    .Where(u => u.UserType == "Driver")
-                    .Select(u => new
+                var currentUser = await _userManager.GetUserAsync(User);
+                string cacheKey = $"drivers_details_{currentUser?.Id}";
+                
+                return await GetCachedAsync(cacheKey, async () =>
+                {
+                    try
                     {
-                        userId = u.Id,
-                        name = u.UserName,
-                        email = u.Email,
-                        sponsorRelationships = _context.SponsorDrivers
-                            .Where(sd => sd.DriverID == u.Id)
-                            .Select(sd => new
+                        var driversWithDetails = await _context.Users
+                            .Where(u => u.UserType == "Driver")
+                            .Select(u => new
                             {
-                                sponsorId = sd.SponsorID,
-                                sponsorName = _context.Sponsors
-                                    .Where(s => s.SponsorID == sd.SponsorID)
-                                    .Select(s => s.CompanyName)
-                                    .FirstOrDefault(),
-                                points = sd.Points
+                                userId = u.Id,
+                                name = u.UserName,
+                                email = u.Email,
+                                sponsorRelationships = _context.SponsorDrivers
+                                    .Where(sd => sd.DriverID == u.Id)
+                                    .Select(sd => new
+                                    {
+                                        sponsorId = sd.SponsorID,
+                                        sponsorName = _context.Sponsors
+                                            .Where(s => s.SponsorID == sd.SponsorID)
+                                            .Select(s => s.CompanyName)
+                                            .FirstOrDefault(),
+                                        points = sd.Points
+                                    })
+                                    .ToList()
                             })
-                            .ToList()
-                    })
-                    .ToListAsync();
+                            .ToListAsync();
 
-                return Ok(driversWithDetails);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error fetching drivers with details");
-                return StatusCode(500, "Error retrieving driver details");
-            }
+                        return Ok(driversWithDetails);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error fetching drivers with details");
+                        return StatusCode(500, "Error retrieving driver details");
+                    }
+                }, TimeSpan.FromMinutes(15));
+            });
         }
-
-        //Outdated, but could be used for something else...
-        // [HttpGet("drivers/{id}/details")]
-        // [Authorize(Roles = "Admin, Sponsor")]
-        // public async Task<IActionResult> GetDriverDetails(int id)
-        // {
-        //     try
-        //     {
-        //         var driver = await _context.Users
-        //             .Where(u => u.Id == id && u.UserType == "Driver")
-        //             .Select(u => new
-        //             {
-        //                 userId = u.Id,
-        //                 name = u.UserName,
-        //                 email = u.Email,
-        //                 userType = u.UserType,
-        //                 createdAt = u.CreatedAt,
-        //                 lastLogin = u.LastLogin,
-        //                 roles = new[] { "Driver" },
-        //                 sponsorRelationships = _context.SponsorDrivers
-        //                     .Where(sd => sd.DriverID == u.Id)
-        //                     .Select(sd => new
-        //                     {
-        //                         sponsorId = sd.SponsorID,
-        //                         points = sd.Points,
-        //                         sponsorName = _context.Sponsors
-        //                             .Where(s => s.SponsorID == sd.SponsorID)
-        //                             .Select(s => s.CompanyName)
-        //                             .FirstOrDefault()
-        //                     })
-        //                     .ToList()
-        //             })
-        //             .FirstOrDefaultAsync();
-
-        //         if (driver == null)
-        //             return NotFound("Driver not found");
-
-        //         return Ok(driver);
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         Log.Error(ex, "Error fetching driver details for ID: {Id}", id);
-        //         return StatusCode(500, "Error retrieving driver details");
-        //     }
-        // }
 
         //Method to whenever Admin needs to change or reset a user's password to random jumble
         //Temp password...

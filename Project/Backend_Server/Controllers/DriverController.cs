@@ -239,8 +239,10 @@ namespace Backend_Server.Controllers
         //     return Ok();
         // }
 
+        //For now, method is synchronous so I don't get no warnings when building and running...
+        //DO NOT FORGET IF IMPLEMENTATION UPDATES IN THE FUTURE
         [HttpGet("transactions")]
-        public async Task<IActionResult> GetDriverTransactions()
+        public IActionResult GetDriverTransactions()
         {
             return Ok();
         }
@@ -264,33 +266,40 @@ namespace Backend_Server.Controllers
             if (user == null)
             {
                 return Unauthorized("User not found.");
-            }
+            }// Get all sponsor relationships for this driver
 
-            try
+            return await ExecuteQueryWithRetryAsync(async () =>
             {
-                // Get all sponsor relationships for this driver
-                var sponsorPoints = await _context.SponsorDrivers
-                    .Where(sd => sd.DriverID == user.Id)
-                    .Join(
-                        _context.Sponsors,
-                        sd => sd.SponsorID,
-                        s => s.SponsorID,
-                        (sd, s) => new
-                        {
-                            sponsorId = s.SponsorID,
-                            sponsorName = s.CompanyName,
-                            totalPoints = sd.Points,
-                            pointDollarValue = s.PointDollarValue
-                        })
-                    .ToListAsync();
+                string cacheKey = $"driver_sponsors_{user.Id}";
+                
+                return await GetCachedAsync<ActionResult>(cacheKey, async () =>
+                {
+                    try
+                    {
+                        var sponsorPoints = await _context.SponsorDrivers
+                            .Where(sd => sd.DriverID == user.Id)
+                            .Join(
+                                _context.Sponsors,
+                                sd => sd.SponsorID,
+                                s => s.SponsorID,
+                                (sd, s) => new
+                                {
+                                    sponsorId = s.SponsorID,
+                                    sponsorName = s.CompanyName,
+                                    totalPoints = sd.Points,
+                                    pointDollarValue = s.PointDollarValue
+                                })
+                            .ToListAsync();
 
-                return Ok(sponsorPoints);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error fetching driver's sponsors");
-                return StatusCode(500, "An error occurred while fetching sponsor data.");
-            }
+                        return Ok(sponsorPoints);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error fetching driver's sponsors");
+                        return StatusCode(500, "An error occurred while fetching sponsor data.");
+                    }
+                }, TimeSpan.FromMinutes(5));
+            });
         }
 
         [HttpGet("sponsor-points/{sponsorId}")]

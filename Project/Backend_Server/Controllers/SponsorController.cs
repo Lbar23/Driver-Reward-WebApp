@@ -24,45 +24,49 @@ namespace Backend_Server.Controllers
                 return Unauthorized("User not found.");
             }
             
-
-            // Get sponsor's ID
-            var sponsor = await _context.Sponsors
-                .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
-            if (sponsor == null)
+            return await ExecuteQueryWithRetryAsync(async () =>
             {
-                Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
-                return NotFound("Sponsor information not found.");
-            }
-
-
-            Log.Information("User ID: {UserId}", currentUser.Id);
-            // Let's check what drivers exist first
-            var allDrivers = await _context.Drivers.ToListAsync();
-
-            // Query drivers for this sponsor
-            var drivers = await _context.SponsorDrivers
-                .Where(sd => sd.SponsorID == sponsor.SponsorID)
-                .Join(
-                    _context.Users,
-                    sd => sd.DriverID,
-                    u => u.Id,
-                    (sd, u) => new DriverListDto
+                string cacheKey = $"sponsor_drivers_{currentUser.Id}";
+                
+                return await GetCachedAsync<ActionResult>(cacheKey, async () =>
+                {
+                    // Get sponsor's ID
+                    var sponsor = await _context.Sponsors
+                        .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+                    if (sponsor == null)
                     {
-                        UserID = u.Id,
-                        Name = u.UserName,
-                        Email = u.Email,
-                        TotalPoints = sd.Points
-                    })
-                .ToListAsync();
+                        Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
+                        return NotFound("Sponsor information not found.");
+                    }
 
-            Log.Information("Found {Count} drivers for sponsor", drivers.Count);
-            if (drivers == null)
-            {
-                Log.Warning("No drivers found for sponsor with ID: {SponsorId}", sponsor.SponsorID);
-                return NotFound("No drivers found");
-            }
+                    Log.Information("User ID: {UserId}", currentUser.Id);
+                    
+                    // Query drivers for this sponsor
+                    var drivers = await _context.SponsorDrivers
+                        .Where(sd => sd.SponsorID == sponsor.SponsorID)
+                        .Join(
+                            _context.Users,
+                            sd => sd.DriverID,
+                            u => u.Id,
+                            (sd, u) => new DriverListDto
+                            {
+                                UserID = u.Id,
+                                Name = u.UserName,
+                                Email = u.Email,
+                                TotalPoints = sd.Points
+                            })
+                        .ToListAsync();
 
-            return Ok(drivers);
+                    Log.Information("Found {Count} drivers for sponsor", drivers.Count);
+                    if (drivers == null)
+                    {
+                        Log.Warning("No drivers found for sponsor with ID: {SponsorId}", sponsor.SponsorID);
+                        return NotFound("No drivers found");
+                    }
+
+                    return Ok(drivers);
+                }, TimeSpan.FromMinutes(10));
+            });
         }
 
         //Same here with name, address, etc. Points and Id remain the same
