@@ -9,7 +9,9 @@ import DriverActivity from '../dashboard/DriverActivity';
 import SponsorDrivers from '../dashboard/SponsorDriverList';
 import SponsorRegistrationPage from '../dashboard/SponsorRegistrationForDriver';
 import DriverPointsHistory from '../dashboard/DriverPointHistory';
-import AuditLogDashboard from '../../pages/AuditLogDashboard';
+import SponsorReports from './SponsorReports';
+import AdminReports from './AdminReports';
+import ManageDriverSponsors from './ManageDriverSponsors';
 import { useView } from '../../service/viewContext';
 
 // Link the current view to the corresponding component
@@ -24,9 +26,9 @@ const viewComponents: Record<string, JSX.Element> = {
   CHANGE_PASSWORD: <PasswordChangeForm />,
   // Admin Components
   MANAGE_USERS: <Typography>Manage Users</Typography>,
-  ADMIN_SALES_REPORTS: <Typography>Sales Reports</Typography>,
-  ADMIN_INVOICE_REPORTS: <Typography>Invoice Reports</Typography>,
-  ADMIN_AUDIT_REPORTS: <AuditLogDashboard/>,
+  MANAGE_DRIVERS: <ManageDriverSponsors />,
+  ADMIN_REPORTS: <AdminReports />,
+  ADMIN_AUDIT_REPORTS: <Typography>Audit Reports</Typography>,
   // Driver Components
   DRIVER_APPLICATION: <DriverApplication />,
   DRIVER_REGISTRATION: <SponsorRegistrationPage />, // this probably needs to be consolidated with app
@@ -35,7 +37,7 @@ const viewComponents: Record<string, JSX.Element> = {
   DRIVER_POINTS_HISTORY: <DriverPointsHistory/>,
   // Sponsor Components
   APPLICATION_MANAGER: <ApplicationManager />,
-  SPONSOR_POINTS_REPORTS: <Typography>Points Reports</Typography>,
+  SPONSOR_REPORTS: <SponsorReports />,
   SPONSOR_AUDIT_REPORTS: <Typography>Audit Reports</Typography>,
   SPONSOR_DRIVERS: <SponsorDrivers />,
 };
