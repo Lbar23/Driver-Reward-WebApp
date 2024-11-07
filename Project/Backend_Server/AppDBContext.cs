@@ -17,7 +17,7 @@ namespace Backend_Server
         public DbSet<PointTransactions> PointTransactions { get; set; }
         public DbSet<DriverApplications> DriverApplications { get; set; }
         public DbSet<AuditLog> AuditLog { get; set; }
-        public DbSet<Permissions> Permissions { get; set; }
+        //public DbSet<Permissions> Permissions { get; set; }
         public DbSet<Admins> Admins { get; set; }
         public DbSet<SponsorDrivers> SponsorDrivers { get; set; }
         public DbSet<FeedbackForms> FeedbackForms { get; set; }
@@ -97,12 +97,12 @@ namespace Backend_Server
                     .WithMany()
                     .HasForeignKey(d => d.UserID);
 
-                entity.HasOne<Sponsors>()
-                    .WithMany()
-                    .HasForeignKey(d => d.SponsorID);
+                // entity.HasOne<Sponsors>()
+                //     .WithMany()
+                //     .HasForeignKey(d => d.SponsorID);
 
-                entity.Property(e => e.TotalPoints)
-                    .HasDefaultValue(0);
+                // entity.Property(e => e.TotalPoints)
+                //     .HasDefaultValue(0);
             });
 
             modelBuilder.Entity<Products>(entity =>
@@ -230,18 +230,18 @@ namespace Backend_Server
                     .HasColumnType("TIMESTAMP");
             });
 
-            modelBuilder.Entity<Permissions>(entity =>
-            {
-                entity.ToTable("Permissions");
+            // modelBuilder.Entity<Permissions>(entity =>
+            // {
+            //     entity.ToTable("Permissions");
 
-                entity.HasKey(e => e.PermissionID);
+            //     entity.HasKey(e => e.PermissionID);
 
-                entity.Property(d => d.Role)
-                    .IsRequired();
+            //     entity.Property(d => d.Role)
+            //         .IsRequired();
 
-                entity.Property(d => d.Permission)
-                    .HasConversion<string>();
-            });
+            //     entity.Property(d => d.Permission)
+            //         .HasConversion<string>();
+            // });
 
             modelBuilder.Entity<Admins>(entity =>
             {
@@ -260,12 +260,16 @@ namespace Backend_Server
 
                 entity.HasKey(sd => new { sd.SponsorID, sd.DriverID });
 
+                entity.Property(sd => sd.Points)
+                    .HasDefaultValue(0)
+                    .IsRequired();
+
                 entity.HasOne(sd => sd.Driver)
-                    .WithMany(d => d.SponsorDriver)
+                    .WithMany(d => d.SponsorDrivers)
                     .HasForeignKey(sd => sd.DriverID);
                     
                 entity.HasOne(sd => sd.Sponsor)
-                    .WithMany(d => d.SponsorDriver)
+                    .WithMany(d => d.SponsorDrivers)
                     .HasForeignKey(sd => sd.SponsorID);
             });
 

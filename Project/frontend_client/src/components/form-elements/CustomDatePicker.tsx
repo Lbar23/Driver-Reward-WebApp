@@ -1,80 +1,75 @@
-import * as React from 'react';
-import Button from '@mui/material/Button';
+import React, { useState } from 'react';
+import { Box, Button, Stack, Checkbox, FormControlLabel } from '@mui/material';
 import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'; // Change this line to your chosen adapter
-import { UseDateFieldProps } from '@mui/x-date-pickers/DateField';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import {
-  BaseSingleInputFieldProps,
-  DateValidationError,
-  FieldSection,
-} from '@mui/x-date-pickers/models';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 
-interface ButtonFieldProps
-  extends UseDateFieldProps<Date, false>,
-    BaseSingleInputFieldProps<
-      Date | null,
-      Date,
-      FieldSection,
-      false,
-      DateValidationError
-    > {
-  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
+interface CustomDateRangePickerProps {
+  dateRange: [Date | null, Date | null];
+  setDateRange: (range: [Date | null, Date | null]) => void;
 }
 
-function ButtonField(props: ButtonFieldProps) {
-  const {
-    setOpen,
-    label,
-    id,
-    disabled,
-    InputProps: { ref } = {},
-    inputProps: { 'aria-label': ariaLabel } = {},
-  } = props;
+const CustomDateRangePicker: React.FC<CustomDateRangePickerProps> = ({ dateRange, setDateRange }) => {
+  const [startDate, endDate] = dateRange;
+  const [isCustomRange, setIsCustomRange] = useState(false);
 
-  return (
-    <Button
-      variant="outlined"
-      id={id}
-      disabled={disabled}
-      ref={ref}
-      aria-label={ariaLabel}
-      size="small"
-      onClick={() => setOpen?.((prev) => !prev)}
-      startIcon={<CalendarTodayRoundedIcon fontSize="small" />}
-      sx={{ minWidth: 'fit-content' }}
-    >
-      {label ? `${label}` : 'Pick a date'}
-    </Button>
-  );
-}
-
-export default function CustomDatePicker() {
-  const [value, setValue] = React.useState<Date | null>(new Date('2023-04-17'));
-  const [open, setOpen] = React.useState(false);
-
-  const formatDate = (date: Date | null): string => {
-    return date ? date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '';
+  // Helper function for quick date range selections
+  const setQuickDateRange = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days);
+    setDateRange([start, end]);
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}> {/* AdapterDateFns is still required by the picker */}
-      <DatePicker
-        value={value}
-        label={formatDate(value)}
-        onChange={(newValue) => setValue(newValue)}
-        slots={{ field: ButtonField }}
-        slotProps={{
-          field: { setOpen } as any,
-          nextIconButton: { size: 'small' },
-          previousIconButton: { size: 'small' },
-        }}
-        open={open}
-        onClose={() => setOpen(false)}
-        onOpen={() => setOpen(true)}
-        views={['day', 'month', 'year']}
-      />
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Stack direction="column" spacing={2} alignItems="flex-start" sx={{ mb: 2 }}>
+        
+        {/* Custom Range Checkbox */}
+        <FormControlLabel
+          control={<Checkbox checked={isCustomRange} onChange={() => setIsCustomRange(!isCustomRange)} />}
+          label="Custom Date Range"
+        />
+
+        {/* Start and End Date Pickers - Only shown if Custom Range is selected */}
+        {isCustomRange ? (
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box display="flex" alignItems="center" gap={1}>
+              <CalendarTodayRoundedIcon fontSize="small" />
+              <DatePicker
+                label="Start"
+                value={startDate}
+                onChange={(newValue) => setDateRange([newValue, endDate])}
+                disableFuture
+              />
+            </Box>
+            <Box display="flex" alignItems="center" gap={1}>
+              <CalendarTodayRoundedIcon fontSize="small" />
+              <DatePicker
+                label="End"
+                value={endDate}
+                onChange={(newValue) => setDateRange([startDate, newValue])}
+                disableFuture
+              />
+            </Box>
+          </Stack>
+        ) : (
+          // Quick Date Range Selection Buttons - Only shown if Custom Range is not selected
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" size="small" onClick={() => setQuickDateRange(7)}>
+              Last 7 Days
+            </Button>
+            <Button variant="outlined" size="small" onClick={() => setQuickDateRange(30)}>
+              Last 30 Days
+            </Button>
+            <Button variant="outlined" size="small" onClick={() => setQuickDateRange(365)}>
+              Last Year
+            </Button>
+          </Stack>
+        )}
+      </Stack>
     </LocalizationProvider>
   );
-}
+};
+
+export default CustomDateRangePicker;
