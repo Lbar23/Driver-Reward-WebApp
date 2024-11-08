@@ -25,39 +25,62 @@ namespace Backend_Server.Services
         private readonly IConfiguration _configuration;
         private readonly IAmazonSecretsManager _amazonSecrets;
         private readonly IAmazonS3 _s3Client;
+        private readonly IServiceScopeFactory _scopeFactory;
+
         private readonly string _backupPath;
         private readonly string _bucketName;
         private const int BACKUP_RETENTION_DAYS = 7;
+        private readonly CancellationTokenSource _emergencyStopToken = new();
 
         public BackupService(
             IConfiguration configuration, 
             IAmazonSecretsManager amazonSecrets,
-            IAmazonS3 s3Client)
+            IAmazonS3 s3Client,
+            IServiceScopeFactory scopeFactory)
         {
             _configuration = configuration;
             _amazonSecrets = amazonSecrets;
             _s3Client = s3Client;
+            _scopeFactory = scopeFactory;
+            
             _backupPath = "var/backups/database";
             _bucketName = _configuration["AWS:BackupBucketName"] ?? "team16-db-backups";
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            while (!stoppingToken.IsCancellationRequested)
+            try
             {
-                try
+                using var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(
+                    stoppingToken, 
+                    _emergencyStopToken.Token);
+
+                while (!combinedToken.Token.IsCancellationRequested)
                 {
-                    Directory.CreateDirectory(_backupPath);
+                    try
+                    {
+                        Directory.CreateDirectory(_backupPath);
 
-                    var backupFile = await BackupDatabase();
+                        var backupFile = await BackupDatabase();
 
-                    await UploadBackupToS3(backupFile);
+                        if (combinedToken.Token.IsCancellationRequested)
+                        {
+                            // Clean up partial backup if shutdown requested
+                            if (File.Exists(backupFile))
+                            {
+                                File.Delete(backupFile);
+                            }
+                            break;
+                        }
 
-                    await CleanupOldBackups();
+                        await UploadBackupToS3(backupFile);
 
-                    if (File.Exists(backupFile)) {
-                        File.Delete(backupFile);
-                    }
+                        await CleanupOldBackups();
+
+                        if (File.Exists(backupFile))
+                        {
+                            File.Delete(backupFile);
+                        }
 
                     await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
                 }
@@ -77,11 +100,27 @@ namespace Backend_Server.Services
             using var connectionProvider = new DbConnectionProvider(_configuration, _amazonSecrets);
             using var connection = await connectionProvider.GetDbConnectionAsync();
             using var cmd = new MySqlCommand { Connection = connection };
-            using var mb = new MySqlBackup(cmd);
+            using var mb = new MySqlBackup(cmd)
+            {
+                ExportInfo = 
+                {
+                    ExportRows = true,
+                    RecordDumpTime = true
+                }
+            };
             
             await connection.OpenAsync();
+            
+            // This is to handle datetime conversions, since some data in database includes DateOnly
+            await using var sessionCmd = new MySqlCommand(@"
+                SET SESSION time_zone='+00:00';
+                SET SESSION sql_mode='ALLOW_INVALID_DATES,NO_ZERO_DATE';
+                ", connection);
+            await sessionCmd.ExecuteNonQueryAsync();
+            
             mb.ExportToFile(backupFile);
 
+            
             return backupFile;
         }
 
@@ -161,6 +200,19 @@ namespace Backend_Server.Services
                 Log.Error(ex, "UserID: N/A, Category: System, Description: Error during backup cleanup");
                 throw;
             }
+        }
+
+        public override async Task StopAsync(CancellationToken cancellationToken)
+        {
+            Log.Information("Backup service is stopping...");
+            
+            //Trigger emergency stop if needed
+            _emergencyStopToken.Cancel();
+
+            //Wait for base cleanup
+            await base.StopAsync(cancellationToken);
+            
+            Log.Information("Backup service stopped successfully");
         }
     }
 }

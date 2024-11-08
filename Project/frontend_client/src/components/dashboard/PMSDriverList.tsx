@@ -8,118 +8,129 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TableSortLabel,
   Typography,
-  LinearProgress
+  LinearProgress,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel
 } from '@mui/material';
 import axios from 'axios';
 
-//Will definitely be broken, considering no city, state, and name since db changes (can remove to test with actual data later)
-interface Driver {
-  id: number;
-  name: string;
+interface SponsorPoints {
+  sponsorId: number;
+  sponsorName: string;
   totalPoints: number;
-  // city: string;
-  // state: string;
+  pointDollarValue: number;
 }
 
 const DriverPointsList: React.FC = () => {
-    const [drivers, setDrivers] = useState<Driver[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [sortBy, setSortBy] = useState<'points' | 'name'>('points');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  
-    useEffect(() => {
-      fetchDrivers();
-    }, [sortBy, sortOrder]);
-  
-    const fetchDrivers = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get('/api/sponsor/drivers', {
-          params: {
-            sortBy,
-            sortOrder
-          }
-        });
-        setDrivers(response.data);
-        setError('');
-      } catch (err) {
-        setError('Failed to load drivers data');
-        console.error('Error fetching drivers:', err);
-      } finally {
-        setLoading(false);
+  const [sponsorPoints, setSponsorPoints] = useState<SponsorPoints[]>([]);
+  const [selectedSponsorId, setSelectedSponsorId] = useState<number | ''>('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchSponsorPoints();
+  }, []);
+
+  const fetchSponsorPoints = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/driver/my-sponsors');
+      setSponsorPoints(response.data);
+      // Set the first sponsor as default if none selected
+      if (response.data.length > 0 && !selectedSponsorId) {
+        setSelectedSponsorId(response.data[0].sponsorId);
       }
-    };
-  
-    const handleSort = (field: 'points' | 'name') => {
-      if (sortBy === field) {
-        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-      } else {
-        setSortBy(field);
-        setSortOrder('desc');
-      }
-    };
-  
-    if (loading) {
-      return (
-        <Box sx={{ width: '100%', mt: 2 }}>
-          <LinearProgress />
-        </Box>
-      );
+      setError('');
+    } catch (err) {
+      setError('Failed to load sponsor points data');
+      console.error('Error fetching sponsor points:', err);
+    } finally {
+      setLoading(false);
     }
-  
-    if (error) {
-      return (
-        <Typography color="error" sx={{ mt: 2 }}>
-          {error}
-        </Typography>
-      );
-    }
-  
-    return (
-      <Paper sx={{ width: '100%', mb: 2, mt: 2 }}>
-        <TableContainer>
-          <Table aria-label="drivers points table">
-            <TableHead>
-              <TableRow>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortBy === 'name'}
-                    direction={sortBy === 'name' ? sortOrder : 'asc'}
-                    onClick={() => handleSort('name')}
-                  >
-                    Driver Name
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortBy === 'points'}
-                    direction={sortBy === 'points' ? sortOrder : 'asc'}
-                    onClick={() => handleSort('points')}
-                  >
-                    Total Points
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>City</TableCell>
-                <TableCell>State</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {drivers.map((driver) => (
-                <TableRow key={driver.id}>
-                  <TableCell>{driver.name}</TableCell>
-                  <TableCell>{driver.totalPoints.toLocaleString()}</TableCell>
-                  {/* <TableCell>{driver.city}</TableCell>
-                  <TableCell>{driver.state}</TableCell> */}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
-    );
   };
+
+  const handleSponsorChange = (event: any) => {
+    setSelectedSponsorId(event.target.value);
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ width: '100%', mt: 2 }}>
+        <LinearProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Typography color="error" sx={{ mt: 2 }}>
+        {error}
+      </Typography>
+    );
+  }
+
+  if (sponsorPoints.length === 0) {
+    return (
+      <Typography sx={{ mt: 2 }}>
+        You are not currently registered with any sponsors.
+      </Typography>
+    );
+  }
+
+  const selectedSponsor = sponsorPoints.find(sp => sp.sponsorId === selectedSponsorId);
+
+  return (
+    <Box sx={{ width: '100%', mb: 2, mt: 2 }}>
+      <FormControl fullWidth sx={{ mb: 2 }}>
+        <InputLabel>Select Sponsor</InputLabel>
+        <Select
+          value={selectedSponsorId}
+          label="Select Sponsor"
+          onChange={handleSponsorChange}
+        >
+          {sponsorPoints.map((sp) => (
+            <MenuItem key={sp.sponsorId} value={sp.sponsorId}>
+              {sp.sponsorName}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {selectedSponsor && (
+        <Paper>
+          <TableContainer>
+            <Table aria-label="sponsor points details">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Sponsor</TableCell>
+                  <TableCell align="right">Total Points</TableCell>
+                  <TableCell align="right">Point Value ($)</TableCell>
+                  <TableCell align="right">Total Value ($)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow>
+                  <TableCell>{selectedSponsor.sponsorName}</TableCell>
+                  <TableCell align="right">
+                    {selectedSponsor.totalPoints.toLocaleString()}
+                  </TableCell>
+                  <TableCell align="right">
+                    ${selectedSponsor.pointDollarValue.toFixed(2)}
+                  </TableCell>
+                  <TableCell align="right">
+                    ${(selectedSponsor.totalPoints * selectedSponsor.pointDollarValue).toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
+    </Box>
+  );
+};
 
 export default DriverPointsList;

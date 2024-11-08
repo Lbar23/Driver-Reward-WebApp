@@ -35,8 +35,19 @@ try {
     builder.Services.AddHttpClient();
 
     builder.Services.AddSingleton<CatalogService>();
-    builder.Services.AddScoped<DbConnectionProvider>();
+    builder.Services.AddSingleton<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
+
+    //Service for handling Logging more efficiently with custom services or methods relating to DB Connection
+    builder.Services.AddLogging(configure => {
+        configure.AddConsole();
+        configure.AddDebug();
+        configure.SetMinimumLevel(LogLevel.Information);
+    });
+
+    //Added caching for queries and requests
+    
+    builder.Services.AddMemoryCache();
 
     builder.Services.AddControllers();
 
@@ -57,6 +68,7 @@ try {
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
+                    
             });
     });
 
@@ -101,11 +113,20 @@ try {
         var connection = dbProvider.GetDbConnectionAsync().Result;
         options.UseMySql(connection.ConnectionString,
             ServerVersion.AutoDetect(connection.ConnectionString),
-            mySqlOptions => mySqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null));
+            mySqlOptions => 
+            {
+                mySqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null);
+                mySqlOptions.CommandTimeout(30);
+                mySqlOptions.EnableStringComparisonTranslations();
+                mySqlOptions.MigrationsAssembly("Backend_Server");
+            });
     });
 
     // Automated Backup Service
-    builder.Services.AddHostedService<BackupService>();
+    builder.Services.AddSingleton<IHostedService, BackupService>();
 
     // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
@@ -131,6 +152,7 @@ try {
     else
     {
         app.UseHsts();
+        app.UseHttpsRedirection();
     }
 
     app.UseStaticFiles();
@@ -141,8 +163,6 @@ try {
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
     });
-
-
 
     app.UseAuthentication();
     app.UseAuthorization();
@@ -164,7 +184,6 @@ try {
         
         Log.Information("UserID: N/A, Category: System, Description: Starting Web Host...");
     }
-
     
     app.Run();
 }

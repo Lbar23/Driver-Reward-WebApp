@@ -31,7 +31,7 @@ const DriverPointsList: React.FC = () => {
     const fetchTransactions = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`/api/drivers/${driverId}/transactions`);
+        const response = await axios.get(`/api/driver/transactions`);
         setTransactions(response.data);
         setError('');
       } catch (err) {

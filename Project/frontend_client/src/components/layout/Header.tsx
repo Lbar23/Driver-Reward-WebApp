@@ -1,11 +1,8 @@
 import * as React from 'react';
 import Stack from '@mui/material/Stack';
-import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
-import CustomDatePicker from '../form-elements/CustomDatePicker';
+// import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import NavbarBreadcrumbs from './NavbarBreadcrumbs';
-import MenuButton from './MenuButton';
-import ColorModeIconDropdown from './ColorModeIconDropdown';
-
+// import MenuButton from './MenuButton';
 import Search from '../form-elements/Search';
 
 export default function Header() {
@@ -25,11 +22,6 @@ export default function Header() {
       <NavbarBreadcrumbs />
       <Stack direction="row" sx={{ gap: 1 }}>
         <Search />
-        <CustomDatePicker />
-        <MenuButton showBadge aria-label="Open notifications">
-          <NotificationsRoundedIcon />
-        </MenuButton>
-        <ColorModeIconDropdown />
       </Stack>
     </Stack>
   );

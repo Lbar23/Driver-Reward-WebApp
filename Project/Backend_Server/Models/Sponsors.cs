@@ -12,7 +12,7 @@ namespace Backend_Server.Models
         public required string SponsorType { get; set; }
         //public required string AccessCode { get; set; } <-Replace?
         public required string CompanyName { get; set; }
-        public decimal PointDollarValue { get; set; }
-        public ICollection<SponsorDrivers> SponsorDriver { get; set; } = []; //Added after adding bridge entity for connection
+        public decimal PointDollarValue { get; set; } = 0.01m;
+        public ICollection<SponsorDrivers> SponsorDrivers { get; set; } = []; //Added after adding bridge entity for connection
     }
 }

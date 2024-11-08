@@ -1,37 +1,49 @@
 import React, { useState, FormEvent, ChangeEvent, useEffect } from 'react';
-import { TextField, Button, Typography, Box, Link as MuiLink, Alert, CircularProgress } from '@mui/material';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import {
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Link as MuiLink,
+  Alert,
+  CircularProgress
+} from '@mui/material';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../service/authContext';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+  const { checkAuth } = useAuth(); // Access checkAuth from the auth context
+
+  // Setup for login steps (2FA or standard login) based on URL parameters
   const queryParams = new URLSearchParams(location.search);
   const initialStep = queryParams.get('step') === '2fa' ? '2fa' : 'login';
   const initialUserId = queryParams.get('userId');
 
   const [step, setStep] = useState<'login' | '2fa'>(initialStep);
   const [userId, setUserId] = useState<string | null>(initialUserId || null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [username, setUsername] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [twoFactorCode, setTwoFactorCode] = useState<string>(''); 
+  const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [redirectToDashboard, setRedirectToDashboard] = useState<boolean>(false);
 
   useEffect(() => {
+    // Adjusts the step based on URL query parameters if redirected for 2FA
     if (initialStep === '2fa' && initialUserId) {
       setStep('2fa');
       setUserId(initialUserId);
     }
   }, [initialStep, initialUserId]);
 
+  // Handles login, checks for 2FA requirements, and redirects accordingly
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await axios.post('/api/user/login', { username, password });
 
@@ -39,11 +51,10 @@ const LoginPage: React.FC = () => {
         setStep('2fa');
         setUserId(response.data.userId.toString());
         navigate(`/login?step=2fa&userId=${response.data.userId}`, { replace: true });
-      } 
-      else if (response.data.succeeded) {
-        setRedirectToDashboard(true);
-      } 
-      else {
+      } else if (response.data.succeeded) {
+        await checkAuth(); // Updates global auth state after successful login
+        navigate('/dashboard');
+      } else {
         setError(response.data.message || 'Login failed. Please try again.');
       }
     } catch (err: any) {
@@ -53,37 +64,30 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  // Handles 2FA verification, then updates global auth state and redirects
   const handle2FA = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/user/verify-2fa', {
-        userId: String(userId),
-        code: twoFactorCode
-      },{
-        withCredentials: true,
-      });
+      const response = await axios.post(
+        '/api/user/verify-2fa',
+        { userId: String(userId), code: twoFactorCode },
+        { withCredentials: true }
+      );
 
       if (response.data.succeeded) {
-        setRedirectToDashboard(true);
-      } 
-      else {
+        await checkAuth(); // Sets authenticated state and user data
+        navigate('/dashboard');
+      } else {
         setError(response.data.message || 'Invalid 2FA code. Please try again.');
       }
-    } 
-    catch (err: any) {
+    } catch (err: any) {
       setError(err.response?.data?.message || '2FA verification failed. Please try again.');
-    } 
-    finally {
+    } finally {
       setLoading(false);
     }
   };
-
-  if (redirectToDashboard) {
-    //return <Navigate to="/dashboard" replace />;
-    navigate('/dashboard');
-  }
 
   return (
     <Box

@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Backend_Server.Models;
 using Serilog;
+using Microsoft.Extensions.Caching.Memory;
+using Backend_Server.Infrastructure;
 
 namespace Backend_Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class SponsorController(UserManager<Users> userManager, AppDBContext context) : ControllerBase
+    public class SponsorController(UserManager<Users> userManager, AppDBContext context, IMemoryCache cache) : CachedBaseController(cache)
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly AppDBContext _context = context;
@@ -32,21 +34,23 @@ namespace Backend_Server.Controllers
                 return NotFound("Sponsor information not found.");
             }
 
-            // Let's check what drivers exist first
-            var allDrivers = await _context.Drivers.ToListAsync();
-
-            // Query drivers for this sponsor
-            var query = _context.Drivers
-                .Where(d => d.SponsorID == sponsor.SponsorID);
-
-            var drivers = await query
-                .Select(d => new DriverListDto
-                {
-                    UserID = d.UserID,
-                    Email = currentUser.Email,
-                    TotalPoints = d.TotalPoints
-                })
-                .ToListAsync();
+                    Log.Information("User ID: {UserId}", currentUser.Id);
+                    
+                    // Query drivers for this sponsor
+                    var drivers = await _context.SponsorDrivers
+                        .Where(sd => sd.SponsorID == sponsor.SponsorID)
+                        .Join(
+                            _context.Users,
+                            sd => sd.DriverID,
+                            u => u.Id,
+                            (sd, u) => new DriverListDto
+                            {
+                                UserID = u.Id,
+                                Name = u.UserName,
+                                Email = u.Email,
+                                TotalPoints = sd.Points
+                            })
+                        .ToListAsync();
 
             Log.Information("UserID: N/A, Category: User, Description: Found {Count} drivers for sponsor", drivers.Count);
             if (drivers == null)
@@ -55,37 +59,49 @@ namespace Backend_Server.Controllers
                 return NotFound("No drivers found");
             }
 
-            return Ok(drivers);
+                    return Ok(drivers);
+                }, TimeSpan.FromMinutes(10));
+            });
         }
 
         //Same here with name, address, etc. Points and Id remain the same
         [HttpGet("drivers/{id}")]
         public async Task<IActionResult> GetDriver(int id)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
             {
                 return Unauthorized("User not found.");
             }
 
-            var driver = await _context.Drivers
-                .Where(d => d.UserID == id && d.UserID == user.Id)
-                .Select(d => new DriverListDto
-                {
-                    UserID = d.UserID,
-                    //Name = d.Name,
-                    TotalPoints = d.TotalPoints,
-                    //City = d.City,
-                    //State = d.State
-                })
+            var sponsor = await _context.Sponsors
+                .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+            if (sponsor == null)
+            {
+                return NotFound("Sponsor not found.");
+            }
+
+            var driverInfo = await _context.SponsorDrivers
+                .Where(sd => sd.SponsorID == sponsor.SponsorID && sd.DriverID == id)
+                .Join(
+                    _context.Users,
+                    sd => sd.DriverID,
+                    u => u.Id,
+                    (sd, u) => new DriverListDto
+                    {
+                        UserID = u.Id,
+                        Name = u.UserName,
+                        Email = u.Email,
+                        TotalPoints = sd.Points
+                    })
                 .FirstOrDefaultAsync();
 
-            if (driver == null)
+            if (driverInfo == null)
             {
                 return NotFound("Driver not found.");
             }
 
-            return Ok(driver);
+            return Ok(driverInfo);
         }
 
         //This method can be separated into two parts; just put one here as reference
@@ -126,7 +142,7 @@ namespace Backend_Server.Controllers
                 .ToListAsync();
 
             Log.Information("Found {Count} applications for sponsor", applications.Count);
-            if (!applications.Any())
+            if (applications.Count == 0)
             {
                 return NotFound("No applications found.");
             }

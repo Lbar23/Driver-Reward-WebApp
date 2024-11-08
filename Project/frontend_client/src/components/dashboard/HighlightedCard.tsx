@@ -19,8 +19,7 @@ export default function HighlightedCard() {
         <Typography
           component="h2"
           variant="subtitle2"
-          sx={{ fontWeight: '600' }}
-        >
+          sx={{ fontWeight: '600' }}>
           Explore your data
         </Typography>
         <Typography sx={{ color: 'text.secondary', mb: '8px' }}>

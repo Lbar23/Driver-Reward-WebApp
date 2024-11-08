@@ -1,89 +1,70 @@
 import * as React from 'react';
-import { styled } from '@mui/material/styles';
-import Avatar from '@mui/material/Avatar';
-import MuiDrawer, { drawerClasses } from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
+import Drawer from '@mui/material/Drawer';
+import AppBar from '@mui/material/AppBar';
+import CssBaseline from '@mui/material/CssBaseline';
+import Toolbar from '@mui/material/Toolbar';
 import Divider from '@mui/material/Divider';
-import Stack from '@mui/material/Stack';
+import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
-import SelectContent from '../form-elements/SelectContent';
+import { useAuth } from '../../service/authContext';
 import MenuContent from './MenuContent';
-import CardAlert from './CardAlert';
 import OptionsMenu from './OptionsMenu';
 
-const drawerWidth = 240;
 
-const Drawer = styled(MuiDrawer)({
-  width: drawerWidth,
-  flexShrink: 0,
-  boxSizing: 'border-box',
-  mt: 10,
-  [`& .${drawerClasses.paper}`]: {
-    width: drawerWidth,
-    boxSizing: 'border-box',
-    height: '100vh', 
-    position: 'fixed',
-    top: 0,
-    left: 0
-  },
-});
+export const drawerWidth = 240;
 
 export default function SideMenu() {
+  const { user, viewRole } = useAuth();
+
+  // Substitute role-based placeholder data if `viewRole` is active
+  const displayUser = viewRole
+    ? { 
+        userName: `Viewing as ${viewRole}`, 
+        email: `${viewRole.toLowerCase()}@example.com`, 
+        userType: viewRole 
+      }
+    : user;
+
   return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        display: { xs: 'none', md: 'block' },
-        [`& .${drawerClasses.paper}`]: {
-          backgroundColor: 'background.paper',
-        },
-      }}
-    >
-      <Box sx={{ height: '100%', 
-        overflowY: 'auto',
-        '&::-webkit-scrollbar': {
-        display: 'none'}, // Hide scrollbar in WebKit browsers
-        scrollbarWidth: 'none', // Hide scrollbar in Firefox
-      }}>
-        <Box
+    // <ViewProvider>
+      <Box sx={{ display: 'flex' }}>
+        <CssBaseline />
+        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        </AppBar>
+        <Drawer
+          variant="permanent"
           sx={{
-            display: 'flex',
-            mt: 'calc(var(--template-frame-height, 0px))',
-            p: 1.5,
-          }}
-        >
-          {/* <SelectContent /> */}
-        </Box>
-        <Divider />
-        <MenuContent />
-        {/* <CardAlert /> */}
-        <Stack
-          direction="row"
-          sx={{
-            p: 2,
-            gap: 1,
-            alignItems: 'center',
-            borderTop: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Avatar
-            sizes="small"
-            alt="First Last"
-            src="/static/images/avatar/7.jpg"
-            sx={{ width: 36, height: 36 }}
-          />
-          <Box sx={{ mr: 'auto' }}>
-            <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: '16px' }}>
-              First Last
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              mail@email.com
-            </Typography>
+            display: { xs: 'none', md: 'block' },  // Hide on smaller than md screens
+            width: drawerWidth,
+            flexShrink: 0,
+            [`& .MuiDrawer-paper`]: {
+              width: drawerWidth,
+              boxSizing: 'border-box',
+            },
+          }}>
+          <Toolbar />
+          <Box sx={{ overflow: 'auto' }}>
+            {displayUser && (
+              <>
+                <Box sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
+                  <Avatar alt={displayUser.userName} src="/static/images/avatar/7.jpg" sx={{ width: 36, height: 36 }} />
+                  <Box sx={{ ml: 2 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: '16px' }}>
+                      {displayUser.userName}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {displayUser.email}
+                    </Typography>
+                  </Box>
+                  <OptionsMenu />
+                </Box>
+                <Divider />
+                <MenuContent />
+              </>
+            )}
           </Box>
-          <OptionsMenu />
-        </Stack>
+        </Drawer>
       </Box>
-    </Drawer>
   );
 }

@@ -1,83 +1,134 @@
+// MenuContent.tsx
 import * as React from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import Stack from '@mui/material/Stack';
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
-import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
-import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded';
-import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
+import Collapse from '@mui/material/Collapse';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import ApprovalIcon from '@mui/icons-material/Approval';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import HelpRoundedIcon from '@mui/icons-material/HelpRounded';
-import FeedbackIcon from '@mui/icons-material/Feedback';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
-import ApprovalIcon from '@mui/icons-material/Approval';
-import { useLocation, useNavigate } from 'react-router-dom';
+import PeopleIcon from '@mui/icons-material/People';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { useAuth } from '../../service/authContext';
+import { useView } from '../../service/viewContext';
+import { Person } from '@mui/icons-material';
 
-const mainListItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard'}, //added navigation pathing
-  // { text: 'Analytics', icon: <AnalyticsRoundedIcon /> },
-  // { text: 'Clients', icon: <PeopleRoundedIcon /> },
-  // { text: 'Tasks', icon: <AssignmentRoundedIcon /> },
-];
+type ListItemType = {
+  text: string;
+  icon: React.ReactNode;
+  view?: string;
+  path?: string;
+  nestedItems?: ListItemType[];
+};
 
-//Methods below, except for settings, probably, should have a "back to dashboard" button redirect...
-//Unless make them components instead of individual pages, bit unideal...
-// will add to nav bar ^
-const secondaryListItems = [
-  { text: 'Settings', icon: <SettingsRoundedIcon /> },
-  { text: 'About', icon: <InfoRoundedIcon />, path: '/about' }, //same
-  { text: 'FAQ', icon: <HelpRoundedIcon />, path: '/faq' }, //same
-  { text: 'Catalog', icon: <ShoppingBagIcon />, path: '/catalog' }, //same
-  { text: 'Driver Application', icon: <ApprovalIcon />, path: '/application' }, //same
-  { text: 'Manage Applications', icon: <ApprovalIcon />, path: '/application-manager' }, //same
-  { text: 'Feedback', icon: <FeedbackIcon />, path: '/feedback' }, //same
-];
+// Menu configuration
+const menuConfig: Record<string, ListItemType[]> = {
+  base: [{ text: 'Dashboard', icon: <DashboardIcon />, view: 'MAIN' }],
+  Guest: [{ text: 'Applications', icon: <ApprovalIcon />, view: 'DRIVER_APPLICATION' }],
+  Driver: [
+    { text: 'Applications', icon: <ApprovalIcon />, view: 'DRIVER_APPLICATION' },
+    { text: 'Product Catalog', icon: <ShoppingBagIcon />, path: '/catalog' },
+    { text: 'Register With Sponsors', icon: <ApprovalIcon />, view: 'DRIVER_REGISTRATION' },
+    { text: 'Points', icon: <InfoRoundedIcon />, view: 'DRIVER_POINTS' },
+    { text: 'Activity', icon: <InfoRoundedIcon />, view: 'DRIVER_ACTIVITY' },
+  ],
+  Admin: [
+    { 
+      text: 'Manage Users', 
+      icon: <PeopleIcon />, 
+      nestedItems: [
+        { text: "Drivers", icon: <Person />, view: 'MANAGE_DRIVERS' },
+        { text: "Sponsors", icon: <Person />, view: 'MANAGE_USERS' },
+        { text: "Admins", icon: <Person />, view: 'MANAGE_USERS' },
+
+      ],
+    },
+    {
+      text: 'Reports Views',
+      icon: <HelpRoundedIcon />,
+      nestedItems: [
+        { text: 'General', icon: <HelpRoundedIcon />, view: 'ADMIN_REPORTS' },
+        { text: 'Audits', icon: <HelpRoundedIcon />, view: 'ADMIN_AUDIT_REPORTS' },
+      ],
+    },
+  ],
+  Sponsor: [
+    { text: 'Manage Drivers', icon: <PeopleIcon />, view: 'SPONSOR_DRIVERS' },
+    { text: 'Approve/Reject Applications', icon: <ApprovalIcon />, view: 'APPLICATION_MANAGER' },
+    { text: 'Product Catalog', icon: <ShoppingBagIcon />, path: '/catalog' },
+    {
+      text: 'Reports Views',
+      icon: <HelpRoundedIcon />,
+      nestedItems: [
+        { text: 'General', icon: <InfoRoundedIcon />, view: 'SPONSOR_REPORTS' },
+        { text: 'Audits', icon: <HelpRoundedIcon />, view: 'SPONSOR_AUDIT_REPORTS' },
+      ],
+    },
+  ],
+};
 
 export default function MenuContent() {
+  const { setCurrentView } = useView();
+  const { user, viewRole } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const currentRole = viewRole || user?.userType || 'Guest';
+  const [openItems, setOpenItems] = useState<{ [key: string]: boolean }>({});
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
+  // Combine base items with role-specific items
+  const menuItems = [...menuConfig.base, ...(menuConfig[currentRole] || [])];
+
+  const toggleOpen = (text: string) => {
+    setOpenItems((prev) => ({ ...prev, [text]: !prev[text] }));
   };
 
-  const isCurrentPath = (path: string) => location.pathname === path;
+  const handleItemClick = (view?: string, path?: string) => {
+    if (path) {
+      navigate(path); // Use navigate for direct paths like '/catalog'
+    } else if (view) {
+      setCurrentView(view); // Set the view in ViewProvider
+    }
+  };
 
   return (
-    <Stack sx={{ flexGrow: 1, p: 1, justifyContent: 'space-between' }}>
-      <List dense>
-        {mainListItems.map((item, index) => (
-          <ListItem key={index} disablePadding sx={{ display: 'block' }}>
-            <ListItemButton 
-              selected={isCurrentPath(item.path)}
-              onClick={() => handleNavigation(item.path)}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-
-      <List dense>
-        {secondaryListItems.map((item, index) => (
-          <ListItem key={index} disablePadding sx={{ display: 'block' }}>
+    <List dense>
+      {menuItems.map((item, index) => (
+        <React.Fragment key={index}>
+          <ListItem disablePadding>
             <ListItemButton
-              selected={item.path !== undefined && isCurrentPath(item.path)} //added null check for navigation purposes
-              onClick={() => handleNavigation(item.path!)}
+              onClick={() =>
+                item.nestedItems ? toggleOpen(item.text) : handleItemClick(item.view, item.path)
+              }
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
+              {item.nestedItems ? (openItems[item.text] ? <ExpandLessIcon /> : <ExpandMoreIcon />) : null}
             </ListItemButton>
           </ListItem>
-        ))}
-      </List>
-    </Stack>
+          {item.nestedItems && (
+            <Collapse in={openItems[item.text]} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {item.nestedItems.map((nestedItem, nestedIndex) => (
+                  <ListItem key={nestedIndex} disablePadding>
+                    <ListItemButton
+                      onClick={() => handleItemClick(nestedItem.view, nestedItem.path)}
+                    >
+                      <ListItemIcon>{nestedItem.icon}</ListItemIcon>
+                      <ListItemText primary={nestedItem.text} />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            </Collapse>
+          )}
+        </React.Fragment>
+      ))}
+    </List>
   );
 }
-

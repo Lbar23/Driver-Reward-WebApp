@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { TextField, Button, Typography, Box, Link as MuiLink, LinearProgress, Alert, CircularProgress, Checkbox, FormControlLabel } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom'; // Updated to use useNavigate
+import { Link, useNavigate } from 'react-router-dom'; 
 import axios from 'axios';
 
 const usePasswordStrength = (password: string): number => {

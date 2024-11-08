@@ -33,12 +33,12 @@
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="SSH.NET" Version="2024.1.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.8.1" />
-    <PackageReference Include="Twilio" Version="7.5.1" />
+    <PackageReference Include="Twilio" Version="7.6.0" />
   </ItemGroup>
   <!-- had to add this so the server can connect front and back -->
-  <Target Name="PrePublish" BeforeTargets="Publish">
-    <Exec WorkingDirectory="../frontend_client" Command="npm install" />
-    <Exec WorkingDirectory="../frontend_client" Command="npm run build" />
-  </Target>
+  <!-- <Target Name="PrePublish" BeforeTargets="Publish"> -->
+    <!-- <Exec WorkingDirectory="../frontend_client" Command="npm install -que" />  server can't handle this rn-->
+    <!-- <Exec WorkingDirectory="../frontend_client" Command="npm run build" /> -->
+  <!-- </Target> -->
 
 </Project>
