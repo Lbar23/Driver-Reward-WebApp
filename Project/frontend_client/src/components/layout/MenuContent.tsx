@@ -34,6 +34,7 @@ const menuConfig: Record<string, ListItemType[]> = {
   Guest: [{ text: 'Applications', icon: <ApprovalIcon />, view: 'DRIVER_APPLICATION' }],
   Driver: [
     { text: 'Applications', icon: <ApprovalIcon />, view: 'DRIVER_APPLICATION' },
+    { text: 'Product Catalog', icon: <ShoppingBagIcon />, path: '/catalog' },
     { text: 'Register With Sponsors', icon: <ApprovalIcon />, view: 'DRIVER_REGISTRATION' },
     { text: 'Points', icon: <InfoRoundedIcon />, view: 'DRIVER_POINTS' },
     { text: 'Activity', icon: <InfoRoundedIcon />, view: 'DRIVER_ACTIVITY' },
