@@ -60,24 +60,20 @@ namespace Backend_Server.Controllers
             }
 
                     return Ok(drivers);
-                }, TimeSpan.FromMinutes(10));
-            });
-        }
+                }            
 
         //Same here with name, address, etc. Points and Id remain the same
         [HttpGet("drivers/{id}")]
-        public async Task<IActionResult> GetDriver(int id)
-        {
+public async Task<IActionResult> GetDriver(int id)
+{
             var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser == null)
-            {
+            if (currentUser == null){
                 return Unauthorized("User not found.");
             }
 
             var sponsor = await _context.Sponsors
                 .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
-            if (sponsor == null)
-            {
+            if (sponsor == null){
                 return NotFound("Sponsor not found.");
             }
 
@@ -96,8 +92,7 @@ namespace Backend_Server.Controllers
                     })
                 .FirstOrDefaultAsync();
 
-            if (driverInfo == null)
-            {
+            if (driverInfo == null){
                 return NotFound("Driver not found.");
             }
 
@@ -196,11 +191,6 @@ namespace Backend_Server.Controllers
         // }
 
 
-
-
-        
-    }
-
     public record DriverListDto
     {
         public int UserID { get; init; }
@@ -210,4 +200,4 @@ namespace Backend_Server.Controllers
         // public string? City { get; init; }
         // public string? State { get; init; }
     }
-}
+}}

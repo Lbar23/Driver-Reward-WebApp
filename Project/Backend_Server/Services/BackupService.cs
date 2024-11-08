@@ -92,6 +92,9 @@ namespace Backend_Server.Services
                 }
             }
         }
+        finally{
+            _emergencyStopToken.Dispose();
+        }}
 
         private async Task<string> BackupDatabase()
         {
