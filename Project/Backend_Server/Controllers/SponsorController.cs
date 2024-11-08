@@ -24,20 +24,15 @@ namespace Backend_Server.Controllers
                 return Unauthorized("User not found.");
             }
             
-            return await ExecuteQueryWithRetryAsync(async () =>
+
+            // Get sponsor's ID
+            var sponsor = await _context.Sponsors
+                .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+            if (sponsor == null)
             {
-                string cacheKey = $"sponsor_drivers_{currentUser.Id}";
-                
-                return await GetCachedAsync<ActionResult>(cacheKey, async () =>
-                {
-                    // Get sponsor's ID
-                    var sponsor = await _context.Sponsors
-                        .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
-                    if (sponsor == null)
-                    {
-                        Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
-                        return NotFound("Sponsor information not found.");
-                    }
+                Log.Warning("UserID: {UserId}, Category: System, Description: No sponsor found for User ID: {UserId}", currentUser.Id, currentUser.Id);
+                return NotFound("Sponsor information not found.");
+            }
 
                     Log.Information("User ID: {UserId}", currentUser.Id);
                     
@@ -57,12 +52,12 @@ namespace Backend_Server.Controllers
                             })
                         .ToListAsync();
 
-                    Log.Information("Found {Count} drivers for sponsor", drivers.Count);
-                    if (drivers == null)
-                    {
-                        Log.Warning("No drivers found for sponsor with ID: {SponsorId}", sponsor.SponsorID);
-                        return NotFound("No drivers found");
-                    }
+            Log.Information("UserID: N/A, Category: User, Description: Found {Count} drivers for sponsor", drivers.Count);
+            if (drivers == null)
+            {
+                Log.Warning("UserID: N/A, Category: User, Description: No drivers found for sponsor with ID: {SponsorId}", sponsor.SponsorID);
+                return NotFound("No drivers found");
+            }
 
                     return Ok(drivers);
                 }, TimeSpan.FromMinutes(10));
