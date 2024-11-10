@@ -66,7 +66,6 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/catalog" element={<ProductCatalog />} />
             <Route path="/change-password" element={<PasswordChangeForm />} />
-            <Route path="/audit-logs" element={<AuditLogDashboard />} />
           </Route>
         </Routes>
       </Box>

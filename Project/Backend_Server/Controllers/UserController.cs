@@ -300,6 +300,24 @@ namespace Backend_Server.Controllers
             Log.Information("Password for {User} has been reset successfully", user.UserName);
             return Ok(new { message = "Password reset successfully." });
         }
+
+        [HttpPost]
+        public async Task<IActionResult> SubmitFeedback(FeedbackForms feedback)
+        {
+            try
+            {
+                feedback.SubmissionDate = DateTime.UtcNow;
+                await _context.FeedbackForms.AddAsync(feedback);
+                await _context.SaveChangesAsync();
+                
+                return Ok(new { message = "Feedback submitted successfully" });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error submitting feedback: {ex.Message}");
+                return StatusCode(500, "An error occurred while submitting your feedback. Please try again later.");
+            }
+        }
         
         /********* ASYNC FUNCTIONS CODE ****************/
 
