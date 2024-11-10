@@ -34,6 +34,10 @@ const FAQ: React.FC = () => {
       answer: "To create an account, click on the 'Sign Up' Button, and from there you will become a guest."
     },
     {
+      question: "How can I become a driver?",
+      answer: "To become a driver, you need to apply with one of the sponsors associated with our program. Once they have accepted your application, you will automatically become a driver."
+    },
+    {
       question: "What are the password requirements?",
       answer: "To create a password, it must have a number, a lowercase letter, an uppercase letter, be at least 8 characters long and no characters can be repeated."
     },
