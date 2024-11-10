@@ -12,7 +12,6 @@ import Typography from '@mui/material/Typography';
 import LinearProgress from '@mui/material/LinearProgress';
 import Alert from '@mui/material/Alert';
 import Chip from '@mui/material/Chip';
-import Tooltip from '@mui/material/Tooltip';
 import TextField from '@mui/material/TextField';
 import SearchIcon from '@mui/icons-material/SearchRounded';
 import IconButton from '@mui/material/IconButton';
@@ -20,37 +19,39 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-interface Driver {
+interface Sponsor {
   userId: number;
   name: string;
   email: string;
-  userType?: string;
-  sponsorRelationships: {
-    sponsorId: number;
-    sponsorName: string;
-    points: number;
+  companyName: string;
+  sponsorType: string;
+  pointDollarValue: number;
+  driverRelationships: {
+    driverId: number;
+    driverName: string;
   }[];
+  userType?: string;
 }
 
-const ManageDriverSponsors: React.FC = () => {
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+const ManageSponsors: React.FC = () => {
+  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchDrivers();
+    fetchSponsors();
   }, []);
 
-  const fetchDrivers = async () => {
+  const fetchSponsors = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/drivers/details');
-      setDrivers(response.data);
+      const response = await axios.get('/api/admin/sponsors/details');
+      setSponsors(response.data);
       setError('');
     } catch (err) {
-      setError('Failed to load driver data');
-      console.error('Error fetching drivers:', err);
+      setError('Failed to load sponsor data');
+      console.error('Error fetching sponsors:', err);
     } finally {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ const ManageDriverSponsors: React.FC = () => {
   const handleChangeUserType = async (userId: string, newUserType: string) => {
     try {
       await axios.post('/api/user/change-user-type', { userId, newUserType });
-      await fetchDrivers(); // Reuse existing fetch function
+      await fetchSponsors();
     } catch (error: any) {
       setError(error.message);
     }
@@ -67,22 +68,18 @@ const ManageDriverSponsors: React.FC = () => {
 
   const handleRemoveUser = async (userId: string) => {
     try {
-      await axios.delete(`/api/user/delete-user/${userId}`);
-      await fetchDrivers(); // Reuse existing fetch function
+      await axios.delete(`/api/user/remove-user/${userId}`);
+      await fetchSponsors();
     } catch (error: any) {
       setError(error.message);
     }
   };
 
-  const filteredDrivers = Array.isArray(drivers)
-    ? drivers.filter(driver =>
-        driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        driver.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        driver.sponsorRelationships.some(sr =>
-          sr.sponsorName.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      )
-    : [];
+  const filteredSponsors = sponsors.filter(sponsor =>
+    sponsor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sponsor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sponsor.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -103,85 +100,67 @@ const ManageDriverSponsors: React.FC = () => {
   return (
     <Box sx={{ width: '100%', p: 3 }}>
       <Typography variant="h5" gutterBottom>
-        Driver-Sponsor Associations
+        Manage Sponsors
       </Typography>
 
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <TextField
           fullWidth
           variant="outlined"
-          placeholder="Search by driver name, email, or sponsor..."
+          placeholder="Search sponsors by name, email, or company..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            endAdornment: (
+              <IconButton>
+                <SearchIcon />
+              </IconButton>
+            ),
+          }}
         />
-        <IconButton sx={{ ml: -4 }}>
-          <SearchIcon />
-        </IconButton>
       </Box>
 
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Driver Name</TableCell>
+              <TableCell>Name</TableCell>
               <TableCell>Email</TableCell>
-              <TableCell>Sponsors</TableCell>
-              <TableCell align="center">Total Sponsors</TableCell>
-              <TableCell>Points Distribution</TableCell>
+              <TableCell>Company</TableCell>
+              <TableCell>Sponsor Type</TableCell>
+              <TableCell>Point Value ($)</TableCell>
               <TableCell>User Type</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredDrivers.map((driver) => (
-              <TableRow key={driver.userId}>
-                <TableCell>{driver.name}</TableCell>
-                <TableCell>{driver.email}</TableCell>
+            {filteredSponsors.map((sponsor) => (
+              <TableRow key={sponsor.userId}>
+                <TableCell>{sponsor.name}</TableCell>
+                <TableCell>{sponsor.email}</TableCell>
+                <TableCell>{sponsor.companyName}</TableCell>
                 <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {driver.sponsorRelationships.map((sr) => (
-                      <Chip
-                        key={sr.sponsorId}
-                        label={sr.sponsorName}
-                        size="small"
-                        color="primary"
-                      />
-                    ))}
-                  </Box>
+                  <Chip
+                    label={sponsor.sponsorType}
+                    color="primary"
+                    size="small"
+                  />
                 </TableCell>
-                <TableCell align="center">
-                  {driver.sponsorRelationships.length}
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {driver.sponsorRelationships.map((sr) => (
-                      <Tooltip
-                        key={sr.sponsorId}
-                        title={`${sr.sponsorName}: ${sr.points} points`}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Typography variant="body2">
-                            {sr.points}
-                          </Typography>
-                        </Box>
-                      </Tooltip>
-                    ))}
-                  </Box>
-                </TableCell>
+                <TableCell>${sponsor.pointDollarValue.toFixed(2)}</TableCell>
                 <TableCell>
                   <Select
                     size="small"
-                    value={driver.userType || ''}
-                    onChange={(e) => handleChangeUserType(driver.userId.toString(), e.target.value)}
+                    value={sponsor.userType || 'sponsor'}
+                    onChange={(e) => handleChangeUserType(sponsor.userId.toString(), e.target.value)}
                   >
-                    <MenuItem value="driver">Driver</MenuItem>
                     <MenuItem value="sponsor">Sponsor</MenuItem>
                     <MenuItem value="admin">Admin</MenuItem>
+                    <MenuItem value="driver">Driver</MenuItem>
                   </Select>
                 </TableCell>
                 <TableCell>
                   <IconButton
-                    onClick={() => handleRemoveUser(driver.userId.toString())}
+                    onClick={() => handleRemoveUser(sponsor.userId.toString())}
                     color="error"
                     size="small"
                   >
@@ -197,4 +176,4 @@ const ManageDriverSponsors: React.FC = () => {
   );
 };
 
-export default ManageDriverSponsors;
+export default ManageSponsors;

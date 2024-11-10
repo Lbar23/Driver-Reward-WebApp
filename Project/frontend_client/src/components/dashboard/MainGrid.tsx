@@ -13,6 +13,8 @@ import SponsorReports from './SponsorReports';
 import AdminReports from './AdminReports';
 import ManageDriverSponsors from './ManageDriverSponsors';
 import AuditLogDashboard from '../../pages/AuditLogDashboard';
+import ManageAdmins from './ManageAdmins';
+import ManageSponsors from './ManageSponsors';
 import { useView } from '../../service/viewContext';
 
 // Link the current view to the corresponding component
@@ -26,7 +28,9 @@ const viewComponents: Record<string, JSX.Element> = {
   // General Components here
   CHANGE_PASSWORD: <PasswordChangeForm />,
   // Admin Components
-  MANAGE_USERS: <Typography>Manage Users</Typography>,
+  //MANAGE_USERS: <ManageUsers/>,
+  MANAGE_ADMINS: <ManageAdmins/>,
+  MANAGE_SPONSORS: <ManageSponsors/>,
   MANAGE_DRIVERS: <ManageDriverSponsors />,
   ADMIN_REPORTS: <AdminReports />,
   ADMIN_AUDIT_REPORTS: <AuditLogDashboard/>,
