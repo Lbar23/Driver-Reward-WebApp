@@ -96,7 +96,7 @@ Response Time: 230ms`;
         <ReactTerminal
           name="Admin Console"
           prompt="$"
-          lineData={terminalLineData}
+          lineData={terminalLineData} //this line will "cause" an error, but typescript is dumb when documentation for it says its possible. Will find an alternative fix for it.
           onInput={handleInput}
         />
       </Paper>
