@@ -11,6 +11,7 @@ using Amazon.SecretsManager;
 using Amazon.Extensions.NETCore.Setup;
 using Serilog;
 using Amazon.S3;
+using Serilog.Events;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -133,13 +134,41 @@ try {
 
     if (!isDesignTime)
     {
-        // Basic Serilog Service build
-        Log.Logger = new LoggerConfiguration()
-            .ReadFrom.Configuration(builder.Configuration)
-            .Enrich.FromLogContext()
+        try 
+        {
+            var dbProvider = builder.Services.BuildServiceProvider().GetRequiredService<DbConnectionProvider>();
+            var connection = dbProvider.GetDbConnectionAsync().Result;
+            
+            // Update Serilog connection string with the one from the provider
+            builder.Configuration["Serilog:WriteTo:2:Args:connectionString"] = connection.ConnectionString;
+
+            Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.Console()
+            .WriteTo.File("Logs/latest-.log", rollingInterval: RollingInterval.Day)
+            .WriteTo.MySQL(
+                connectionString: connection.ConnectionString,
+                tableName: "AuditLogs",
+                restrictedToMinimumLevel: LogEventLevel.Information,
+                storeTimestampInUtc: true
+            )
             .CreateLogger();
 
-        builder.Host.UseSerilog();
+            builder.Host.UseSerilog();
+            
+            // Test log to verify configuration
+            Log.Information(
+                "UserID: {UserID}, Category: {Category}, Description: {Description}",
+                1,
+                AuditLogCategory.System,
+                "Serilog initialized successfully with SSH tunnel"
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to configure Serilog: {ex.Message}");
+            throw;
+        }
     }
 
     var app = builder.Build();
@@ -191,7 +220,7 @@ catch (Exception ex)
 {  
     if (!isDesignTime)
     {
-        Log.Fatal(ex, "UserID: N/A, Category, System, Description: The web server terminated unexpectedly.");
+        Log.Fatal(ex, "The web server terminated unexpectedly.");
     }
     throw;
 }

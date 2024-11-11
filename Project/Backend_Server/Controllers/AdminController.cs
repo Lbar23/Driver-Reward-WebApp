@@ -233,6 +233,177 @@ namespace Backend_Server.Controllers
             });
         }
 
+        //read audit logs from database
+        [HttpGet("audit-logs")]
+        [Authorize(Roles = "Admin, Sponsor")]
+        public async Task<IActionResult> GetAuditLogs(
+            [FromQuery] int? userId = null,
+            [FromQuery] string? category = null,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            return await ExecuteQueryWithRetryAsync<IActionResult>(async () =>
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                    return Unauthorized();
+
+                string cacheKey = $"audit_logs_{currentUser.Id}_{userId}_{category}_{startDate}_{endDate}_{page}_{pageSize}";
+
+                return await GetCachedAsync(cacheKey, async () =>
+                {
+                    try
+                    {
+                        var query = _context.AuditLogs.AsQueryable();
+
+                        // If sponsor, restrict to their drivers' logs
+                        if (currentUser.UserType == UserType.Sponsor.ToString())
+                        {
+                            var sponsorId = await _context.Sponsors
+                                .Where(s => s.UserID == currentUser.Id)
+                                .Select(s => s.SponsorID)
+                                .FirstOrDefaultAsync();
+
+                            var sponsorDriverIds = await _context.SponsorDrivers
+                                .Where(sd => sd.SponsorID == sponsorId)
+                                .Select(sd => sd.DriverID)
+                                .ToListAsync();
+
+                            query = query.Where(l => sponsorDriverIds.Contains(l.UserID));
+                        }
+
+                        // Apply filters
+                        if (userId.HasValue)
+                            query = query.Where(l => l.UserID == userId);
+
+                        if (!string.IsNullOrEmpty(category) && Enum.TryParse(category, out AuditLogCategory categoryEnum))
+                            query = query.Where(l => l.Category == categoryEnum);
+
+                        if (startDate.HasValue)
+                            query = query.Where(l => l.Timestamp >= startDate.Value);
+
+                        if (endDate.HasValue)
+                            query = query.Where(l => l.Timestamp <= endDate.Value);
+
+                        var totalCount = await query.CountAsync();
+
+                        var logs = await query
+                            .OrderByDescending(l => l.Timestamp)
+                            .Skip((page - 1) * pageSize)
+                            .Take(pageSize)
+                            .Select(l => new
+                            {
+                                l.LogID,
+                                l.Timestamp,
+                                l.Category,
+                                l.UserID,
+                                UserName = _context.Users
+                                    .Where(u => u.Id == l.UserID)
+                                    .Select(u => u.UserName)
+                                    .FirstOrDefault(),
+                                l.Description
+                            })
+                            .ToListAsync();
+
+                        return Ok(new
+                        {
+                            totalCount,
+                            page,
+                            pageSize,
+                            logs
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error retrieving audit logs");
+                        return StatusCode(500, "Error retrieving audit logs");
+                    }
+                }, TimeSpan.FromMinutes(5));
+            });
+        }
+
+        //aduit log CSV export
+        [HttpGet("audit-logs/export")]
+        [Authorize(Roles = "Admin, Sponsor")]
+        public async Task<IActionResult> ExportAuditLogs(
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate,
+            [FromQuery] string? category)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+                return Unauthorized();
+
+            try
+            {
+                var query = _context.AuditLogs.AsQueryable();
+
+                // Apply the same permission filtering as above
+                if (currentUser.UserType == UserType.Sponsor.ToString())
+                {
+                    var sponsorId = await _context.Sponsors
+                        .Where(s => s.UserID == currentUser.Id)
+                        .Select(s => s.SponsorID)
+                        .FirstOrDefaultAsync();
+
+                    var sponsorDriverIds = await _context.SponsorDrivers
+                        .Where(sd => sd.SponsorID == sponsorId)
+                        .Select(sd => sd.DriverID)
+                        .ToListAsync();
+
+                    query = query.Where(l => sponsorDriverIds.Contains(l.UserID));
+                }
+
+                // Apply date range filter
+                if (startDate.HasValue)
+                    query = query.Where(l => l.Timestamp >= startDate.Value);
+                if (endDate.HasValue)
+                    query = query.Where(l => l.Timestamp <= endDate.Value);
+
+                // Apply category filter
+                if (!string.IsNullOrEmpty(category) && Enum.TryParse<AuditLogCategory>(category, out var categoryEnum))
+                    query = query.Where(l => l.Category == categoryEnum);
+
+                var logs = await query
+                    .OrderByDescending(l => l.Timestamp)
+                    .Select(l => new
+                    {
+                        l.LogID,
+                        Timestamp = l.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                        l.Category,
+                        l.UserID,
+                        l.Description,
+                        UserName = _context.Users
+                            .Where(u => u.Id == l.UserID)
+                            .Select(u => u.UserName)
+                            .FirstOrDefault()
+                    })
+                    .ToListAsync();
+
+                // Create CSV content
+                var csv = new StringBuilder();
+                csv.AppendLine("Log ID,Timestamp,Category,User ID,User Name,Description");
+                
+                foreach (var log in logs)
+                {
+                    csv.AppendLine($"{log.LogID},{log.Timestamp},{log.Category},{log.UserID},{log.UserName},{log.Description}");
+                }
+
+                return File(Encoding.UTF8.GetBytes(csv.ToString()), 
+                    "text/csv", 
+                    $"audit_logs_{DateTime.Now:yyyyMMdd}.csv");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "UserID: {UserID}, Category: {Category}, Description: Error exporting audit logs",
+                    currentUser.Id,
+                    AuditLogCategory.System);
+                return StatusCode(500, "Error exporting audit logs");
+            }
+        }
+
         //Method to whenever Admin needs to change or reset a user's password to random jumble
         //Temp password...
         private static string GeneratePassword()
