@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
+  Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText,
   Container,
   Typography,
   Card,
@@ -17,6 +17,7 @@ import {
   Snackbar
 } from '@mui/material';
 import axios, { AxiosResponse } from 'axios';
+import { useHistory } from 'react-router-dom';
 import OverviewItem from '../components/layout/OverviewItem';
 
 interface Listing {
@@ -40,24 +41,17 @@ const ProductCatalog: React.FC = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [cart, setCart] = useState<Listing[]>([]);
+  const [carts, setCarts] = useState<{ [sponsorId: number]: Listing[] }>({});
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [sponsorPoints, setSponsorPoints] = useState<SponsorPoints[]>([]);
   const [selectedSponsorId, setSelectedSponsorId] = useState<number | ''>('');
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
+  const history = useHistory();
 
   useEffect(() => {
     fetchSponsorPoints();
   }, []);
-
-  const addToCart = (item: Listing) => {
-    setCart((prevCart) => [...prevCart, item]);
-  };
-
-  const openCart = () => setIsCartOpen(true);
-  const closeCart = () => setIsCartOpen(false);
-  const clearCart = () => setCart([]);
 
   useEffect(() => {
     const cachedData = localStorage.getItem(CACHE_KEY);
@@ -126,6 +120,31 @@ const ProductCatalog: React.FC = () => {
   if (error) return <Alert severity="error">{error}</Alert>;
 
   const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
+
+  const addToCart = (item: Listing) => {
+    setCarts((prevCarts) => ({
+      ...prevCarts,
+      [selectedSponsorId]: [...(prevCarts[selectedSponsorId] || []), item],
+    }));
+  };
+  const openCart = () => setIsCartOpen(true);
+  const closeCart = () => setIsCartOpen(false);
+  const clearCart = () => {
+    setCarts((prevCarts) => ({
+      ...prevCarts,
+      [selectedSponsorId]: [],
+    }));
+  };
+
+  const goToOrderPage = () => {
+    history.push({
+      pathname: '/order',
+      state: { cartItems: getCurrentCart(), sponsorId: selectedSponsorId }
+    });
+    closeCart();
+  };
+
+  const getCurrentCart = () => carts[selectedSponsorId] || [];
 
   return (
     <>
@@ -215,22 +234,28 @@ const ProductCatalog: React.FC = () => {
         />
 
         {/* Cart and Clear Cart Buttons Below Cards */}
-        <Box display="flex" justifyContent="center" flexDirection="column" alignItems="center" mt={4} gap={2}>
-            <Button variant="contained" color="secondary" onClick={openCart}>
-              View Cart
-            </Button>
-            <Button variant="outlined" color="error" onClick={clearCart}>
-              Clear Cart
-            </Button>
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 80,
+            right: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
+          <Button variant="contained" color="secondary" onClick={openCart}>
+            View Cart
+          </Button>
         </Box>
       </Container>
 
       <Dialog open={isCartOpen} onClose={closeCart}>
         <DialogTitle>Your Cart</DialogTitle>
         <DialogContent>
-          {cart.length > 0 ? (
+          {getCurrentCart().length > 0 ? (
             <List>
-              {cart.map((item, index) => (
+              {getCurrentCart().map((item, index) => (
                 <ListItem key={index}>
                   <ListItemText primary={item.name} secondary={`Price: ${parseFloat(item.pointCost).toFixed(2)}`} />
                 </ListItem>
@@ -240,6 +265,19 @@ const ProductCatalog: React.FC = () => {
             <Typography variant="body1">Your cart is empty.</Typography>
           )}
         </DialogContent>
+        <DialogActions>
+          <Button onClick={clearCart} color="error">
+            Clear Cart
+          </Button>
+          <Button 
+            onClick={goToOrderPage} 
+            color="primary" 
+            variant="contained" 
+            disabled={cart.length === 0}
+          >
+            Proceed to Checkout
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   );
