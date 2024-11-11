@@ -15,6 +15,7 @@ import ManageDriverSponsors from './ManageDriverSponsors';
 import AuditLogDashboard from '../../pages/AuditLogDashboard';
 import { useView } from '../../service/viewContext';
 import AdminConsole from './AdminConsole';
+import ManageSponsors from './ManageSponsors';
 
 // Link the current view to the corresponding component
 const viewComponents: Record<string, JSX.Element> = {
@@ -29,6 +30,8 @@ const viewComponents: Record<string, JSX.Element> = {
   // Admin Components
   MANAGE_USERS: <Typography>Manage Users</Typography>,
   MANAGE_DRIVERS: <ManageDriverSponsors />,
+  MANAGE_SPONSORS: <ManageSponsors />,
+  MANAGE_ADMINS: <Typography>Manage Admins</Typography>, //this is here for sake of sake
   ADMIN_REPORTS: <AdminReports />,
   ADMIN_AUDIT_REPORTS: <AuditLogDashboard/>,
   ADMIN_CONSOLE: <AdminConsole />,
