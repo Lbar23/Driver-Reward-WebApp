@@ -4,6 +4,9 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- dependcy tree shaking, breaks db, come back to this later -->
+    <!-- <PublishTrimmed>true</PublishTrimmed> 
+    <TrimmerRootAssembly>System.Text.Json</TrimmerRootAssembly> -->
   </PropertyGroup>
 
   <ItemGroup>
