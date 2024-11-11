@@ -11,7 +11,6 @@ using Amazon.SecretsManager;
 using Amazon.Extensions.NETCore.Setup;
 using Serilog;
 using Amazon.S3;
-using Serilog.Events;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -143,23 +142,16 @@ try {
             builder.Configuration["Serilog:WriteTo:2:Args:connectionString"] = connection.ConnectionString;
 
             Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .WriteTo.Console()
-            .WriteTo.File("Logs/latest-.log", rollingInterval: RollingInterval.Day)
-            .WriteTo.MySQL(
-                connectionString: connection.ConnectionString,
-                tableName: "AuditLogs",
-                restrictedToMinimumLevel: LogEventLevel.Information,
-                storeTimestampInUtc: true
-            )
-            .CreateLogger();
+                .ReadFrom.Configuration(builder.Configuration)
+                .Enrich.FromLogContext()
+                .CreateLogger();
 
             builder.Host.UseSerilog();
             
             // Test log to verify configuration
             Log.Information(
                 "UserID: {UserID}, Category: {Category}, Description: {Description}",
-                1,
+                0,
                 AuditLogCategory.System,
                 "Serilog initialized successfully with SSH tunnel"
             );
