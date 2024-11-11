@@ -182,7 +182,7 @@ try {
         // Enable Serilog Request Logging for API requests
         app.UseSerilogRequestLogging();
         
-        Log.Information("Starting Web Host...");
+        Log.Information("UserID: N/A, Category: System, Description: Starting Web Host...");
     }
     
     app.Run();
@@ -191,7 +191,7 @@ catch (Exception ex)
 {  
     if (!isDesignTime)
     {
-        Log.Fatal(ex, "The web server terminated unexpectedly.");
+        Log.Fatal(ex, "UserID: N/A, Category, System, Description: The web server terminated unexpectedly.");
     }
     throw;
 }

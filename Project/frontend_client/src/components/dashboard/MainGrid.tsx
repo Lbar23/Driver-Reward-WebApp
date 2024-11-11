@@ -12,6 +12,7 @@ import DriverPointsHistory from '../dashboard/DriverPointHistory';
 import SponsorReports from './SponsorReports';
 import AdminReports from './AdminReports';
 import ManageDriverSponsors from './ManageDriverSponsors';
+import AuditLogDashboard from '../../pages/AuditLogDashboard';
 import { useView } from '../../service/viewContext';
 
 // Link the current view to the corresponding component
@@ -28,7 +29,7 @@ const viewComponents: Record<string, JSX.Element> = {
   MANAGE_USERS: <Typography>Manage Users</Typography>,
   MANAGE_DRIVERS: <ManageDriverSponsors />,
   ADMIN_REPORTS: <AdminReports />,
-  ADMIN_AUDIT_REPORTS: <Typography>Audit Reports</Typography>,
+  ADMIN_AUDIT_REPORTS: <AuditLogDashboard/>,
   // Driver Components
   DRIVER_APPLICATION: <DriverApplication />,
   DRIVER_REGISTRATION: <SponsorRegistrationPage />, // this probably needs to be consolidated with app

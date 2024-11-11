@@ -82,43 +82,19 @@ namespace Backend_Server.Services
                             File.Delete(backupFile);
                         }
 
-                        // Instead of infinite delay, use a timed wait that can be cancelled
-                        try 
-                        {
-                            await Task.Delay(TimeSpan.FromDays(1), combinedToken.Token);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            Log.Information("Backup service shutting down gracefully after completing backup");
-                            break;
-                        }
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
-                    {
-                        Log.Error(ex, "Error during database backup process");
-                        
-                        // Only retry if not shutting down
-                        if (!combinedToken.Token.IsCancellationRequested)
-                        {
-                            try
-                            {
-                                await Task.Delay(TimeSpan.FromMinutes(30), combinedToken.Token);
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                Log.Information("Backup service shutting down after error");
-                                break;
-                            }
-                        }
-                    }
+                    await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "UserID: N/A, Category: System, Description: Error during database backup process");
+                    Log.Information("This is normal for right now; configure implementation to end task normally later; server doesn't really need that anyway");
+                    await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken); //Retry after 30 mins
                 }
             }
-            finally
-            {
-                // Cleanup any resources
-                _emergencyStopToken.Dispose();
-            }
         }
+        finally{
+            _emergencyStopToken.Dispose();
+        }}
 
         private async Task<string> BackupDatabase()
         {
@@ -177,11 +153,11 @@ namespace Backend_Server.Services
                     ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256
                 });
 
-                Log.Information("Successfully uploaded backup to S3: {FileName}", Path.GetFileName(backupFile));
+                Log.Information("UserID: N/A, Category: System, Description: Successfully uploaded backup to S3: {FileName}", Path.GetFileName(backupFile));
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to upload backup to S3: {FileName}", Path.GetFileName(backupFile));
+                Log.Error(ex, "UserID: N/A, Category: System, Description: Failed to upload backup to S3: {FileName}", Path.GetFileName(backupFile));
                 throw;
             }
         }
@@ -220,11 +196,11 @@ namespace Backend_Server.Services
                     });
                 }
 
-                Log.Information("Cleanup completed. Removed {Count} old backups", oldObjects.Count);
+                Log.Information("UserID: N/A, Category: System, Description: Cleanup completed. Removed {Count} old backups", oldObjects.Count);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error during backup cleanup");
+                Log.Error(ex, "UserID: N/A, Category: System, Description: Error during backup cleanup");
                 throw;
             }
         }

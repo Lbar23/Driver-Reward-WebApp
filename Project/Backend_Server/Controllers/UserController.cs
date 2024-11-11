@@ -45,7 +45,7 @@ namespace Backend_Server.Controllers
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, user.UserType);
-                Log.Information("User registered correctly! {Username}", user.UserName);
+                Log.Information("UserID: {UserID}, Category: User, Description: User registered correctly! {Username}, {Id}",user.Id, user.UserName, user.Id);
 
                 // Optionally, if 2FA is enabled, send the first 2FA code
                 if (userDto.Enable2FA)
@@ -59,7 +59,7 @@ namespace Backend_Server.Controllers
 
                 return Ok(new { message = "User registered successfully", userId = user.Id, requiresTwoFactor = user.TwoFactorEnabled });
                 }
-                Log.Error("User registration failed");
+                Log.Error("UserID: N/A, Category: User, Description: User registration failed");
                 return BadRequest(result.Errors);
             }
 
@@ -154,7 +154,7 @@ namespace Backend_Server.Controllers
                     var send2FaResult = await Send2FA(user);
                     if (!send2FaResult)
                     {
-                        Log.Error("Failed to send 2FA code to {User}", user.UserName);
+                        Log.Error("UserID: {UserID}, Category: System, Description: Failed to send 2FA code to {User}",user.Id, user.UserName);
                         return StatusCode(500, new { succeeded = false, message = "Failed to send 2FA code. Please try again later." });
                     }
 
@@ -166,11 +166,11 @@ namespace Backend_Server.Controllers
                 user.LastLogin = DateTime.UtcNow;
                 await _userManager.UpdateAsync(user);
 
-                Log.Information("User {User} logged in successfully", user.UserName);
+                Log.Information("UserID: {UserID}, Category: User, Description: User {User} logged in successfully", user.Id, user.UserName);
                 return Ok(new { message = "Login successful", userId = user.Id, role = user.UserType, succeeded = true });
             }
 
-            Log.Error("Login Failed for {UserName}", user?.UserName);
+            Log.Error("UserID: {UserID}, Category: User, Description: Login Failed for {UserName}",user?.Id, user?.UserName);
             return Unauthorized(new { succeeded = false, message = "Invalid username or password" });
         }
 
@@ -193,12 +193,12 @@ namespace Backend_Server.Controllers
 
             if (user != null)
             {
-                Log.Information("{Username} of type {User} has successfully logged out", user?.UserName, user?.UserType.ToString());
+                Log.Information("UserID: {UserID}, Category: User, Description: {Username} of type {User} has successfully logged out", user?.Id, user?.UserName, user?.UserType.ToString());
                 await _context.SaveChangesAsync();
             }
             else
             {
-                Log.Error("{Username} of type {User} has failed to log out correctly", user?.UserName, user?.UserType.ToString());
+                Log.Error("UserID: {UserID}, Category: User, Description: {Username} of type {User} has failed to log out correctly", user?.Id, user?.UserName, user?.UserType.ToString());
                 return StatusCode(500, "Failed to log out user");
             }
             
@@ -257,7 +257,7 @@ namespace Backend_Server.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                Log.Error("There is no user with username, please try again");
+                Log.Error("UserID: N/A, Category: User, Description: There is no user with username, please try again");
                 return NotFound("User not found, Please try again.");
             }
 
@@ -267,12 +267,12 @@ namespace Backend_Server.Controllers
 
             if (!result.Succeeded)
             {
-                Log.Error("Password changed failed for {User}", user.UserName);
+                Log.Error("UserID: {UserID}, Category: User, Description: Password changed failed for {User}",user.Id, user.UserName);
                 return BadRequest(result.Errors.Select(e => e.Description));
             }
             //Ugh, in Sprint 9 of project, do manual logging for better logging levels; as of now, basic http requests auto logging
             //for EVERY return, wooooooooooooooooo
-            Log.Information("Password changed successfully for {User}", user.UserName);
+            Log.Information("UserID: {UserID}, Category: User, Description: Password changed successfully for {User}",user.Id, user.UserName);
             return Ok(new { message = "Password changed successfully." });
         }
 
@@ -297,8 +297,59 @@ namespace Backend_Server.Controllers
             {
                 return BadRequest(result.Errors.Select(e => e.Description));
             }
-            Log.Information("Password for {User} has been reset successfully", user.UserName);
+            Log.Information("UserID: {UserID}, Category: User, Description: Password for {User} has been reset successfully", user.Id, user.UserName);
             return Ok(new { message = "Password reset successfully." });
+        }
+
+
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _userManager.Users.Select(u => new {
+                Id = u.Id,
+                UserName = u.UserName,
+                Email = u.Email,
+                UserType = u.UserType,
+                LastLogin = u.LastLogin
+            }).ToListAsync();
+            Log.Information("UserID: N/A, Category: User, Description: Retrieved all users");
+            return Ok(users);
+        }
+
+        [HttpPost("change-user-type")]
+        public async Task<IActionResult> ChangeUserType([FromBody] ChangeUserTypeDto dto)
+        {
+            var user = await _userManager.FindByIdAsync(dto.UserId.ToString());
+            if (user == null)
+            {
+                return NotFound(new { success = false, message = "User not found." });
+            }
+
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            user.UserType = dto.NewUserType;
+            await _userManager.AddToRoleAsync(user, dto.NewUserType);
+            await _userManager.UpdateAsync(user);
+            Log.Information("UserID: {UserID}, Category: User, Description: Successfully changed the role of {user}", user.Id, user.UserName);
+            return Ok(new { success = true, message = "User type updated successfully." });
+        }
+
+        [HttpDelete("remove-user/{id}")]
+        public async Task<IActionResult> RemoveUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                return NotFound(new { success = false, message = "User not found." });
+            }
+
+            var result = await _userManager.DeleteAsync(user);
+            if (result.Succeeded)
+            {
+                return Ok(new { success = true, message = "User removed successfully." });
+            }
+
+            return BadRequest(new { success = false, errors = result.Errors });
         }
         
         /********* ASYNC FUNCTIONS CODE ****************/
@@ -367,5 +418,11 @@ namespace Backend_Server.Controllers
     {
         public required string CurrentPassword { get; set; }
         public required string NewPassword { get; set; }
+    }
+
+    public class ChangeUserTypeDto
+    {
+        public int UserId { get; set; }
+        public string NewUserType { get; set; }
     }
 }

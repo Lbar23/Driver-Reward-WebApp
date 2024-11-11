@@ -129,7 +129,7 @@ namespace Backend_Server.Controllers
                         await _context.SaveChangesAsync();
                         await transaction.CommitAsync();
 
-                        Log.Information("Created new {UserType}: {Username}", model.UserType, user.UserName);
+                        Log.Information("UserID: {UserID}, Category: User, Description: Created new {UserType}: {Username}", user.Id, model.UserType, user.UserName);
                     }
                     catch
                     {
@@ -142,7 +142,7 @@ namespace Backend_Server.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to create {UserType}", model.UserType);
+                Log.Error(ex, "UserID: N/A, Category: User, Description: Failed to create {UserType}", model.UserType);
                 return StatusCode(500, new { 
                     error = "Failed to create user",
                     details = ex.Message

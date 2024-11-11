@@ -11,7 +11,6 @@ import MenuButton from '../layout/MenuButton';
 import MenuContent from '../layout/MenuContent';
 import CardAlert from '../layout/CardAlert';
 import { useAuth } from '../../service/authContext';
-import { ViewProvider } from '../../service/viewContext';
 
 
 interface SideMenuMobileProps {
