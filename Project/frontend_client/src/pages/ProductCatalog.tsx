@@ -139,7 +139,7 @@ const ProductCatalog: React.FC = () => {
   const goToOrderPage = () => {
     history.push({
       pathname: '/order',
-      state: { cartItems: getCurrentCart(), sponsorId: selectedSponsorId }
+      state: { cartItems: getCurrentCart(), sponsorId: selectedSponsorId, totalPoints: selectedSponsor.totalPoints }
     });
     closeCart();
   };
