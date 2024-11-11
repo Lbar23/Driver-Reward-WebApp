@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Container, Grid, Box, Typography, TextField, IconButton, Button, Divider, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import { Remove, Add } from '@mui/icons-material';
-import { useLocation } from 'react-router-dom';
+import { Container, Grid, Box, Typography, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Order: React.FC = () => {
 
@@ -17,6 +16,7 @@ const Order: React.FC = () => {
 
     const location = useLocation<{ cartItems: any[]; sponsorId: number; points: number }>();
     const { cartItems, points } = location.state || {};
+    const navigate = useNavigate();
 
   return (
     <Container maxWidth="md">
@@ -97,7 +97,7 @@ const Order: React.FC = () => {
       <Dialog open={orderCompleted} onClose={handleCloseDialog}>
         <DialogTitle>Order Complete</DialogTitle>
         <DialogContent>
-          <Typography>Your order has been successfully completed! Remaining points: {cartItems.reduce((sum, item) => sum + item.pointCost, 0) - points}</Typography> {/* connect points from dbs */}
+          <Typography>Your order has been successfully completed! Remaining points: {points - cartItems.reduce((sum, item) => sum + item.pointCost, 0)}</Typography> {/* connect points from dbs */}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} color="primary">Close</Button>

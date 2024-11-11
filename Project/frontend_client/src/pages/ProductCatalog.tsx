@@ -17,7 +17,7 @@ import {
   Snackbar
 } from '@mui/material';
 import axios, { AxiosResponse } from 'axios';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import OverviewItem from '../components/layout/OverviewItem';
 
 interface Listing {
@@ -47,7 +47,7 @@ const ProductCatalog: React.FC = () => {
   const [selectedSponsorId, setSelectedSponsorId] = useState<number | ''>('');
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
-  const history = useHistory();
+  const history = useNavigate();
 
   useEffect(() => {
     fetchSponsorPoints();
@@ -120,6 +120,7 @@ const ProductCatalog: React.FC = () => {
   if (error) return <Alert severity="error">{error}</Alert>;
 
   const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
+  const getCurrentCart = () => carts[selectedSponsorId] || [];
 
   const addToCart = (item: Listing) => {
     setCarts((prevCarts) => ({
@@ -137,14 +138,13 @@ const ProductCatalog: React.FC = () => {
   };
 
   const goToOrderPage = () => {
-    history.push({
-      pathname: '/order',
-      state: { cartItems: getCurrentCart(), sponsorId: selectedSponsorId, totalPoints: selectedSponsor.totalPoints }
+    history('/order', {
+      state: { cartItems: getCurrentCart(), sponsorId: selectedSponsorId, points: selectedSponsor?.totalPoints }  // pass cart and sponsor data to Order page
     });
     closeCart();
   };
 
-  const getCurrentCart = () => carts[selectedSponsorId] || [];
+  
 
   return (
     <>
@@ -206,7 +206,7 @@ const ProductCatalog: React.FC = () => {
                 <OverviewItem title="Price" value={listing.price} />
                 <OverviewItem 
                   title="Point Cost" 
-                  value={`${listing.pointCost?.toLocaleString() || 0} points`} 
+                  value={ calculatePointCost(listing.price).toLocaleString() } 
                 />
                 <Button
                   fullWidth
@@ -214,9 +214,9 @@ const ProductCatalog: React.FC = () => {
                   color="primary"
                   onClick={() => {
                     handlePurchase(listing);
-                    addToCart(listing);
+                    if (!(!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints))
+                      addToCart(listing);
                   }}
-                  disabled={!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints}
                   sx={{ mt: 2 }}
                 >
                   Add to Cart
@@ -273,7 +273,7 @@ const ProductCatalog: React.FC = () => {
             onClick={goToOrderPage} 
             color="primary" 
             variant="contained" 
-            disabled={cart.length === 0}
+            disabled={getCurrentCart().length === 0}
           >
             Proceed to Checkout
           </Button>
