@@ -18,6 +18,7 @@ import Order from './pages/Order';
 // Other pages for authenticated routes
 import PasswordChangeForm from './pages/PasswordChangeForm';
 import Settings from './pages/Settings'
+import Profile from './pages/Profile'
 import AuditLogDashboard from './pages/AuditLogDashboard';
 
 const ProtectedRoute = () => {
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/catalog" element={<ProductCatalog />} />
             <Route path="/change-password" element={<PasswordChangeForm />} />
+            <Route path="/profile" element={<Profile />}/>
             <Route path="/settings" element={<Settings/>}/>
             <Route path="/order" element={<Order />} />
             
