@@ -13,6 +13,7 @@ import SponsorReports from './SponsorReports';
 import AdminReports from './AdminReports';
 import ManageDriverSponsors from './ManageDriverSponsors';
 import AuditLogDashboard from '../../pages/AuditLogDashboard';
+import Profile from '../dashboard/Profile';
 import { useView } from '../../service/viewContext';
 import AdminConsole from './AdminConsole';
 import ManageSponsors from './ManageSponsorsAdmin';
@@ -41,6 +42,7 @@ const viewComponents: Record<string, JSX.Element> = {
   DRIVER_POINTS: <DriverPointsList />,
   DRIVER_ACTIVITY: <DriverActivity />,
   DRIVER_POINTS_HISTORY: <DriverPointsHistory/>,
+  PROFILE: <Profile/>,
   // Sponsor Components
   APPLICATION_MANAGER: <ApplicationManager />,
   SPONSOR_REPORTS: <SponsorReports />,

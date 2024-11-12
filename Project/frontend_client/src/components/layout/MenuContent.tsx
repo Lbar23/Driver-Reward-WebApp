@@ -38,6 +38,7 @@ const menuConfig: Record<string, ListItemType[]> = {
     { text: 'Register With Sponsors', icon: <ApprovalIcon />, view: 'DRIVER_REGISTRATION' },
     { text: 'Points', icon: <InfoRoundedIcon />, view: 'DRIVER_POINTS' },
     { text: 'Activity', icon: <InfoRoundedIcon />, view: 'DRIVER_ACTIVITY' },
+    { text: 'Profile', icon: <InfoRoundedIcon />, view: 'PROFILE' },
   ],
   Admin: [
     { 

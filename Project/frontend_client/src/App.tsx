@@ -17,7 +17,7 @@ import FeedbackForm from './pages/Feedback';
 import Order from './pages/Order';
 // Other pages for authenticated routes
 import PasswordChangeForm from './pages/PasswordChangeForm';
-import Settings from './pages/Settings'
+import Settings from './pages/Settings';
 import AuditLogDashboard from './pages/AuditLogDashboard';
 
 const ProtectedRoute = () => {
