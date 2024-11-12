@@ -36,7 +36,7 @@ try {
     builder.Services.AddHttpClient();
 
     builder.Services.AddSingleton<CatalogService>();
-    builder.Services.AddScoped<DbConnectionProvider>();
+    builder.Services.AddSingleton<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
 
     //Service for handling Logging more efficiently with custom services or methods relating to DB Connection

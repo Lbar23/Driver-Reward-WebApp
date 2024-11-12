@@ -39,7 +39,7 @@ const viewComponents: Record<string, JSX.Element> = {
   ADMIN_CONSOLE: <AdminConsole />,
   // Driver Components
   DRIVER_APPLICATION: <DriverApplication />,
-  DRIVER_REGISTRATION: <SponsorRegistrationPage />, // this probably needs to be consolidated with app
+  // DRIVER_REGISTRATION: <SponsorRegistrationPage />, // this probably needs to be consolidated with app <-- Done
   DRIVER_POINTS: <DriverPointsList />,
   DRIVER_ACTIVITY: <DriverActivity />,
   DRIVER_POINTS_HISTORY: <DriverPointsHistory/>,
