@@ -307,55 +307,22 @@ namespace Backend_Server.Controllers
             return Ok(new { message = "Password reset successfully." });
         }
 
-
-        [HttpGet("all")]
-        public async Task<IActionResult> GetAllUsers()
+        [HttpPost]
+        public async Task<IActionResult> SubmitFeedback(FeedbackForms feedback)
         {
-            var users = await _userManager.Users.Select(u => new {
-                Id = u.Id,
-                UserName = u.UserName,
-                Email = u.Email,
-                UserType = u.UserType,
-                LastLogin = u.LastLogin
-            }).ToListAsync();
-            Log.Information("UserID: N/A, Category: User, Description: Retrieved all users");
-            return Ok(users);
-        }
-
-        [HttpPost("change-user-type")]
-        public async Task<IActionResult> ChangeUserType([FromBody] ChangeUserTypeDto dto)
-        {
-            var user = await _userManager.FindByIdAsync(dto.UserId.ToString());
-            if (user == null)
+            try
             {
-                return NotFound(new { success = false, message = "User not found." });
+                feedback.SubmissionDate = DateTime.UtcNow;
+                await _context.FeedbackForms.AddAsync(feedback);
+                await _context.SaveChangesAsync();
+                
+                return Ok(new { message = "Feedback submitted successfully" });
             }
-
-            var currentRoles = await _userManager.GetRolesAsync(user);
-            await _userManager.RemoveFromRolesAsync(user, currentRoles);
-            user.UserType = dto.NewUserType;
-            await _userManager.AddToRoleAsync(user, dto.NewUserType);
-            await _userManager.UpdateAsync(user);
-            Log.Information("UserID: {UserID}, Category: User, Description: Successfully changed the role of {user}", user.Id, user.UserName);
-            return Ok(new { success = true, message = "User type updated successfully." });
-        }
-
-        [HttpDelete("remove-user/{id}")]
-        public async Task<IActionResult> RemoveUser(string id)
-        {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null)
+            catch (Exception ex)
             {
-                return NotFound(new { success = false, message = "User not found." });
+                Console.WriteLine($"Error submitting feedback: {ex.Message}");
+                return StatusCode(500, "An error occurred while submitting your feedback. Please try again later.");
             }
-
-            var result = await _userManager.DeleteAsync(user);
-            if (result.Succeeded)
-            {
-                return Ok(new { success = true, message = "User removed successfully." });
-            }
-
-            return BadRequest(new { success = false, errors = result.Errors });
         }
         
         /********* ASYNC FUNCTIONS CODE ****************/
@@ -424,11 +391,5 @@ namespace Backend_Server.Controllers
     {
         public required string CurrentPassword { get; set; }
         public required string NewPassword { get; set; }
-    }
-
-    public class ChangeUserTypeDto
-    {
-        public int UserId { get; set; }
-        public required string NewUserType { get; set; }
     }
 }
