@@ -14,15 +14,18 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
+import LinearProgress from '@mui/material/LinearProgress';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
+import { BarChart, LineChart, PieChart } from '@mui/x-charts';
 
 interface Driver {
   userID: number;
   email: string;
+  name: string;
   totalPoints: number;
 }
 
@@ -106,6 +109,17 @@ export default function SponsorDrivers() {
   }
 
   const totalPoints = drivers.reduce((sum, driver) => sum + driver.totalPoints, 0);
+  
+  // Data for charts
+  const pieChartData = drivers.map(driver => ({
+    id: driver.userID,
+    value: driver.totalPoints,
+    label: driver.email
+  }));
+
+  // Sort drivers by points for leaderboard
+  const sortedDrivers = [...drivers].sort((a, b) => b.totalPoints - a.totalPoints);
+  const maxPoints = Math.max(...drivers.map(d => d.totalPoints));
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -114,6 +128,7 @@ export default function SponsorDrivers() {
       </Typography>
       
       <Grid container spacing={2} columns={12}>
+        {/* Drivers Table */}
         <Grid size={{ xs: 12, lg: 9 }}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
@@ -131,6 +146,7 @@ export default function SponsorDrivers() {
                         <TableCell>Driver ID</TableCell>
                         <TableCell>Email</TableCell>
                         <TableCell align="right">Total Points</TableCell>
+                        <TableCell align="right">Progress</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -143,27 +159,30 @@ export default function SponsorDrivers() {
                           <TableCell align="right">
                             {driver.totalPoints.toLocaleString()}
                           </TableCell>
+                          <TableCell align="right" sx={{ width: '30%' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Box sx={{ width: '100%', mr: 1 }}>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={(driver.totalPoints / maxPoints) * 100}
+                                />
+                              </Box>
+                              <Typography variant="body2" color="text.secondary">
+                                {Math.round((driver.totalPoints / maxPoints) * 100)}%
+                              </Typography>
+                            </Box>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
               )}
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button
-                  variant="contained"
-                  size="small"
-                  color="primary"
-                  endIcon={<ChevronRightRoundedIcon />}
-                  fullWidth={isSmallScreen}
-                >
-                  View All Drivers
-                </Button>
-              </Box>
             </CardContent>
           </Card>
         </Grid>
         
+        {/* Stats Cards */}
         <Grid size={{ xs: 12, lg: 3 }}>
           <Stack gap={2} direction={{ xs: 'column', sm: 'row', lg: 'column' }}>
             <StatsCard 
@@ -180,8 +199,80 @@ export default function SponsorDrivers() {
             />
           </Stack>
         </Grid>
+
+        {/* Points Distribution Chart */}
+        {drivers.length > 0 && (
+          <Grid size={12}>
+            <Card sx={{ mt: 2 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Points Distribution
+                </Typography>
+                <Box sx={{ height: 400 }}>
+                  <PieChart
+                    series={[{
+                      data: pieChartData,
+                      highlightScope: { faded: 'global', highlighted: 'item' },
+                    }]}
+                    height={350}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Driver Leaderboard */}
+        {drivers.length > 0 && (
+          <Grid size={12}>
+            <Card sx={{ mt: 2 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Driver Leaderboard
+                </Typography>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Rank</TableCell>
+                        <TableCell>Driver</TableCell>
+                        <TableCell align="right">Points</TableCell>
+                        <TableCell align="right">Progress</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {sortedDrivers.map((driver, index) => (
+                        <TableRow key={driver.userID}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{driver.email}</TableCell>
+                          <TableCell align="right">
+                            {driver.totalPoints.toLocaleString()}
+                          </TableCell>
+                          <TableCell align="right" sx={{ width: '30%' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Box sx={{ width: '100%', mr: 1 }}>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={(driver.totalPoints / maxPoints) * 100}
+                                />
+                              </Box>
+                              <Typography variant="body2" color="text.secondary">
+                                {Math.round((driver.totalPoints / maxPoints) * 100)}%
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
 
+      {/* Driver Management Section */}
       <Typography component="h2" variant="h6" sx={{ mb: 2, mt: 4 }}>
         Driver Management
       </Typography>

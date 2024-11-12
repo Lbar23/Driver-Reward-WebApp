@@ -11,6 +11,7 @@ using Amazon.SecretsManager;
 using Amazon.Extensions.NETCore.Setup;
 using Serilog;
 using Amazon.S3;
+using Serilog.Events;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,7 +36,7 @@ try {
     builder.Services.AddHttpClient();
 
     builder.Services.AddSingleton<CatalogService>();
-    builder.Services.AddSingleton<DbConnectionProvider>();
+    builder.Services.AddScoped<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
 
     //Service for handling Logging more efficiently with custom services or methods relating to DB Connection
@@ -133,13 +134,20 @@ try {
 
     if (!isDesignTime)
     {
-        // Basic Serilog Service build
-        Log.Logger = new LoggerConfiguration()
-            .ReadFrom.Configuration(builder.Configuration)
-            .Enrich.FromLogContext()
-            .CreateLogger();
+        try 
+        {
 
-        builder.Host.UseSerilog();
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(builder.Configuration)
+                .CreateLogger();
+
+            builder.Host.UseSerilog();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to configure Serilog: {ex.Message}");
+            throw;
+        }
     }
 
     var app = builder.Build();
@@ -191,7 +199,7 @@ catch (Exception ex)
 {  
     if (!isDesignTime)
     {
-        Log.Fatal(ex, "UserID: N/A, Category, System, Description: The web server terminated unexpectedly.");
+        Log.Fatal(ex, "The web server terminated unexpectedly.");
     }
     throw;
 }

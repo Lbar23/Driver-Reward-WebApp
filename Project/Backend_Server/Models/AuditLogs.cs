@@ -15,7 +15,7 @@ namespace Backend_Server.Models
         System
     }
 
-    public class AuditLog
+    public class AuditLogs
     {
         public int UserID { get; set; }
         public int LogID { get; set; }
