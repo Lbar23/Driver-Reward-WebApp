@@ -17,6 +17,8 @@ import IconButton from '@mui/material/IconButton';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import DeleteIcon from '@mui/icons-material/Delete';
+import Button from '@mui/material/Button';
+import CreateUserModal from './CreateUserModal';
 
 interface Admin {
   userId: number;
@@ -32,6 +34,7 @@ const ManageAdmins: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     fetchAdmins();
@@ -111,7 +114,19 @@ const ManageAdmins: React.FC = () => {
             ),
           }}
         />
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => setShowCreateModal(true)}
+          sx={{ ml: 2 }}
+        >
+          Create User
+        </Button>
       </Box>
+
+      {showCreateModal && (
+        <CreateUserModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
+      )}
 
       <TableContainer component={Paper}>
         <Table>
