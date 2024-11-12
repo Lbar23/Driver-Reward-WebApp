@@ -1,71 +1,91 @@
-import React from 'react';
-import ReactTerminal from 'react-terminal-ui';
+import React, { useState } from 'react';
+import Terminal, { ColorMode, TerminalOutput } from 'react-terminal-ui';
 import { Paper, Box, Typography } from '@mui/material';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import { useAuth } from '../../service/authContext';
 
 const AdminConsole = () => {
   const { user } = useAuth();
+  const [terminalLineData, setTerminalLineData] = useState<React.ReactNode[]>([
+    <TerminalOutput key="welcome">
+      Welcome {user?.userName || 'Admin'} to the GitGud Drivers Admin Console
+      {'\n'}
+      Type 'help' for available commands
+    </TerminalOutput>
+  ]);
 
   const handleInput = (input: string) => {
     const [cmd, ...args] = input.split(' ');
+    let outputText = '';
     
     switch (cmd) {
       case 'help':
-        return `Available commands:
-  help - Show this help message
-  status - Show system status
-  users - List recent user activities
-  clear - Clear console
-  audit [date] - Show audit logs for date (YYYY-MM-DD)
-  metrics - Show system metrics
-  version - Show system version`;
+        outputText = 'Available commands:\n' +
+          '  help - Show this help message\n' +
+          '  status - Show system status\n' +
+          '  users - List recent user activities\n' +
+          '  clear - Clear console\n' +
+          '  audit [date] - Show audit logs for date (YYYY-MM-DD)\n' +
+          '  metrics - Show system metrics\n' +
+          '  version - Show system version';
+        break;
       
       case 'status':
-        return `System Status: Operational
-Last backup: 2024-03-10
-Active users: 42
-Server load: Normal`;
+        outputText = 'System Status: Operational\n' +
+          'Last backup: 2024-03-10\n' +
+          'Active users: 42\n' +
+          'Server load: Normal';
+        break;
 
       case 'users':
-        return `Recent User Activities:
-admin1@gitgud.com - Login - 2 mins ago
-driver2@email.com - Updated profile - 5 mins ago
-sponsor1@company.com - Approved application - 10 mins ago`;
+        outputText = 'Recent User Activities:\n' +
+          'admin1@gitgud.com - Login - 2 mins ago\n' +
+          'driver2@email.com - Updated profile - 5 mins ago\n' +
+          'sponsor1@company.com - Approved application - 10 mins ago';
+        break;
 
       case 'metrics':
-        return `System Metrics:
-CPU Usage: 45%
-Memory: 2.1GB/4GB
-Active Sessions: 12
-Response Time: 230ms`;
+        outputText = 'System Metrics:\n' +
+          'CPU Usage: 45%\n' +
+          'Memory: 2.1GB/4GB\n' +
+          'Active Sessions: 12\n' +
+          'Response Time: 230ms';
+        break;
 
       case 'audit':
         const date = args[0];
         if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-          return 'Error: Please provide a date in YYYY-MM-DD format';
+          outputText = 'Error: Please provide a date in YYYY-MM-DD format';
+        } else {
+          outputText = `Fetching audit logs for ${date}...\n` +
+            `[${date} 09:15:23] User login - admin1@gitgud.com\n` +
+            `[${date} 09:20:45] Configuration change - System settings updated\n` +
+            `[${date} 10:30:12] New user registration - driver3@email.com`;
         }
-        return `Fetching audit logs for ${date}...
-[${date} 09:15:23] User login - admin1@gitgud.com
-[${date} 09:20:45] Configuration change - System settings updated
-[${date} 10:30:12] New user registration - driver3@email.com`;
+        break;
 
       case 'version':
-        return 'GitGud Drivers v1.0.0';
+        outputText = 'GitGud Drivers v1.0.0';
+        break;
 
       case 'clear':
-        return 'clear';
+        setTerminalLineData([]);
+        return;
 
       default:
-        return `Unknown command: ${cmd}. Type 'help' for available commands.`;
+        outputText = `Unknown command: ${cmd}. Type 'help' for available commands.`;
     }
-  };
 
-  // Initial terminal lines
-  const terminalLineData = [{
-    type: 'text',
-    value: `Welcome ${user?.userName || 'Admin'} to the GitGud Drivers Admin Console\nType 'help' for available commands`
-  }];
+    setTerminalLineData(prev => [
+      ...prev,
+      <TerminalOutput key={`input-${Date.now()}`}>
+        {`$ ${input}`}
+      </TerminalOutput>,
+      <TerminalOutput key={`output-${Date.now()}`}>
+        {outputText}
+      </TerminalOutput>
+    ]);
+  };
 
   return (
     <Box sx={{ p: 2 }}>
@@ -93,12 +113,16 @@ Response Time: 230ms`;
             Admin Console
           </Typography>
         </Box>
-        <ReactTerminal
-          name="Admin Console"
-          prompt="$"
-          lineData={terminalLineData} //this line will "cause" an error, but typescript is dumb when documentation for it says its possible. Will find an alternative fix for it.
-          onInput={handleInput}
-        />
+        <div style={{ height: 'calc(100% - 48px)', background: '#1a1a1a' }}>
+          <Terminal
+            name="Admin Console"
+            colorMode={ColorMode.Dark}
+            prompt="$"
+            onInput={handleInput}
+          >
+            {terminalLineData}
+          </Terminal>
+        </div>
       </Paper>
     </Box>
   );
