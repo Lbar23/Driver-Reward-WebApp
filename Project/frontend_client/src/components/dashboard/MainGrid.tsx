@@ -31,12 +31,9 @@ const viewComponents: Record<string, JSX.Element> = {
   // General Components here
   CHANGE_PASSWORD: <PasswordChangeForm />,
   // Admin Components
-  //MANAGE_USERS: <ManageUsers/>,
-  MANAGE_ADMINS: <ManageAdmins/>,
-  MANAGE_SPONSORS: <ManageSponsors/>,
   MANAGE_DRIVERS: <ManageDriverSponsors />,
-  // MANAGE_SPONSORS: <ManageSponsors />,
-  // MANAGE_ADMINS: <Typography>Manage Admins</Typography>, //this is here for sake of sake
+  MANAGE_SPONSORS: <ManageSponsors/>,
+  MANAGE_ADMINS: <ManageAdmins/>,
   ADMIN_REPORTS: <AdminReports />,
   ADMIN_AUDIT_REPORTS: <AuditLogDashboard/>,
   ADMIN_CONSOLE: <AdminConsole />,

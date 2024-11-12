@@ -77,6 +77,12 @@ namespace Backend_Server.Infrastructure
                     return;
                 }
 
+                if (_sshClient != null && _sshClient.IsConnected)
+                {
+                    Log.Warning("Already established connection...");
+                    return;
+                }
+                
                 Log.Information("Setting up new SSH tunnel");
                 await SetupTunnelAsync();
                 _isInitialized = true;
