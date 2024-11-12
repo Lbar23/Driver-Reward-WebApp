@@ -14,9 +14,10 @@ import Dashboard from './pages/Dashboard';
 import ProductCatalog from './pages/ProductCatalog';
 import FAQ from './pages/FAQ';
 import FeedbackForm from './pages/Feedback';
+import Order from './pages/Order';
 // Other pages for authenticated routes
 import PasswordChangeForm from './pages/PasswordChangeForm';
-import AuditLogDashboard from './pages/AuditLogDashboard';
+import Settings from './pages/Settings'
 
 const ProtectedRoute = () => {
     const { isAuthenticated } = useAuth();
@@ -59,13 +60,16 @@ const App = () => (
           <Route path="/home" element={<HomePage />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/feedback" element={<FeedbackForm />} />
-
+          
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/catalog" element={<ProductCatalog />} />
             <Route path="/change-password" element={<PasswordChangeForm />} />
+            <Route path="/settings" element={<Settings/>}/>
+            <Route path="/order" element={<Order />} />
+            
           </Route>
         </Routes>
       </Box>

@@ -161,6 +161,21 @@ namespace Backend_Server.Infrastructure
             return response.SecretString;
         }
 
+        private async Task SetupSshTunnel(Dictionary<string, JsonElement> dbSecrets, Dictionary<string, string> sshSecrets)
+        {
+            Dispose();
+            _tempKeyPath = await CreateTempSshKey(sshSecrets["keypath"]);
+            _sshClient = new SshClient(sshSecrets["host"], sshSecrets["username"], new PrivateKeyFile(_tempKeyPath));
+            _sshClient.Connect();
+
+            _forwardedPort = new ForwardedPortLocal("127.0.0.1", 
+                dbSecrets["port"].GetUInt32(), 
+                dbSecrets["host"].GetString(), 
+                dbSecrets["port"].GetUInt32());
+            _sshClient.AddForwardedPort(_forwardedPort);
+            _forwardedPort.Start();
+        }
+
         private static async Task<string> CreateTempSshKey(string keyContent)
         {
             var tempKeyPath = Path.GetTempFileName();

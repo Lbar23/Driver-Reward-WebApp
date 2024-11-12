@@ -30,12 +30,12 @@ namespace Backend_Server.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                Log.Warning("No user found.");
+                Log.Warning("UserID: N/A, Category: User, Description: No user found.");
                 return Unauthorized("User not found.");
             }
 
             // Log user information
-            Log.Information("User found - ID: {UserId}, Type: {UserType}", user.Id, user.UserType);
+            Log.Information("User found - UserID: {UserId}, Category: User, Description: Activity of {UserType} found", user.Id, user.UserType);
 
             // Now try to find our specific driver
             var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == user.Id);
