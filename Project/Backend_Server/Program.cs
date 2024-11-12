@@ -11,6 +11,7 @@ using Amazon.SecretsManager;
 using Amazon.Extensions.NETCore.Setup;
 using Serilog;
 using Amazon.S3;
+using Serilog.Events;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,7 +36,7 @@ try {
     builder.Services.AddHttpClient();
 
     builder.Services.AddSingleton<CatalogService>();
-    builder.Services.AddSingleton<DbConnectionProvider>();
+    builder.Services.AddScoped<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
 
     //Service for handling Logging more efficiently with custom services or methods relating to DB Connection
@@ -135,26 +136,12 @@ try {
     {
         try 
         {
-            var dbProvider = builder.Services.BuildServiceProvider().GetRequiredService<DbConnectionProvider>();
-            var connection = dbProvider.GetDbConnectionAsync().Result;
-            
-            // Update Serilog connection string with the one from the provider
-            builder.Configuration["Serilog:WriteTo:2:Args:connectionString"] = connection.ConnectionString;
 
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(builder.Configuration)
-                .Enrich.FromLogContext()
                 .CreateLogger();
 
             builder.Host.UseSerilog();
-            
-            // Test log to verify configuration
-            Log.Information(
-                "UserID: {UserID}, Category: {Category}, Description: {Description}",
-                0,
-                AuditLogCategory.System,
-                "Serilog initialized successfully with SSH tunnel"
-            );
         }
         catch (Exception ex)
         {
