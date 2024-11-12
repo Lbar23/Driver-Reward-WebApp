@@ -26,41 +26,44 @@ export default defineConfig({
     minify: 'esbuild', // Use faster minifier
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            // Separate large libraries from @mui/material and others
-            if (id.includes('@mui/material/Button')) return 'mui-button';
-            if (id.includes('@mui/material/Card')) return 'mui-card';
-            if (id.includes('@mui/material/Dialog')) return 'mui-dialog';
-            if (id.includes('@mui/material/Grid')) return 'mui-grid';
-            if (id.includes('@mui/material/Typography')) return 'mui-typography';
-            if (id.includes('@mui/material/Input')) return 'mui-input';
-            if (id.includes('@mui/material/Tooltip')) return 'mui-tooltip';
+        manualChunks: {
+          // Core React libraries
+          vendor: ['react', 'react-dom', 'react-router-dom'],
 
-            // Split `@mui/icons-material` separately
-            if (id.includes('@mui/icons-material')) return 'mui-icons';
+          // Core MUI components
+          'mui-core': [
+            '@mui/material/Button',
+            '@mui/material/Card',
+            '@mui/material/Dialog',
+            '@mui/material/Typography',
+            '@mui/material/Input',
+          ],
 
-            // Group x-charts, x-date-pickers, and other MUI extensions separately..
-            if (id.includes('@mui/x-charts')) return 'mui-charts';
-            if (id.includes('@mui/x-date-pickers')) return 'mui-date-pickers';
+          // MUI data and visualization
+          'mui-data-visualization': [
+            '@mui/x-charts',
+            '@mui/x-data-grid',
+            '@mui/x-date-pickers',
+          ],
 
-            // Fallback for remaining Material components
-            if (id.includes('@mui/material')) return 'mui-material';
+          // MUI icons
+          'mui-icons': ['@mui/icons-material'],
 
-            // Separate other large dependencies like React and D3
-            if (id.includes('react')) return 'vendor-react';
-            if (id.includes('d3')) return 'vendor-d3';
-            if (id.includes('axios')) return 'vendor-axios';
-
-            // Fallback for remaining node_modules dependencies
-            return 'vendor';
-          }
-        }
-      }
+          // Utility libraries
+          utilities: ['axios', 'date-fns'],
+        },
+      },
     },
-    chunkSizeWarningLimit: 500, // Set warning limit for large chunks (don't ignore it!)
+    chunkSizeWarningLimit: 500,
   },
   esbuild: {
     drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+  },
+  optimizeDeps: {
+    include: ["@emotion/react", "@emotion/styled"]
+  },
+  ssr: {
+    noExternal: ["@emotion/react", "@emotion/styled"]
   }
+  
 });
