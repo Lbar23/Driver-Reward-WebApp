@@ -150,7 +150,187 @@ namespace Backend_Server.Controllers
             }
         }
 
-        [HttpDelete("delete-user")]
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("change-user-type")]
+        public async Task<IActionResult> ChangeUserType([FromBody] ChangeUserTypeDto model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var strategy = _context.Database.CreateExecutionStrategy();
+
+            try
+            {
+                await strategy.ExecuteAsync(async () =>
+                {
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        var user = await _userManager.FindByIdAsync(model.UserId.ToString());
+                        if (user == null)
+                            throw new InvalidOperationException("User not found");
+
+                        // Remove from old role
+                        var currentRoles = await _userManager.GetRolesAsync(user);
+                        await _userManager.RemoveFromRolesAsync(user, currentRoles);
+
+                        // Add to new role
+                        await _userManager.AddToRoleAsync(user, model.NewUserType);
+
+                        // Update user type in Users table
+                        user.UserType = model.NewUserType;
+                        await _userManager.UpdateAsync(user);
+
+                        // Handle type-specific records
+                        // Remove old type-specific record
+                        switch (user.UserType)
+                        {
+                            case "Admin":
+                                var admin = await _context.Admins.FirstOrDefaultAsync(a => a.UserID == user.Id);
+                                if (admin != null)
+                                    _context.Admins.Remove(admin);
+                                break;
+                            case "Sponsor":
+                                var sponsor = await _context.Sponsors.FirstOrDefaultAsync(s => s.UserID == user.Id);
+                                if (sponsor != null)
+                                    _context.Sponsors.Remove(sponsor);
+                                break;
+                            case "Driver":
+                                var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == user.Id);
+                                if (driver != null)
+                                    _context.Drivers.Remove(driver);
+                                break;
+                        }
+
+                        // Add new type-specific record
+                        switch (model.NewUserType)
+                        {
+                            case "Admin":
+                                await _context.Admins.AddAsync(new Admins { UserID = user.Id });
+                                break;
+                            case "Sponsor":
+                                await _context.Sponsors.AddAsync(new Sponsors 
+                                { 
+                                    UserID = user.Id,
+                                    CompanyName = "Pending Update", // Default value, should be updated later
+                                    SponsorType = "Standard",
+                                    PointDollarValue = 0.01m
+                                });
+                                break;
+                            case "Driver":
+                                await _context.Drivers.AddAsync(new Drivers 
+                                { 
+                                    UserID = user.Id
+                                });
+                                break;
+                            default:
+                                throw new ArgumentException("Invalid user type");
+                        }
+
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        Log.Information("Changed user type for {Username} to {NewUserType}", user.UserName, model.NewUserType);
+                    }
+                    catch
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+
+                return Ok(new { message = "User type changed successfully" });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to change user type for user {UserId}", model.UserId);
+                return StatusCode(500, new { 
+                    error = "Failed to change user type",
+                    details = ex.Message 
+                });
+            }
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("remove-user/{userId}")]
+        public async Task<IActionResult> RemoveUser(int userId)
+        {
+            var strategy = _context.Database.CreateExecutionStrategy();
+
+            try
+            {
+                await strategy.ExecuteAsync(async () =>
+                {
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        var user = await _userManager.FindByIdAsync(userId.ToString());
+                        if (user == null)
+                            throw new InvalidOperationException("User not found");
+
+                        // Store email for notification before deletion
+                        var userEmail = user.Email;
+                        var userName = user.UserName;
+                        var userType = user.UserType;
+
+                        // Remove type-specific record first
+                        switch (userType)
+                        {
+                            case "Admin":
+                                var admin = await _context.Admins.FirstOrDefaultAsync(a => a.UserID == userId);
+                                if (admin != null)
+                                    _context.Admins.Remove(admin);
+                                break;
+                            case "Sponsor":
+                                var sponsor = await _context.Sponsors.FirstOrDefaultAsync(s => s.UserID == userId);
+                                if (sponsor != null)
+                                    _context.Sponsors.Remove(sponsor);
+                                break;
+                            case "Driver":
+                                var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == userId);
+                                if (driver != null)
+                                    _context.Drivers.Remove(driver);
+                                break;
+                        }
+
+                        // Remove user from roles
+                        var userRoles = await _userManager.GetRolesAsync(user);
+                        await _userManager.RemoveFromRolesAsync(user, userRoles);
+
+                        // Delete the user
+                        var result = await _userManager.DeleteAsync(user);
+                        if (!result.Succeeded)
+                            throw new InvalidOperationException(
+                                string.Join(", ", result.Errors.Select(e => e.Description)));
+
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+
+                        Log.Information("Removed user: {Username} ({UserType})", userName, userType);
+                    }
+                    catch
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
+
+                return Ok(new { message = "User removed successfully" });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to remove user {UserId}", userId);
+                return StatusCode(500, new { 
+                    error = "Failed to remove user",
+                    details = ex.Message 
+                });
+            }
+        }
+
 
         [Authorize(Roles = "Admin")]
         [HttpGet("reports")] //separate into smaller async tasks...obv
@@ -231,6 +411,65 @@ namespace Backend_Server.Controllers
                     }
                 }, TimeSpan.FromMinutes(15));
             });
+        }
+        [Authorize(Roles = "Admin")]
+        [HttpGet("sponsors/details")]
+        public async Task<IActionResult> GetSponsorsDetails()
+        {
+            try
+            {
+                var sponsorsQuery = from u in _context.Users
+                                join s in _context.Sponsors on u.Id equals s.UserID
+                                where u.UserType == "Sponsor"
+                                select new
+                                {
+                                    UserId = u.Id,
+                                    Name = u.UserName,
+                                    Email = u.Email,
+                                    CompanyName = s.CompanyName,
+                                    SponsorType = s.SponsorType,
+                                    PointDollarValue = s.PointDollarValue,
+                                    //TotalDrivers = _context.Drivers.Count(d => d.SponsorID == s.SponsorID),
+                                    UserType = u.UserType
+                                };
+
+                var sponsors = await sponsorsQuery.ToListAsync();
+                return Ok(sponsors);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to retrieve sponsors details");
+                return StatusCode(500, new { error = "Failed to retrieve sponsors details" });
+            }
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admins/details")]
+        public async Task<IActionResult> GetAdminsDetails()
+        {
+            try
+            {
+                var adminsQuery = from u in _context.Users
+                                join a in _context.Admins on u.Id equals a.UserID
+                                where u.UserType == "Admin"
+                                select new
+                                {
+                                    UserId = u.Id,
+                                    Name = u.UserName,
+                                    Email = u.Email,
+                                    CreatedAt = u.CreatedAt,
+                                    LastLogin = u.LastLogin,
+                                    UserType = u.UserType
+                                };
+
+                var admins = await adminsQuery.ToListAsync();
+                return Ok(admins);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to retrieve admins details");
+                return StatusCode(500, new { error = "Failed to retrieve admins details" });
+            }
         }
 
         //read audit logs from database
@@ -413,7 +652,11 @@ namespace Backend_Server.Controllers
             return new string(Enumerable.Repeat(chars, 12).Select(s => s[random.Next(s.Length)]).ToArray());
         }
     }
-
+    public class ChangeUserTypeDto
+    {
+        public int UserId { get; set; }
+        public string NewUserType { get; set; }
+    }
     public record CreateUserDto
     {
         //For all users; Required

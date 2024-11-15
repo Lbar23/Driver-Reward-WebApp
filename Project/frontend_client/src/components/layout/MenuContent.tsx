@@ -35,9 +35,10 @@ const menuConfig: Record<string, ListItemType[]> = {
   Driver: [
     { text: 'Applications', icon: <ApprovalIcon />, view: 'DRIVER_APPLICATION' },
     { text: 'Product Catalog', icon: <ShoppingBagIcon />, path: '/catalog' },
-    { text: 'Register With Sponsors', icon: <ApprovalIcon />, view: 'DRIVER_REGISTRATION' },
+    // { text: 'Register With Sponsors', icon: <ApprovalIcon />, view: 'DRIVER_REGISTRATION' }, <-- Consolidated to DriverApplication
     { text: 'Points', icon: <InfoRoundedIcon />, view: 'DRIVER_POINTS' },
     { text: 'Activity', icon: <InfoRoundedIcon />, view: 'DRIVER_ACTIVITY' },
+    { text: 'Profile', icon: <InfoRoundedIcon />, view: 'PROFILE' },
   ],
   Admin: [
     { 
@@ -46,7 +47,7 @@ const menuConfig: Record<string, ListItemType[]> = {
       nestedItems: [
         { text: "Drivers", icon: <Person />, view: 'MANAGE_DRIVERS' },
         { text: "Sponsors", icon: <Person />, view: 'MANAGE_SPONSORS' },
-        { text: "Admins", icon: <Person />, view: 'MANAGE_USERS' },
+        { text: "Admins", icon: <Person />, view: 'MANAGE_ADMINS' },
 
       ],
     },
