@@ -22,7 +22,7 @@ const FeedbackForm: React.FC = () => {
     }
 
     try {
-      await axios.post('/api/feedback', {
+      await axios.post('/api/user/feedback', {
         Name: name,
         Email: email,
         Description: message,
