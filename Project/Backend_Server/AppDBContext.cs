@@ -16,7 +16,7 @@ namespace Backend_Server
         public DbSet<Purchases> Purchases { get; set; }
         public DbSet<PointTransactions> PointTransactions { get; set; }
         public DbSet<DriverApplications> DriverApplications { get; set; }
-        public DbSet<AuditLog> AuditLog { get; set; }
+        public DbSet<AuditLogs> AuditLogs { get; set; }
         //public DbSet<Permissions> Permissions { get; set; }
         public DbSet<Admins> Admins { get; set; }
         public DbSet<SponsorDrivers> SponsorDrivers { get; set; }
@@ -207,9 +207,9 @@ namespace Backend_Server
                     .HasDefaultValue(string.Empty);
             });
 
-            modelBuilder.Entity<AuditLog>(entity =>
+            modelBuilder.Entity<AuditLogs>(entity =>
             {
-                entity.ToTable("AuditLog");
+                entity.ToTable("AuditLogs");
 
                 entity.HasKey(e => e.LogID);
 

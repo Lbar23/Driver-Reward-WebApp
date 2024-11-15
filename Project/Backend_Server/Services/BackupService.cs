@@ -82,19 +82,43 @@ namespace Backend_Server.Services
                             File.Delete(backupFile);
                         }
 
-                    await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "UserID: N/A, Category: System, Description: Error during database backup process");
-                    Log.Information("This is normal for right now; configure implementation to end task normally later; server doesn't really need that anyway");
-                    await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken); //Retry after 30 mins
+                        // Instead of infinite delay, use a timed wait that can be cancelled
+                        try 
+                        {
+                            await Task.Delay(TimeSpan.FromDays(1), combinedToken.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Log.Information("Backup service shutting down gracefully after completing backup");
+                            break;
+                        }
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        Log.Error(ex, "Error during database backup process");
+                        
+                        // Only retry if not shutting down
+                        if (!combinedToken.Token.IsCancellationRequested)
+                        {
+                            try
+                            {
+                                await Task.Delay(TimeSpan.FromMinutes(30), combinedToken.Token);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                Log.Information("Backup service shutting down after error");
+                                break;
+                            }
+                        }
+                    }
                 }
             }
+            finally
+            {
+                // Cleanup any resources
+                _emergencyStopToken.Dispose();
+            }
         }
-        finally{
-            _emergencyStopToken.Dispose();
-        }}
 
         private async Task<string> BackupDatabase()
         {

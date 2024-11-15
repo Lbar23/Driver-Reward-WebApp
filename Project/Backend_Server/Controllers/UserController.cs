@@ -166,7 +166,13 @@ namespace Backend_Server.Controllers
                 user.LastLogin = DateTime.UtcNow;
                 await _userManager.UpdateAsync(user);
 
-                Log.Information("UserID: {UserID}, Category: User, Description: User {User} logged in successfully", user.Id, user.UserName);
+                // Example from login method:
+                Log.Information(
+                    "UserID: {UserID}, Category: {Category}, Description: {Description}",
+                    user.Id,
+                    AuditLogCategory.User,
+                    $"User {user.UserName} logged in successfully"
+                );
                 return Ok(new { message = "Login successful", userId = user.Id, role = user.UserType, succeeded = true });
             }
 
@@ -385,5 +391,11 @@ namespace Backend_Server.Controllers
     {
         public required string CurrentPassword { get; set; }
         public required string NewPassword { get; set; }
+    }
+
+    public class ChangeUserTypeDto
+    {
+        public int UserId { get; set; }
+        public required string NewUserType { get; set; }
     }
 }

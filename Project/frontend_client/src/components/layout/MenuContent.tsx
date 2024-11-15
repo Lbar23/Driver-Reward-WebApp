@@ -18,7 +18,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useAuth } from '../../service/authContext';
 import { useView } from '../../service/viewContext';
-import { Person } from '@mui/icons-material';
+import { Person, Terminal } from '@mui/icons-material';
 
 type ListItemType = {
   text: string;
@@ -46,7 +46,7 @@ const menuConfig: Record<string, ListItemType[]> = {
       nestedItems: [
         { text: "Drivers", icon: <Person />, view: 'MANAGE_DRIVERS' },
         { text: "Sponsors", icon: <Person />, view: 'MANAGE_SPONSORS' },
-        { text: "Admins", icon: <Person />, view: 'MANAGE_ADMINS' },
+        { text: "Admins", icon: <Person />, view: 'MANAGE_USERS' },
 
       ],
     },
@@ -58,6 +58,11 @@ const menuConfig: Record<string, ListItemType[]> = {
         { text: 'Audits', icon: <HelpRoundedIcon />, view: 'ADMIN_AUDIT_REPORTS' },
       ],
     },
+    {
+      text: 'Console',
+      icon: <Terminal />,
+      view: 'ADMIN_CONSOLE'
+    }
   ],
   Sponsor: [
     { text: 'Manage Drivers', icon: <PeopleIcon />, view: 'SPONSOR_DRIVERS' },
