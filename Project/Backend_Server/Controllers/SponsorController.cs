@@ -172,6 +172,20 @@ public async Task<IActionResult> GetDriver(int id)
             await _context.SaveChangesAsync();
             return Ok($"Application {action}ed successfully.");
         }
+        [HttpPut("sponsors/{sponsorId}/point-ratio")]
+        public async Task<IActionResult> UpdatePointDollarRatio(int sponsorId, [FromBody] decimal newRatio)
+        {
+            var sponsor = await _context.Sponsors.FindAsync(sponsorId);
+            if (sponsor == null)
+            {
+                return NotFound("Sponsor not found.");
+            }
+
+            sponsor.UpdatePointDollarRatio(newRatio);
+            await _context.SaveChangesAsync();
+
+            return Ok($"Point-to-dollar ratio updated to {newRatio}");
+        }
         // [HttpGet("reports")] //Same here as Admin reports...split into smaller async tasks
         // public async Task<IActionResult> GetReports()
         // {
