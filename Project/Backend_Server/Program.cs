@@ -113,7 +113,7 @@ try {
         var dbProvider = serviceProvider.GetRequiredService<DbConnectionProvider>();
         var connection = dbProvider.GetDbConnectionAsync().Result;
         options.UseMySql(connection.ConnectionString,
-            ServerVersion.AutoDetect(connection.ConnectionString),
+            new MySqlServerVersion(new Version(8, 0, 28)), //Needed for resilience db connection
             mySqlOptions => 
             {
                 mySqlOptions.EnableRetryOnFailure(
