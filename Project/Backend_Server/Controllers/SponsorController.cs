@@ -172,19 +172,134 @@ public async Task<IActionResult> GetDriver(int id)
             await _context.SaveChangesAsync();
             return Ok($"Application {action}ed successfully.");
         }
-        [HttpPut("sponsors/{sponsorId}/point-ratio")]
-        public async Task<IActionResult> UpdatePointDollarRatio(int sponsorId, [FromBody] decimal newRatio)
+
+        [HttpPut("point-value")]
+        public async Task<IActionResult> UpdatePointDollarValue([FromBody] decimal newPointValue)
         {
-            var sponsor = await _context.Sponsors.FindAsync(sponsorId);
-            if (sponsor == null)
+            try
             {
-                return NotFound("Sponsor not found.");
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    return Unauthorized("User not found.");
+                }
+
+                // Get sponsor's ID
+                var sponsor = await _context.Sponsors
+                    .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+                if (sponsor == null)
+                {
+                    Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
+                    return NotFound("Sponsor information not found.");
+                }
+
+                // Input validation
+                if (newPointValue <= 0)
+                {
+                    return BadRequest("Point value must be greater than 0");
+                }
+
+                // Update the point-dollar value
+                sponsor.PointDollarValue = newPointValue;
+                await _context.SaveChangesAsync();
+
+                return Ok(new { 
+                    message = "Point-dollar value updated successfully",
+                    newValue = newPointValue 
+                });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "An error occurred while updating point value");
+            }
+        }
 
-            sponsor.UpdatePointDollarRatio(newRatio);
-            await _context.SaveChangesAsync();
+        [HttpPut("driver/{driverId}/points")]
+        public async Task<IActionResult> UpdateDriverPoints(
+         int driverId, 
+        [FromBody] int newPoints)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    return Unauthorized("User not found.");
+                }
 
-            return Ok($"Point-to-dollar ratio updated to {newRatio}");
+                // Get sponsor's ID
+                var sponsor = await _context.Sponsors
+                    .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+                if (sponsor == null)
+                {
+                    Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
+                    return NotFound("Sponsor information not found.");
+                }
+
+                // Input validation
+                if (newPoints < 0)
+                {
+                    return BadRequest("Points cannot be negative");
+                }
+
+                var sponsorDriver = await _context.SponsorDrivers
+                    .FirstOrDefaultAsync(sd => 
+                        sd.SponsorID == sponsor.SponsorID && 
+                        sd.DriverID == driverId);
+
+                if (sponsorDriver == null)
+                {
+                    return NotFound($"No relationship found with Driver {driverId}");
+                }
+
+                // Update the points
+                sponsorDriver.Points = newPoints;
+                await _context.SaveChangesAsync();
+
+                // Calculate dollar value based on sponsor's point-dollar ratio
+                decimal dollarValue = newPoints * sponsor.PointDollarValue;
+
+                return Ok(new { 
+                    message = "Driver points updated successfully",
+                    points = newPoints,
+                    dollarValue = dollarValue
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating points for driver {DriverId}", driverId);
+                return StatusCode(500, "An error occurred while updating driver points");
+            }
+        }
+        [HttpGet("point-ratio")]
+        public async Task<IActionResult> GetPointRatio()
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    return Unauthorized("User not found.");
+                }
+
+                // Get sponsor's information
+                var sponsor = await _context.Sponsors
+                    .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+                if (sponsor == null)
+                {
+                    Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
+                    return NotFound("Sponsor information not found.");
+                }
+
+                return Ok(new { 
+                    pointDollarValue = sponsor.PointDollarValue,
+                    sponsorId = sponsor.SponsorID
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "An error occurred while retrieving point ratio");
+            }
         }
         // [HttpGet("reports")] //Same here as Admin reports...split into smaller async tasks
         // public async Task<IActionResult> GetReports()

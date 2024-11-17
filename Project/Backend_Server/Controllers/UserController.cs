@@ -393,9 +393,4 @@ namespace Backend_Server.Controllers
         public required string NewPassword { get; set; }
     }
 
-    public class ChangeUserTypeDto
-    {
-        public int UserId { get; set; }
-        public required string NewUserType { get; set; }
-    }
 }

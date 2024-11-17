@@ -15,8 +15,4 @@ namespace Backend_Server.Models
         public decimal PointDollarValue { get; set; } = 0.01m;
         public ICollection<SponsorDrivers> SponsorDrivers { get; set; } = []; //Added after adding bridge entity for connection
     }
-    public void UpdatePointDollarRatio(decimal newRatio)
-    {
-        PointDollarValue = newRatio;
-    }
 }
