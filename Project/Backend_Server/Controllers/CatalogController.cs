@@ -8,6 +8,15 @@ using Backend_Server.Infrastructure;
 
 namespace Backend_Server.Controllers
 {
+    /// <summary>
+    /// CatalogController:
+    /// 
+    /// This controller provides endpoints for managing and retrieving product catalog data.
+    ///
+    /// Endpoints:
+    /// 
+    /// [GET] /api/catalog/products - Retrieves the list of products available in the catalog
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class CatalogController(CatalogService catalogService, IMemoryCache cache) : CachedBaseController(cache)

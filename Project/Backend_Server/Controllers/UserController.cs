@@ -11,6 +11,24 @@ using Microsoft.AspNetCore.Mvc.TagHelpers.Cache;
 
 namespace Backend_Server.Controllers
 {
+    /// <summary>
+    /// UserController:
+    /// 
+    /// This controller manages user-related actions, including registration, login, 2FA handling,
+    /// feedback submission, and user account management such as password changes and role retrieval.
+    ///
+    /// Endpoints:
+    /// 
+    /// [POST] /api/user/register            - Registers a new user
+    /// [POST] /api/user/login               - Logs in a user
+    /// [POST] /api/user/verify-2fa          - Verifies a user's 2FA code
+    /// [POST] /api/user/logout              - Logs out the current user
+    /// [GET]  /api/user/currentuser         - Retrieves the currently logged-in user's details
+    /// [GET]  /api/user/getuser             - Retrieves user details by user ID
+    /// [POST] /api/user/change-password     - Changes the current user's password
+    /// [POST] /api/user/reset-password      - Resets a user's password (requires admin access)
+    /// [POST] /api/user/submit-feedback     - Submits feedback from a user
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class UserController(UserManager<Users> userManager, SignInManager<Users> signInManager, AppDBContext context, NotifyService notifyService, IMemoryCache cache) : CachedBaseController(cache)

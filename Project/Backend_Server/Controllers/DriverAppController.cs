@@ -11,6 +11,19 @@ using Backend_Server.Infrastructure;
 
 namespace Backend_Server.Controllers
 {
+    /// <summary>
+    /// DriverAppController:
+    /// 
+    /// This controller manages driver applications, allowing users to apply, view their application status, 
+    /// update applications, and retrieve pending applications for review.
+    ///
+    /// Endpoints:
+    /// 
+    /// [POST] /api/driverapp/apply         - Submits a new driver application
+    /// [GET]  /api/driverapp/status/{id}   - Retrieves the status of a specific application
+    /// [PUT]  /api/driverapp/update/{id}   - Updates the status and details of a specific application
+    /// [GET]  /api/driverapp/pending       - Retrieves all pending applications
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class DriverAppController(AppDBContext context, UserManager<Users> userManager, IMemoryCache cache) : CachedBaseController(cache)

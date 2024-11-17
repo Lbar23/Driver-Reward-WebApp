@@ -12,8 +12,26 @@ using Backend_Server.Infrastructure;
 
 namespace Backend_Server.Controllers
 {
-
-
+    /// <summary>
+    /// This controller provides endpoints for managing users, including creation, deletion,
+    /// role updates, and retrieval of details and audit logs.
+    /// 
+    /// Endpoints:
+    /// 
+    /// [POST] /api/admin/create-user       - Creates a new user (Admin, Sponsor, Driver)
+    /// [POST] /api/admin/change-user-type  - Changes the user type for an existing user
+    /// [DELETE] /api/admin/remove-user     - Removes a user and associated records
+    /// [GET] /api/admin/reports            - Fetches reports (placeholder)
+    /// [GET] /api/admin/system-stat-logs   - Fetches system stats and logs (placeholder)
+    /// [GET] /api/admin/about              - Retrieves latest "About" information
+    /// [GET] /api/admin/test-db-connection - Tests the database connection
+    /// [GET] /api/admin/drivers/details    - Retrieves driver details with sponsor relationships
+    /// [GET] /api/admin/sponsors/details   - Retrieves sponsor details
+    /// [GET] /api/admin/admins/details     - Retrieves admin details
+    /// [GET] /api/admin/audit-logs         - Fetches audit logs with filters and pagination
+    /// [GET] /api/admin/audit-logs/export  - Exports audit logs as a CSV
+    /// 
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class AdminController(AppDBContext context, UserManager<Users> userManager, NotifyService notifyService, IMemoryCache cache) : CachedBaseController(cache)
@@ -23,7 +41,6 @@ namespace Backend_Server.Controllers
         private readonly NotifyService _notifyService = notifyService;
 
         /// <summary>
-        /// Creates a new user of any kind (admin privileges)
         /// RBAC Needed for frontend (and general call; it works, just doesn't redirect to dashboard after Logging in):
         /// -- Admin creates any Users (Admin, Driver, Sponsors) -- Guests aren't needed since they register normally
         /// -- Sponsors can also create other Sponsors (under their Company Name) and Drivers (Also under their Company Name)

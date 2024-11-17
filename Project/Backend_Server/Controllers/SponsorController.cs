@@ -8,6 +8,19 @@ using Backend_Server.Infrastructure;
 
 namespace Backend_Server.Controllers
 {
+    /// <summary>
+    /// SponsorController:
+    /// 
+    /// This controller manages sponsor-specific functionalities, including retrieving associated drivers,
+    /// managing driver applications, and processing application statuses.
+    ///
+    /// Endpoints:
+    /// 
+    /// [GET]  /api/sponsor/drivers                 - Retrieves a list of drivers associated with the sponsor
+    /// [GET]  /api/sponsor/drivers/{id}           - Retrieves detailed information about a specific driver
+    /// [GET]  /api/sponsor/applications           - Retrieves all driver applications submitted to the sponsor
+    /// [POST] /api/sponsor/applications/{id}/process - Approves or rejects a specific driver application
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class SponsorController(UserManager<Users> userManager, AppDBContext context, IMemoryCache cache) : CachedBaseController(cache)

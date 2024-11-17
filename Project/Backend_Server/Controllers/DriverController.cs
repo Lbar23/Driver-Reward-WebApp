@@ -13,16 +13,29 @@ using Serilog;
 
 namespace Backend_Server.Controllers
 {
+    /// <summary>
+    /// DriverController:
+    /// 
+    /// This controller handles driver-specific functionalities, including activity tracking, 
+    /// sponsor management, point transactions, and sponsor relationships.
+    ///
+    /// Endpoints:
+    /// 
+    /// [GET]  /api/driver/activity            - Retrieves driver activity (transactions and purchases)
+    /// [GET]  /api/driver/available-sponsors  - Lists sponsors not yet associated with the driver
+    /// [POST] /api/driver/register-sponsors   - Registers the driver with selected sponsors
+    /// [GET]  /api/driver/transactions        - Placeholder for retrieving driver transactions
+    /// [GET]  /api/driver/my-sponsors         - Retrieves the driver's associated sponsors and points
+    /// [GET]  /api/driver/sponsor-points/{id} - Fetches driver's point details for a specific sponsor
+    /// </summary> 
     [ApiController]
     [Route("api/[controller]")]
     public class DriverController(UserManager<Users> userManager, AppDBContext context, IMemoryCache cache) : CachedBaseController(cache)
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly AppDBContext _context = context;
-
-        //uh, this is two stories combined, really
+ 
         //Since transactions and purchases are one, and really, getting the default value doesn't need a separate method
-        //we ball with dis
         //[Authorize(Roles = "Driver")]
         [HttpGet("activity")]
         public async Task<IActionResult> GetDriverActivity()
