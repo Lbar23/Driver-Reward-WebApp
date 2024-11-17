@@ -166,7 +166,8 @@ public class NotifyService
         {
 
             { "new_balance", newBalance.ToString() },
-            { "user_name", username}
+            { "user_name", username},
+            {"status_msg", statusMessage}
             
         };
 
@@ -189,7 +190,7 @@ public class NotifyService
         {
             "approved" => "Congratulations! Your application has been accepted. You can now start earning points!",
             "rejected" => "Unfortunately, your application was not accepted. Please contact support for further information.",
-            "submitted" => "Your application has been submitted an is under review. You will be notified once a decision is made.",
+            "submitted" => "Your application has been submitted and is under review. You will be notified once a decision is made.",
             _ => "The status of your application has changed."
         };
 
