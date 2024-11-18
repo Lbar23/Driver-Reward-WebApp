@@ -11,6 +11,7 @@ using Amazon.SecretsManager;
 using Amazon.Extensions.NETCore.Setup;
 using Serilog;
 using Amazon.S3;
+using Serilog.Events;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -100,8 +101,8 @@ try {
     // Add cookie authentication
     builder.Services.ConfigureApplicationCookie(options =>
     {
-        options.LoginPath = "/api/user/login";
-        options.LogoutPath = "/api/user/logout"; 
+        options.LoginPath = "/api/system/login";
+        options.LogoutPath = "/api/system/logout"; 
         options.Cookie.HttpOnly = true;
         options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
         options.SlidingExpiration = true;
@@ -112,7 +113,7 @@ try {
         var dbProvider = serviceProvider.GetRequiredService<DbConnectionProvider>();
         var connection = dbProvider.GetDbConnectionAsync().Result;
         options.UseMySql(connection.ConnectionString,
-            ServerVersion.AutoDetect(connection.ConnectionString),
+            new MySqlServerVersion(new Version(8, 0, 28)), //Needed for resilience db connection
             mySqlOptions => 
             {
                 mySqlOptions.EnableRetryOnFailure(
@@ -133,13 +134,20 @@ try {
 
     if (!isDesignTime)
     {
-        // Basic Serilog Service build
-        Log.Logger = new LoggerConfiguration()
-            .ReadFrom.Configuration(builder.Configuration)
-            .Enrich.FromLogContext()
-            .CreateLogger();
+        try 
+        {
 
-        builder.Host.UseSerilog();
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(builder.Configuration)
+                .CreateLogger();
+
+            builder.Host.UseSerilog();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to configure Serilog: {ex.Message}");
+            throw;
+        }
     }
 
     var app = builder.Build();
@@ -191,7 +199,7 @@ catch (Exception ex)
 {  
     if (!isDesignTime)
     {
-        Log.Fatal(ex, "UserID: N/A, Category, System, Description: The web server terminated unexpectedly.");
+        Log.Fatal(ex, "The web server terminated unexpectedly.");
     }
     throw;
 }

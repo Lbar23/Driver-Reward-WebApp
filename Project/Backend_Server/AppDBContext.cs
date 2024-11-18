@@ -2,6 +2,7 @@ using System;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore;
 using Backend_Server.Models;
+using Backend_Server.Models.DTO;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 
@@ -16,8 +17,7 @@ namespace Backend_Server
         public DbSet<Purchases> Purchases { get; set; }
         public DbSet<PointTransactions> PointTransactions { get; set; }
         public DbSet<DriverApplications> DriverApplications { get; set; }
-        public DbSet<AuditLog> AuditLog { get; set; }
-        //public DbSet<Permissions> Permissions { get; set; }
+        public DbSet<AuditLogs> AuditLogs { get; set; }
         public DbSet<Admins> Admins { get; set; }
         public DbSet<SponsorDrivers> SponsorDrivers { get; set; }
         public DbSet<FeedbackForms> FeedbackForms { get; set; }
@@ -25,6 +25,26 @@ namespace Backend_Server
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<SalesSummary>(entity =>
+            {
+                entity.HasNoKey();
+            });
+
+            modelBuilder.Entity<SalesDetail>(entity =>
+            {
+                entity.HasNoKey();
+            });
+
+            modelBuilder.Entity<InvoiceDetail>(entity =>
+            {
+                entity.HasNoKey();
+            });
+
+            modelBuilder.Entity<DriverPoints>(entity =>
+            {
+                entity.HasNoKey();
+            });
 
             modelBuilder.Entity<Users>(entity =>
             {
@@ -207,9 +227,9 @@ namespace Backend_Server
                     .HasDefaultValue(string.Empty);
             });
 
-            modelBuilder.Entity<AuditLog>(entity =>
+            modelBuilder.Entity<AuditLogs>(entity =>
             {
-                entity.ToTable("AuditLog");
+                entity.ToTable("AuditLogs");
 
                 entity.HasKey(e => e.LogID);
 
@@ -229,19 +249,6 @@ namespace Backend_Server
                     .HasDefaultValueSql("CURRENT_TIMESTAMP")
                     .HasColumnType("TIMESTAMP");
             });
-
-            // modelBuilder.Entity<Permissions>(entity =>
-            // {
-            //     entity.ToTable("Permissions");
-
-            //     entity.HasKey(e => e.PermissionID);
-
-            //     entity.Property(d => d.Role)
-            //         .IsRequired();
-
-            //     entity.Property(d => d.Permission)
-            //         .HasConversion<string>();
-            // });
 
             modelBuilder.Entity<Admins>(entity =>
             {

@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  List,
-  ListItem,
-  ListItemText,
+  Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
   Container,
   Typography,
   Card,
@@ -22,6 +17,7 @@ import {
   Snackbar,
 } from '@mui/material';
 import axios, { AxiosResponse } from 'axios';
+import { useNavigate } from 'react-router-dom';
 import OverviewItem from '../components/layout/OverviewItem';
 
 interface Listing {
@@ -46,12 +42,13 @@ const ProductCatalog: React.FC = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [cart, setCart] = useState<Listing[]>([]);
+  const [carts, setCarts] = useState<{ [sponsorId: number]: Listing[] }>({});
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [sponsorPoints, setSponsorPoints] = useState<SponsorPoints[]>([]);
   const [selectedSponsorId, setSelectedSponsorId] = useState<number | ''>('');
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
+  const history = useNavigate();
 
   useEffect(() => {
     fetchSponsorPoints();
@@ -118,17 +115,15 @@ const ProductCatalog: React.FC = () => {
     if (!selectedSponsor || !listing.pointCost) return;
 
     if (selectedSponsor.totalPoints < listing.pointCost) {
-      setSnackbarMessage(
-        `Not enough points! You need ${listing.pointCost} points but have ${selectedSponsor.totalPoints}`
-      );
-    }
+      setSnackbarMessage(`Not enough points! You need ${listing.pointCost} points but have ${selectedSponsor.totalPoints}`);
+    } 
     setShowSnackbar(true);
   };
 
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
-  const selectedSponsor = sponsorPoints.find((s) => s.sponsorId === selectedSponsorId);
+  const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
 
   return (
     <>
@@ -164,13 +159,50 @@ const ProductCatalog: React.FC = () => {
           {listings.map((listing, index) => (
             <ProductCard
               key={index}
-              listing={listing}
-              selectedSponsor={selectedSponsor}
-              onPurchase={() => {
-                handlePurchase(listing);
-                addToCart(listing);
-              }}
-            />
+              sx={{
+                width: 'calc(33.333% - 16px)',
+                maxWidth: 'calc(33.333% - 16px)',
+                marginBottom: 2,
+              }}>
+              <CardMedia
+                component="img"
+                height="200"
+                image={listing.imageUrl}
+                alt={listing.name}
+                sx={{ objectFit: 'cover' }}
+              />
+              <CardContent>
+                <Typography
+                  variant="h6"
+                  component="p"
+                  sx={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {listing.name}
+                </Typography>
+                <OverviewItem title="Price" value={listing.price} />
+                <OverviewItem 
+                  title="Point Cost" 
+                  value={`${listing.pointCost?.toLocaleString() || 0} points`} 
+                />
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  onClick={() => {
+                    handlePurchase(listing);
+                    addToCart(listing);
+                  }}
+                  disabled={!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints}
+                  sx={{ mt: 2 }}
+                >
+                  Add to Cart
+                </Button>
+              </CardContent>
+            </Card>
           ))}
         </Box>
 
@@ -181,24 +213,25 @@ const ProductCatalog: React.FC = () => {
           message={snackbarMessage}
         />
 
+        {/* Cart and Clear Cart Buttons Below Cards */}
         <Box display="flex" justifyContent="center" flexDirection="column" alignItems="center" mt={4} gap={2}>
-          <Button variant="contained" color="secondary" onClick={openCart}>
-            View Cart
-          </Button>
-          <Button variant="outlined" color="error" onClick={clearCart}>
-            Clear Cart
-          </Button>
+            <Button variant="contained" color="secondary" onClick={openCart}>
+              View Cart
+            </Button>
+            <Button variant="outlined" color="error" onClick={clearCart}>
+              Clear Cart
+            </Button>
         </Box>
       </Container>
 
       <Dialog open={isCartOpen} onClose={closeCart}>
         <DialogTitle>Your Cart</DialogTitle>
         <DialogContent>
-          {cart.length > 0 ? (
+          {getCurrentCart().length > 0 ? (
             <List>
-              {cart.map((item, index) => (
+              {getCurrentCart().map((item, index) => (
                 <ListItem key={index}>
-                  <ListItemText primary={item.name} secondary={`Price: ${item.price}`} />
+                  <ListItemText primary={item.name} secondary={`Price: ${parseFloat(item.pointCost).toFixed(2)}`} />
                 </ListItem>
               ))}
             </List>
@@ -206,6 +239,19 @@ const ProductCatalog: React.FC = () => {
             <Typography variant="body1">Your cart is empty.</Typography>
           )}
         </DialogContent>
+        <DialogActions>
+          <Button onClick={clearCart} color="error">
+            Clear Cart
+          </Button>
+          <Button 
+            onClick={goToOrderPage} 
+            color="primary" 
+            variant="contained" 
+            disabled={getCurrentCart().length === 0}
+          >
+            Proceed to Checkout
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   );

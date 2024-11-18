@@ -19,60 +19,122 @@ import {
   IconButton,
   Chip,
   SelectChangeEvent,
+  Button,
+  Alert,
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import DownloadIcon from '@mui/icons-material/Download';
 import { format } from 'date-fns';
+import axios from 'axios';
 
 // Types
-interface AuditLog {
-  logID: number;
-  userID: number;
-  category: number;
-  description: string;
-  timestamp: string;
+export enum AuditLogCategory {
+  User = 'User',
+  Point = 'Point',
+  Purchase = 'Purchase',
+  Application = 'Application',
+  Product = 'Product',
+  System = 'System'
 }
 
-const AuditLogCategory = {
-  1: 'User',
-  2: 'Point',
-  3: 'Purchase',
-  4: 'Application',
-  5: 'Product',
-  6: 'System',
-};
+interface AuditLog {
+  logID: number;
+  timestamp: string;
+  category: AuditLogCategory;
+  userID: number | null;
+  userName: string | null;
+  description: string;
+}
+
+interface AuditLogResponse {
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  logs: AuditLog[];
+}
 
 interface AuditLogFilter {
   userID?: number;
-  category?: number;
-  searchTerm?: string;
+  category?: AuditLogCategory;
+  startDate?: Date;
+  endDate?: Date;
   page: number;
   pageSize: number;
 }
 
-const mockLogs: AuditLog[] = [
-  { logID: 1, userID: 1, category: 1, description: 'Admin User logged in', timestamp: '2024-11-06T14:23:30Z' },
-  { logID: 2, userID: 10, category: 2, description: 'Points added to DriverTR1', timestamp: '2024-11-06T14:50:00Z' },
-  { logID: 3, userID: 10, category: 3, description: 'DriverTR1 purchased glasses', timestamp: '2024-11-06T15:10:00Z' },
-  { logID: 4, userID: 10, category: 4, description: 'Applied for sponsorship with Speedy Stats', timestamp: '2024-11-06T15:10:00Z' },
-  { logID: 5, userID: 1, category: 5, description: 'New Product Added to catalog', timestamp: '2024-11-06T15:10:00Z' },
-  { logID: 6, userID: 1, category: 6, description: 'System back up complete', timestamp: '2024-11-06T15:10:00Z' }
-
-];
-
 const AuditLogDashboard: React.FC = () => {
-  const [logs, setLogs] = useState<AuditLog[]>(mockLogs);
-  const [totalCount, setTotalCount] = useState(mockLogs.length);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<AuditLogFilter>({
     page: 0,
     pageSize: 10,
   });
 
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (filter.userID) params.append('userId', filter.userID.toString());
+      if (filter.category) params.append('category', filter.category);
+      if (filter.startDate) params.append('startDate', filter.startDate.toISOString());
+      if (filter.endDate) params.append('endDate', filter.endDate.toISOString());
+      params.append('page', (filter.page + 1).toString());
+      params.append('pageSize', filter.pageSize.toString());
+
+      const response = await axios.get<AuditLogResponse>(`/api/reports/audit-logs?${params.toString()}`);
+      setLogs(response.data.logs);
+      setTotalCount(response.data.totalCount);
+    } catch (err) {
+      setError('Failed to fetch audit logs');
+      console.error('Error fetching audit logs:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filter.startDate) params.append('startDate', filter.startDate.toISOString());
+      if (filter.endDate) params.append('endDate', filter.endDate.toISOString());
+      if (filter.category) params.append('category', filter.category);
+
+      const response = await axios.get(`/api/reports/audit-logs/export?${params.toString()}`, {
+        responseType: 'blob'
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `audit_logs_${format(new Date(), 'yyyyMMdd')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      setError('Failed to export audit logs');
+      console.error('Error exporting audit logs:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, [filter]);
+
   const handlePageChange = (event: unknown, newPage: number) => {
-    setFilter((prev) => ({ ...prev, page: newPage }));
+    setFilter(prev => ({ ...prev, page: newPage }));
   };
 
   const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFilter((prev) => ({
+    setFilter(prev => ({
       ...prev,
       pageSize: parseInt(event.target.value, 10),
       page: 0,
@@ -80,152 +142,175 @@ const AuditLogDashboard: React.FC = () => {
   };
 
   const handleCategoryChange = (event: SelectChangeEvent) => {
-    const category = event.target.value === '' ? undefined : parseInt(event.target.value);
-    setFilter((prev) => ({
+    const category = event.target.value as AuditLogCategory | '';
+    setFilter(prev => ({
       ...prev,
-      category,
+      category: category || undefined,
       page: 0,
     }));
   };
 
-  const getCategoryName = (category: number) => {
-    return AuditLogCategory[category] || 'Unknown';
+  const getCategoryColor = (category: AuditLogCategory): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
+    const colors: Record<AuditLogCategory, "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"> = {
+      [AuditLogCategory.User]: 'primary',
+      [AuditLogCategory.Point]: 'success',
+      [AuditLogCategory.Purchase]: 'info',
+      [AuditLogCategory.Application]: 'warning',
+      [AuditLogCategory.Product]: 'secondary',
+      [AuditLogCategory.System]: 'error'
+    };
+    return colors[category] || 'default';
   };
-
-  const filteredLogs = logs.filter((log) => {
-    const matchesUser = filter.userID ? log.userID === filter.userID : true;
-    const matchesCategory = filter.category ? log.category === filter.category : true;
-    const matchesSearch = filter.searchTerm ? log.description.toLowerCase().includes(filter.searchTerm.toLowerCase()) : true;
-    return matchesUser && matchesCategory && matchesSearch;
-  });
-
-  const paginatedLogs = filteredLogs.slice(filter.page * filter.pageSize, (filter.page + 1) * filter.pageSize);
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Typography variant="h4" gutterBottom>
-            Audit Log Dashboard
-          </Typography>
-        </Grid>
-        
-        {/* Filters */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label="User ID"
-                  type="number"
-                  value={filter.userID || ''}
-                  onChange={(e) => setFilter((prev) => ({
-                    ...prev,
-                    userID: e.target.value ? parseInt(e.target.value) : undefined,
-                    page: 0,
-                  }))}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
-                  <Select
-                    value={filter.category?.toString() || ''}
-                    label="Category"
-                    onChange={handleCategoryChange}
-                  >
-                    <MenuItem value="">All</MenuItem>
-                    {Object.keys(AuditLogCategory).map((key) => (
-                      <MenuItem key={key} value={key}>
-                        {AuditLogCategory[parseInt(key)]}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Search Description"
-                  value={filter.searchTerm || ''}
-                  onChange={(e) => setFilter((prev) => ({
-                    ...prev,
-                    searchTerm: e.target.value || undefined,
-                    page: 0,
-                  }))}
-                />
-              </Grid>
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Box sx={{ p: 3 }}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h4">
+              Audit Log Dashboard
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<DownloadIcon />}
+              onClick={handleExport}
+              disabled={loading}
+            >
+              Export CSV
+            </Button>
+          </Grid>
+          
+          {error && (
+            <Grid item xs={12}>
+              <Alert severity="error">{error}</Alert>
             </Grid>
-          </Paper>
-        </Grid>
+          )}
+          
+          {/* Filters */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} sm={6} md={2}>
+                  <TextField
+                    fullWidth
+                    label="User ID"
+                    type="number"
+                    value={filter.userID || ''}
+                    onChange={(e) => setFilter(prev => ({
+                      ...prev,
+                      userID: e.target.value ? parseInt(e.target.value) : undefined,
+                      page: 0,
+                    }))}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <FormControl fullWidth>
+                    <InputLabel>Category</InputLabel>
+                    <Select
+                      value={filter.category || ''}
+                      label="Category"
+                      onChange={handleCategoryChange}
+                    >
+                      <MenuItem value="">All</MenuItem>
+                      {Object.values(AuditLogCategory).map((category) => (
+                        <MenuItem key={category} value={category}>
+                          {category}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <DatePicker
+                    label="Start Date"
+                    value={filter.startDate}
+                    onChange={(date) => setFilter(prev => ({
+                      ...prev,
+                      startDate: date || undefined,
+                      page: 0,
+                    }))}
+                    slotProps={{ textField: { fullWidth: true } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <DatePicker
+                    label="End Date"
+                    value={filter.endDate}
+                    onChange={(date) => setFilter(prev => ({
+                      ...prev,
+                      endDate: date || undefined,
+                      page: 0,
+                    }))}
+                    slotProps={{ textField: { fullWidth: true } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={1}>
+                  <IconButton onClick={() => fetchLogs()} disabled={loading}>
+                    <RefreshIcon />
+                  </IconButton>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Grid>
 
-        {/* Logs Table */}
-        <Grid item xs={12}>
-          <Paper>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2 }}>
-              <IconButton onClick={() => setLogs([...mockLogs])}>
-                <RefreshIcon />
-              </IconButton>
-            </Box>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Log ID</TableCell>
-                    <TableCell>User ID</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Timestamp</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedLogs.map((log) => (
-                    <TableRow key={log.logID}>
-                      <TableCell>{log.logID}</TableCell>
-                      <TableCell>{log.userID}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getCategoryName(log.category)}
-                          size="small"
-                          color={getCategoryColor(log.category)}
-                        />
-                      </TableCell>
-                      <TableCell>{log.description}</TableCell>
-                      <TableCell>
-                        {format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}
-                      </TableCell>
+          {/* Logs Table */}
+          <Grid item xs={12}>
+            <Paper>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Log ID</TableCell>
+                      <TableCell>Timestamp</TableCell>
+                      <TableCell>User</TableCell>
+                      <TableCell>Category</TableCell>
+                      <TableCell>Description</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <TablePagination
-              component="div"
-              count={filteredLogs.length}
-              page={filter.page}
-              onPageChange={handlePageChange}
-              rowsPerPage={filter.pageSize}
-              onRowsPerPageChange={handleRowsPerPageChange}
-              rowsPerPageOptions={[5, 10, 25, 50]}
-            />
-          </Paper>
+                  </TableHead>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">Loading...</TableCell>
+                      </TableRow>
+                    ) : logs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">No audit logs found</TableCell>
+                      </TableRow>
+                    ) : (
+                      logs.map((log) => (
+                        <TableRow key={log.logID}>
+                          <TableCell>{log.logID}</TableCell>
+                          <TableCell>{format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}</TableCell>
+                          <TableCell>{log.userName || log.userID || 'N/A'}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={log.category}
+                              size="small"
+                              color={getCategoryColor(log.category)}
+                            />
+                          </TableCell>
+                          <TableCell>{log.description}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <TablePagination
+                component="div"
+                count={totalCount}
+                page={filter.page}
+                onPageChange={handlePageChange}
+                rowsPerPage={filter.pageSize}
+                onRowsPerPageChange={handleRowsPerPageChange}
+                rowsPerPageOptions={[5, 10, 25, 50]}
+              />
+            </Paper>
+          </Grid>
         </Grid>
-      </Grid>
-    </Box>
+      </Box>
+    </LocalizationProvider>
   );
-};
-
-const getCategoryColor = (category: number) => {
-  const colors: Record<number, string> = {
-    0: 'primary',
-    1: 'secondary',
-    2: 'success',
-    3: 'info',
-    4: 'warning',
-    5: 'error',
-  };
-  return colors[category] || 'default';
 };
 
 export default AuditLogDashboard;

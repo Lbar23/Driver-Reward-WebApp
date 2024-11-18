@@ -2,18 +2,64 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Backend_Server.Models;
+using Backend_Server.Models.DTO;
 using Serilog;
 using Microsoft.Extensions.Caching.Memory;
 using Backend_Server.Infrastructure;
 
+
 namespace Backend_Server.Controllers
 {
+    /// <summary>
+    /// SponsorController:
+    /// 
+    /// This controller manages sponsor-specific functionalities, including retrieving associated drivers,
+    /// managing driver applications, and processing application statuses.
+    ///
+    /// Endpoints:
+    
+    /// [PUT]   /api/sponsor/update/{id}                - Updates the driver application with a sponsor decision
+    /// [GET]   /api/sponsor/drivers                    - Retrieves a list of drivers associated with the sponsor
+    /// [GET]   /api/sponsor/drivers/{id}               - Retrieves detailed information about a specific driver
+    /// [GET]   /api/sponsor/applications               - Retrieves all driver applications submitted to the sponsor
+    /// [POST]  /api/sponsor/applications/{id}/process  - Approves or rejects a specific driver application
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class SponsorController(UserManager<Users> userManager, AppDBContext context, IMemoryCache cache) : CachedBaseController(cache)
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly AppDBContext _context = context;
+
+        /********* API CALLS *********/
+
+        // update applicaiton
+        [HttpPut("update/{id}")]
+        public async Task<IActionResult> UpdateApplication(int id, [FromBody] DriverApplications updatedApplication)
+        {
+            var application = await _context.DriverApplications.FindAsync(id);
+            if (application == null)
+            {
+                return NotFound("Application not found.");
+            }
+
+            application.Status = updatedApplication.Status;
+            application.ProcessedDate = updatedApplication.ProcessedDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            application.Reason = updatedApplication.Reason;
+            _context.DriverApplications.Update(application);
+            await _context.SaveChangesAsync();
+            return Ok("Application updated successfully!");
+        }
+
+        //pending
+        [HttpGet("pending")]
+         public async Task<IActionResult> GetPendingApplications()
+        {
+            var pendingApplications = await _context.DriverApplications
+                .Where(app => app.Status == AppStatus.Submitted)
+                .ToListAsync();
+            return Ok(pendingApplications);
+        }
 
         [HttpGet("drivers")]
         public async Task<IActionResult> GetDrivers()
@@ -64,8 +110,8 @@ namespace Backend_Server.Controllers
 
         //Same here with name, address, etc. Points and Id remain the same
         [HttpGet("drivers/{id}")]
-public async Task<IActionResult> GetDriver(int id)
-{
+        public async Task<IActionResult> GetDriver(int id)
+        {
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser == null){
                 return Unauthorized("User not found.");
@@ -98,13 +144,6 @@ public async Task<IActionResult> GetDriver(int id)
 
             return Ok(driverInfo);
         }
-
-        //This method can be separated into two parts; just put one here as reference
-        // [HttpPost("drivers/points/add-or-deduct")]
-        // public async Task<IActionResult> AddOrDeductDriverPoints(int driverId, int pointsToAdd)
-        // {
-        //     return Ok(pointsToAdd);
-        // }
 
         [HttpGet("applications")]
         public async Task<IActionResult> GetDriverApplications()
@@ -171,6 +210,135 @@ public async Task<IActionResult> GetDriver(int id)
 
             await _context.SaveChangesAsync();
             return Ok($"Application {action}ed successfully.");
+        }
+
+        [HttpPut("point-value")]
+        public async Task<IActionResult> UpdatePointDollarValue([FromBody] decimal newPointValue)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    return Unauthorized("User not found.");
+                }
+
+                // Get sponsor's ID
+                var sponsor = await _context.Sponsors
+                    .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+                if (sponsor == null)
+                {
+                    Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
+                    return NotFound("Sponsor information not found.");
+                }
+
+                // Input validation
+                if (newPointValue <= 0)
+                {
+                    return BadRequest("Point value must be greater than 0");
+                }
+
+                // Update the point-dollar value
+                sponsor.PointDollarValue = newPointValue;
+                await _context.SaveChangesAsync();
+
+                return Ok(new { 
+                    message = "Point-dollar value updated successfully",
+                    newValue = newPointValue 
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "An error occurred while updating point value");
+            }
+        }
+
+        [HttpPut("driver/{driverId}/points")]
+        public async Task<IActionResult> UpdateDriverPoints(
+         int driverId, 
+        [FromBody] int newPoints)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    return Unauthorized("User not found.");
+                }
+
+                // Get sponsor's ID
+                var sponsor = await _context.Sponsors
+                    .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+                if (sponsor == null)
+                {
+                    Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
+                    return NotFound("Sponsor information not found.");
+                }
+
+                // Input validation
+                if (newPoints < 0)
+                {
+                    return BadRequest("Points cannot be negative");
+                }
+
+                var sponsorDriver = await _context.SponsorDrivers
+                    .FirstOrDefaultAsync(sd => 
+                        sd.SponsorID == sponsor.SponsorID && 
+                        sd.DriverID == driverId);
+
+                if (sponsorDriver == null)
+                {
+                    return NotFound($"No relationship found with Driver {driverId}");
+                }
+
+                // Update the points
+                sponsorDriver.Points = newPoints;
+                await _context.SaveChangesAsync();
+
+                // Calculate dollar value based on sponsor's point-dollar ratio
+                decimal dollarValue = newPoints * sponsor.PointDollarValue;
+
+                return Ok(new { 
+                    message = "Driver points updated successfully",
+                    points = newPoints,
+                    dollarValue = dollarValue
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating points for driver {DriverId}", driverId);
+                return StatusCode(500, "An error occurred while updating driver points");
+            }
+        }
+        [HttpGet("point-ratio")]
+        public async Task<IActionResult> GetPointRatio()
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    return Unauthorized("User not found.");
+                }
+
+                // Get sponsor's information
+                var sponsor = await _context.Sponsors
+                    .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
+                if (sponsor == null)
+                {
+                    Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
+                    return NotFound("Sponsor information not found.");
+                }
+
+                return Ok(new { 
+                    pointDollarValue = sponsor.PointDollarValue,
+                    sponsorId = sponsor.SponsorID
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "An error occurred while retrieving point ratio");
+            }
         }
         // [HttpGet("reports")] //Same here as Admin reports...split into smaller async tasks
         // public async Task<IActionResult> GetReports()
