@@ -1,22 +1,41 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { Container, Grid, Box, Typography, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const Order: React.FC = () => {
 
     const [orderCompleted, setOrderCompleted] = useState(false);
-
-    const handleCompleteOrder = () => {
-        setOrderCompleted(true);
-      };
     
-    const handleCloseDialog = () => {
-      setOrderCompleted(false);
+      const handleCloseDialog = () => {
+        setOrderCompleted(false);
+        navigate('/catalog');
+      };      
+
+    const location = useLocation<{ cartItems: any[]; sponsorId: number; points: number; pointValue: number }>();
+    const { cartItems, sponsorId, points, pointValue } = location.state || {};
+    const navigate = useNavigate();
+
+    const calculateCartTotalPoints = (): number => {
+      return cartItems?.reduce((sum, item) => {
+        const numericPrice = parseFloat(item.price.split(' ')[0]); // Assuming `price` is a string like "$100"
+        return sum + Math.ceil(numericPrice / pointValue);
+      }, 0) || 0; // Default to 0 if cartItems is undefined
     };
 
-    const location = useLocation<{ cartItems: any[]; sponsorId: number; points: number }>();
-    const { cartItems, points } = location.state || {};
-    const navigate = useNavigate();
+    const handleCompleteOrder = async () => {
+      const pointsSpent = calculateCartTotalPoints(); // Call the function to calculate points spent
+        try {
+          const response = await axios.post('/api/driver/purchase', {
+            SponsorID: sponsorId,
+            PointsSpent: pointsSpent,
+          });
+        setOrderCompleted(true); // Update state on success
+      } catch (err: any) {
+        alert(`Failed to complete order: ${err.message}`); // Display error to user
+      }
+
+    };
 
   return (
     <Container maxWidth="md">
@@ -69,7 +88,7 @@ const Order: React.FC = () => {
                   <Typography variant="subtitle1">{item.name}</Typography>
                 </Grid>
                 <Grid item xs={4} textAlign="right">
-                  <Typography>{item.pointCost} points</Typography>
+                  <Typography>{Math.ceil(parseFloat(item.price.split(' ')[0]) / pointValue)} points</Typography>
                 </Grid>
               </Grid>
             ))}
@@ -77,7 +96,7 @@ const Order: React.FC = () => {
 
             {/* Total Summary */}
             <Box mt={2} textAlign="right">
-              <Typography variant="h6">Total: {cartItems.reduce((sum, item) => sum + item.pointCost, 0)}</Typography> 
+              <Typography variant="h6">Total: {calculateCartTotalPoints()} points</Typography> 
               <Typography variant="h6">Current Points: {points}</Typography>
               <Button 
                 variant="contained" 
@@ -97,7 +116,7 @@ const Order: React.FC = () => {
       <Dialog open={orderCompleted} onClose={handleCloseDialog}>
         <DialogTitle>Order Complete</DialogTitle>
         <DialogContent>
-          <Typography>Your order has been successfully completed! Remaining points: {points - cartItems.reduce((sum, item) => sum + item.pointCost, 0)}</Typography> {/* connect points from dbs */}
+          <Typography>Your order has been successfully completed! Remaining points: {points - calculateCartTotalPoints()}</Typography> {/* connect points from dbs */}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} color="primary">Close</Button>

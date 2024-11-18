@@ -110,7 +110,7 @@ const ProductCatalog: React.FC = () => {
     const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
     if (!selectedSponsor || !listing.pointCost) return;
 
-    if (selectedSponsor.totalPoints < listing.pointCost) {
+    if (selectedSponsor.totalPoints < calculatePointCost(listing.price)) {
       setSnackbarMessage(`Not enough points! You need ${listing.pointCost} points but have ${selectedSponsor.totalPoints}`);
     } 
     setShowSnackbar(true);
@@ -139,7 +139,7 @@ const ProductCatalog: React.FC = () => {
 
   const goToOrderPage = () => {
     history('/order', {
-      state: { cartItems: getCurrentCart(), sponsorId: selectedSponsorId, points: selectedSponsor?.totalPoints }  // pass cart and sponsor data to Order page
+      state: { cartItems: getCurrentCart(), sponsorId: selectedSponsorId, points: selectedSponsor?.totalPoints, pointValue: selectedSponsor?.pointDollarValue }  // pass cart and sponsor data to Order page
     });
     closeCart();
   };
@@ -257,7 +257,7 @@ const ProductCatalog: React.FC = () => {
             <List>
               {getCurrentCart().map((item, index) => (
                 <ListItem key={index}>
-                  <ListItemText primary={item.name} secondary={`Price: ${parseFloat(item.pointCost).toFixed(2)}`} />
+                  <ListItemText primary={item.name} secondary={`Price: ${calculatePointCost(item.price).toLocaleString()}`} />
                 </ListItem>
               ))}
             </List>

@@ -358,6 +358,55 @@ namespace Backend_Server.Controllers
         // {
         //     return Ok();
         // }
+
+        [HttpPost("purchase")]
+        public async Task<IActionResult> UpdateSponsorPoints([FromBody] PurchaseRequest purchaseRequest)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                Log.Warning("No user found.");
+                return Unauthorized("User not found.");
+            }
+
+            try
+            {
+                // Validate the sponsor relationship
+                var sponsorDriver = await _context.SponsorDrivers
+                    .FirstOrDefaultAsync(sd => sd.DriverID == user.Id && sd.SponsorID == purchaseRequest.SponsorID);
+
+                if (sponsorDriver == null)
+                {
+                    Log.Warning("SponsorDriver relationship not found for UserID: {UserId} and SponsorID: {SponsorID}", user.Id, purchaseRequest.SponsorID);
+                    return BadRequest("Sponsor relationship not found.");
+                }
+
+                if (sponsorDriver.Points < purchaseRequest.PointsSpent)
+                {
+                    Log.Warning("Insufficient points for UserID: {UserId} and SponsorID: {SponsorID}", user.Id, purchaseRequest.SponsorID);
+                    return BadRequest("Insufficient points.");
+                }
+
+                // Update points
+                sponsorDriver.Points -= purchaseRequest.PointsSpent;
+
+                // Save changes to the database
+                await _context.SaveChangesAsync();
+
+                Log.Information("Points updated for UserID: {UserId} and SponsorID: {SponsorID}. Points spent: {PointsSpent}. Remaining points: {RemainingPoints}",
+                    user.Id, purchaseRequest.SponsorID, purchaseRequest.PointsSpent, sponsorDriver.Points);
+
+                return Ok(new { 
+                    message = "Points successfully updated", 
+                    remainingPoints = sponsorDriver.Points 
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating points for UserID: {UserId} and SponsorID: {SponsorID}", user.Id, purchaseRequest.SponsorID);
+                return StatusCode(500, "An error occurred while updating points.");
+            }
+        }
     }
 
     public record SponsorDto //mainly here so Drivers can switch between different sponsors
@@ -384,4 +433,10 @@ namespace Backend_Server.Controllers
         public required string SponsorName { get; init; }
         public string? Status { get; init; }
     }
+    public record PurchaseRequest
+    {
+        public required int SponsorID { get; init; }
+        public required int PointsSpent { get; init; }
+    }
+
 }
