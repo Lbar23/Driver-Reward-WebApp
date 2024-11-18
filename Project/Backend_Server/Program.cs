@@ -101,8 +101,8 @@ try {
     // Add cookie authentication
     builder.Services.ConfigureApplicationCookie(options =>
     {
-        options.LoginPath = "/api/user/login";
-        options.LogoutPath = "/api/user/logout"; 
+        options.LoginPath = "/api/system/login";
+        options.LogoutPath = "/api/system/logout"; 
         options.Cookie.HttpOnly = true;
         options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
         options.SlidingExpiration = true;
@@ -113,7 +113,7 @@ try {
         var dbProvider = serviceProvider.GetRequiredService<DbConnectionProvider>();
         var connection = dbProvider.GetDbConnectionAsync().Result;
         options.UseMySql(connection.ConnectionString,
-            ServerVersion.AutoDetect(connection.ConnectionString),
+            new MySqlServerVersion(new Version(8, 0, 28)), //Needed for resilience db connection
             mySqlOptions => 
             {
                 mySqlOptions.EnableRetryOnFailure(

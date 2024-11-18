@@ -136,7 +136,8 @@ namespace Backend_Server.Services
                 }
             };
             
-            await connection.OpenAsync();
+            //Uneeded since connection stays open long enough for reconnection...
+            //await connection.OpenAsync();
             
             // This is to handle datetime conversions, since some data in database includes DateOnly
             await using var sessionCmd = new MySqlCommand(@"

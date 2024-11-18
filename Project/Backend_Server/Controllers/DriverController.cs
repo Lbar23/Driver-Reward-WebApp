@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Backend_Server.Infrastructure;
 using Backend_Server.Models;
+using Backend_Server.Models.DTO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,23 @@ using Serilog;
 
 namespace Backend_Server.Controllers
 {
+    /// <summary>
+    /// DriverController:
+    /// 
+    /// This controller handles driver-specific functionalities, including activity tracking, 
+    /// sponsor management, point transactions, and sponsor relationships.
+    ///
+    /// Endpoints:
+    /// 
+    /// [GET]   /api/driver/activity                - Retrieves driver activity (transactions and purchases)
+    /// [GET]   /api/driver/available-sponsors      - Lists sponsors not yet associated with the driver
+    /// [POST]  /api/driver/apply                - Submits a new driver application
+    /// [GET]   /api/driver/status/{id}          - Retrieves the status of a specific application
+    /// [POST]  /api/driver/register-sponsors       - Registers the driver with selected sponsors
+    /// [GET]   /api/driver/transactions            - Placeholder for retrieving driver transactions
+    /// [GET]   /api/driver/my-sponsors             - Retrieves the driver's associated sponsors and points
+    /// [GET]   /api/driver/sponsor-points/{id}     - Fetches driver's point details for a specific sponsor
+    /// </summary> 
     [ApiController]
     [Route("api/[controller]")]
     public class DriverController(UserManager<Users> userManager, AppDBContext context, IMemoryCache cache) : CachedBaseController(cache)
@@ -20,9 +38,9 @@ namespace Backend_Server.Controllers
         private readonly UserManager<Users> _userManager = userManager;
         private readonly AppDBContext _context = context;
 
-        //uh, this is two stories combined, really
+        /********* API CALLS *********/
+
         //Since transactions and purchases are one, and really, getting the default value doesn't need a separate method
-        //we ball with dis
         //[Authorize(Roles = "Driver")]
         [HttpGet("activity")]
         public async Task<IActionResult> GetDriverActivity()
@@ -227,17 +245,38 @@ namespace Backend_Server.Controllers
             }
         }
 
-        // [HttpGet("points")]
-        // public async Task<IActionResult> GetDriverPoints()
-        // {
-        //     return Ok();
-        // }
+        //sumbit application async
+        [HttpPost("apply")]
+        public async Task<IActionResult> Apply([FromBody] DriverApplications application)
+        {
+            var user = await _userManager.GetUserAsync(User); // Get the current logged-in user
 
-        // [HttpGet("purchases")]
-        // public async Task<IActionResult> GetDriverPurchases()
-        // {
-        //     return Ok();
-        // }
+            if (user == null)
+            {
+                return Unauthorized("User not found.");
+            }
+
+            // automatically assign the user's ID to the application 
+            application.UserID = user.Id;
+            application.Status = AppStatus.Submitted;
+            application.ApplyDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+            _context.DriverApplications.Add(application);
+            await _context.SaveChangesAsync();
+            return Ok("Application submitted successfully!");
+        }
+        
+        //status of application
+        [HttpGet("status/{id}")]
+        public async Task<IActionResult> GetApplicationStatus(int id)
+        {
+            var application = await _context.DriverApplications.FindAsync(id);
+            if (application == null)
+            {
+                return NotFound("Application not found.");
+            }
+            return Ok(application.Status);
+        }
 
         //For now, method is synchronous so I don't get no warnings when building and running...
         //DO NOT FORGET IF IMPLEMENTATION UPDATES IN THE FUTURE
@@ -246,18 +285,6 @@ namespace Backend_Server.Controllers
         {
             return Ok();
         }
-
-        // [HttpGet("purchase")]
-        // public async Task<IActionResult> GetDriverPurchase(int id)
-        // {
-        //     return Ok();
-        // }
-
-        // [HttpPut("purchase/{id}")]
-        // public async Task<IActionResult> CancelPurchase(int id)
-        // {
-        //     return Ok();
-        // }
 
         [HttpGet("my-sponsors")]
         public async Task<IActionResult> GetDriverSponsors()
@@ -358,30 +385,55 @@ namespace Backend_Server.Controllers
         // {
         //     return Ok();
         // }
+
+        [HttpPost("purchase")]
+        public async Task<IActionResult> UpdateSponsorPoints([FromBody] PurchaseRequest purchaseRequest)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                Log.Warning("No user found.");
+                return Unauthorized("User not found.");
+            }
+
+            try
+            {
+                // Validate the sponsor relationship
+                var sponsorDriver = await _context.SponsorDrivers
+                    .FirstOrDefaultAsync(sd => sd.DriverID == user.Id && sd.SponsorID == purchaseRequest.SponsorID);
+
+                if (sponsorDriver == null)
+                {
+                    Log.Warning("SponsorDriver relationship not found for UserID: {UserId} and SponsorID: {SponsorID}", user.Id, purchaseRequest.SponsorID);
+                    return BadRequest("Sponsor relationship not found.");
+                }
+
+                if (sponsorDriver.Points < purchaseRequest.PointsSpent)
+                {
+                    Log.Warning("Insufficient points for UserID: {UserId} and SponsorID: {SponsorID}", user.Id, purchaseRequest.SponsorID);
+                    return BadRequest("Insufficient points.");
+                }
+
+                // Update points
+                sponsorDriver.Points -= purchaseRequest.PointsSpent;
+
+                // Save changes to the database
+                await _context.SaveChangesAsync();
+
+                Log.Information("Points updated for UserID: {UserId} and SponsorID: {SponsorID}. Points spent: {PointsSpent}. Remaining points: {RemainingPoints}",
+                    user.Id, purchaseRequest.SponsorID, purchaseRequest.PointsSpent, sponsorDriver.Points);
+
+                return Ok(new { 
+                    message = "Points successfully updated", 
+                    remainingPoints = sponsorDriver.Points 
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating points for UserID: {UserId} and SponsorID: {SponsorID}", user.Id, purchaseRequest.SponsorID);
+                return StatusCode(500, "An error occurred while updating points.");
+            }
+        }
     }
 
-    public record SponsorDto //mainly here so Drivers can switch between different sponsors
-    {
-        public int SponsorID { get; init; }
-        public required string CompanyName { get; init; }
-        public decimal PointDollarValue { get; init; }
-    }
-
-    public record PointValueDto
-    {
-        public int TotalPoints { get; init; }
-        public decimal PointValue { get; init; }
-        public required string SponsorName { get; init; }
-        public decimal TotalValue => TotalPoints * PointValue;
-    }
-
-    public record TransactionDto
-    {
-        public DateTime Date { get; init; }
-        public int Points { get; init; }
-        public required string Type { get; init; }
-        public required string Reason { get; init; }
-        public required string SponsorName { get; init; }
-        public string? Status { get; init; }
-    }
 }
