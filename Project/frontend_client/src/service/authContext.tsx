@@ -12,6 +12,16 @@ interface User {
   roles: string[];
 }
 
+interface NotifySettings {
+  purchaseConfirmation: boolean;
+  pointEarned: boolean;
+  pointBalanceDrop: boolean;
+  orderIssue: boolean;
+  systemDrop: boolean;
+  applicationApproved: boolean;
+}
+
+
 // Context properties for authentication handling
 interface AuthContextProps {
   user: User | null;
@@ -21,7 +31,10 @@ interface AuthContextProps {
   setViewRole: (role: string | null) => void;
   checkAuth: () => Promise<void>;
   logout: () => Promise<void>;
+  notifySettings: NotifySettings;
+  updateNotifySetting: (key: keyof NotifySettings, value: boolean) => void;
 }
+
 
 // Initialize the AuthContext
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -42,6 +55,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(!isAuthenticated);
+    
+  // Initial notification settings, with local storage fallback
+  const defaultNotifySettings: NotifySettings = {
+    purchaseConfirmation: true,
+    pointEarned: true,
+    pointBalanceDrop: true,
+    orderIssue: true,
+    systemDrop: true, // Cannot be disabled
+    applicationApproved: true, // Cannot be disabled
+  };
+
+  const [notifySettings, setNotifySettings] = useState<NotifySettings>(() => {
+    const savedSettings = localStorage.getItem('notifySettings');
+    return savedSettings ? JSON.parse(savedSettings) : defaultNotifySettings;
+  });
+
+  // Function to update notification settings
+  const updateNotifySetting = (key: keyof NotifySettings, value: boolean) => {
+    // Prevent disabling 'systemDrop' and 'applicationApproved'
+    if (key === 'systemDrop' || key === 'applicationApproved') return;
+
+    setNotifySettings((prevSettings) => {
+      const updatedSettings = { ...prevSettings, [key]: value };
+      localStorage.setItem('notifySettings', JSON.stringify(updatedSettings));
+      return updatedSettings;
+    });
+  };
+
+
 
   // Function to handle view role updates and storage
   const setViewRole = useCallback((role: string | null) => {
@@ -84,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logs out the user, clears session data, and redirects to login
   const logout = async () => {
     try {
-      await axios.post('/api/user/logout', {}, { withCredentials: true });
+      await axios.post('/api/system/logout', {}, { withCredentials: true });
       setUser(null);
       setIsAuthenticated(false);
       setViewRole(null); // Reset viewRole on logout
@@ -102,7 +144,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       viewRole, 
       setViewRole, 
       checkAuth, 
-      logout }}>
+      logout,
+      notifySettings,
+      updateNotifySetting }}>
       {children}
     </AuthContext.Provider>
   );

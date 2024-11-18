@@ -5,6 +5,8 @@ import AppTheme from './components/layout/AppTheme';
 import { AuthProvider, useAuth } from './service/authContext';
 import { ViewProvider } from './service/viewContext';
 import SideMenu from './components/layout/SideMenu';
+//Accessibility service
+import { AccessibilityProvider } from './service/accessibilityContext';
 // Pages
 import HomePage from './pages/HomePage';
 import About from './pages/About';
@@ -18,7 +20,6 @@ import Order from './pages/Order';
 // Other pages for authenticated routes
 import PasswordChangeForm from './pages/PasswordChangeForm';
 import Settings from './pages/Settings'
-import AuditLogDashboard from './pages/AuditLogDashboard';
 
 const ProtectedRoute = () => {
     const { isAuthenticated } = useAuth();
@@ -44,7 +45,28 @@ const ConditionalRedirect = () => {
 const App = () => (
   <AuthProvider>
     <ViewProvider>
+      <AccessibilityProvider> {/* Added Accessibility Provider for cascading to pages */}
     <AppTheme>
+      {/* Skip link for keyboard users */}
+      <a
+        href="#main-content"
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+          zIndex: 999,
+          padding: '1rem',
+          background: '#fff',
+          textDecoration: 'none',
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.left = '1rem';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.left = '-9999px';
+        }}
+      >
+        Skip to main content
+      </a>
       <AppNavbar />
       {/* Spacer for AppBar height */}
       <Toolbar /> 
@@ -75,6 +97,7 @@ const App = () => (
         </Routes>
       </Box>
     </AppTheme>
+    </AccessibilityProvider> {/* Added Accessibility Provider for cascading to pages */}
     </ViewProvider>
   </AuthProvider>
 );

@@ -16,22 +16,15 @@ import Tooltip from '@mui/material/Tooltip';
 import TextField from '@mui/material/TextField';
 import SearchIcon from '@mui/icons-material/SearchRounded';
 import IconButton from '@mui/material/IconButton';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 interface Driver {
   userId: number;
   name: string;
   email: string;
-  sponsorRelationships: {
-    sponsorId: number;
-    sponsorName: string;
-    points: number;
-  }[];
-}
-
-interface Driver {
-  userId: number;
-  name: string;
-  email: string;
+  userType?: string;
   sponsorRelationships: {
     sponsorId: number;
     sponsorName: string;
@@ -60,6 +53,24 @@ const ManageDriverSponsors: React.FC = () => {
       console.error('Error fetching drivers:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChangeUserType = async (userId: string, newUserType: string) => {
+    try {
+      await axios.post('/api/user/change-user-type', { userId, newUserType });
+      await fetchDrivers(); // Reuse existing fetch function
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const handleRemoveUser = async (userId: string) => {
+    try {
+      await axios.delete(`/api/user/delete-user/${userId}`);
+      await fetchDrivers(); // Reuse existing fetch function
+    } catch (error: any) {
+      setError(error.message);
     }
   };
 
@@ -117,6 +128,8 @@ const ManageDriverSponsors: React.FC = () => {
               <TableCell>Sponsors</TableCell>
               <TableCell align="center">Total Sponsors</TableCell>
               <TableCell>Points Distribution</TableCell>
+              <TableCell>User Type</TableCell>
+              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -154,6 +167,26 @@ const ManageDriverSponsors: React.FC = () => {
                       </Tooltip>
                     ))}
                   </Box>
+                </TableCell>
+                <TableCell>
+                  <Select
+                    size="small"
+                    value={driver.userType || ''}
+                    onChange={(e) => handleChangeUserType(driver.userId.toString(), e.target.value)}
+                  >
+                    <MenuItem value="driver">Driver</MenuItem>
+                    <MenuItem value="sponsor">Sponsor</MenuItem>
+                    <MenuItem value="admin">Admin</MenuItem>
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <IconButton
+                    onClick={() => handleRemoveUser(driver.userId.toString())}
+                    color="error"
+                    size="small"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}

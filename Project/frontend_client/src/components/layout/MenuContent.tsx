@@ -14,11 +14,14 @@ import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import HelpRoundedIcon from '@mui/icons-material/HelpRounded';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import PeopleIcon from '@mui/icons-material/People';
+import QueryStatsIcon from "@mui/icons-material/QueryStats"
+import AutoGraphIcon from "@mui/icons-material/AutoGraph"
+import BarChartIcon from "@mui/icons-material/BarChart"
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useAuth } from '../../service/authContext';
 import { useView } from '../../service/viewContext';
-import { Person } from '@mui/icons-material';
+import { Person, QueryStats, Terminal } from '@mui/icons-material';
 
 type ListItemType = {
   text: string;
@@ -35,9 +38,10 @@ const menuConfig: Record<string, ListItemType[]> = {
   Driver: [
     { text: 'Applications', icon: <ApprovalIcon />, view: 'DRIVER_APPLICATION' },
     { text: 'Product Catalog', icon: <ShoppingBagIcon />, path: '/catalog' },
-    { text: 'Register With Sponsors', icon: <ApprovalIcon />, view: 'DRIVER_REGISTRATION' },
+    // { text: 'Register With Sponsors', icon: <ApprovalIcon />, view: 'DRIVER_REGISTRATION' }, <-- Consolidated to DriverApplication
     { text: 'Points', icon: <InfoRoundedIcon />, view: 'DRIVER_POINTS' },
     { text: 'Activity', icon: <InfoRoundedIcon />, view: 'DRIVER_ACTIVITY' },
+    { text: 'Profile', icon: <InfoRoundedIcon />, view: 'PROFILE' },
   ],
   Admin: [
     { 
@@ -45,19 +49,24 @@ const menuConfig: Record<string, ListItemType[]> = {
       icon: <PeopleIcon />, 
       nestedItems: [
         { text: "Drivers", icon: <Person />, view: 'MANAGE_DRIVERS' },
-        { text: "Sponsors", icon: <Person />, view: 'MANAGE_USERS' },
-        { text: "Admins", icon: <Person />, view: 'MANAGE_USERS' },
+        { text: "Sponsors", icon: <Person />, view: 'MANAGE_SPONSORS' },
+        { text: "Admins", icon: <Person />, view: 'MANAGE_ADMINS' },
 
       ],
     },
     {
       text: 'Reports Views',
-      icon: <HelpRoundedIcon />,
+      icon: <BarChartIcon fontWeight="large" />,
       nestedItems: [
-        { text: 'General', icon: <HelpRoundedIcon />, view: 'ADMIN_REPORTS' },
-        { text: 'Audits', icon: <HelpRoundedIcon />, view: 'ADMIN_AUDIT_REPORTS' },
+        { text: 'General', icon: <AutoGraphIcon fontWeight="medium" />, view: 'ADMIN_REPORTS' },
+        { text: 'Audits', icon: <QueryStatsIcon fontWeight="medium" />, view: 'ADMIN_AUDIT_REPORTS' },
       ],
     },
+    {
+      text: 'Console',
+      icon: <Terminal />,
+      view: 'ADMIN_CONSOLE'
+    }
   ],
   Sponsor: [
     { text: 'Manage Drivers', icon: <PeopleIcon />, view: 'SPONSOR_DRIVERS' },
@@ -65,10 +74,10 @@ const menuConfig: Record<string, ListItemType[]> = {
     { text: 'Product Catalog', icon: <ShoppingBagIcon />, path: '/catalog' },
     {
       text: 'Reports Views',
-      icon: <HelpRoundedIcon />,
+      icon: <BarChartIcon fontWeight="large" />,
       nestedItems: [
         { text: 'General', icon: <InfoRoundedIcon />, view: 'SPONSOR_REPORTS' },
-        { text: 'Audits', icon: <HelpRoundedIcon />, view: 'SPONSOR_AUDIT_REPORTS' },
+        { text: 'Audits', icon: <QueryStatsIcon fontWeight="medium" />, view: 'SPONSOR_AUDIT_REPORTS' },
       ],
     },
   ],
