@@ -102,8 +102,8 @@ const ManageSponsors: React.FC = () => {
 
   const handleChangeUserType = async (userId: string, newUserType: string) => {
     try {
-      await axios.post('/api/user/change-user-type', { userId, newUserType });
-      await fetchData();
+      await axios.post('/api/admin/change-user-type', { userId, newUserType });
+      await fetchSponsors();
     } catch (error: any) {
       setError(error.message);
     }
@@ -111,8 +111,8 @@ const ManageSponsors: React.FC = () => {
 
   const handleRemoveUser = async (userId: string) => {
     try {
-      await axios.delete(`/api/user/remove-user/${userId}`);
-      await fetchData();
+      await axios.delete(`/api/admin/remove-user/${userId}`);
+      await fetchSponsors();
     } catch (error: any) {
       setError(error.message);
     }

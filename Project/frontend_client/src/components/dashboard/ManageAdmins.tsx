@@ -56,7 +56,7 @@ const ManageAdmins: React.FC = () => {
 
   const handleChangeUserType = async (userId: string, newUserType: string) => {
     try {
-      await axios.post('/api/user/change-user-type', { userId, newUserType });
+      await axios.post('/api/admin/change-user-type', { userId, newUserType });
       await fetchAdmins();
     } catch (error: any) {
       setError(error.message);
@@ -65,7 +65,7 @@ const ManageAdmins: React.FC = () => {
 
   const handleRemoveUser = async (userId: string) => {
     try {
-      await axios.delete(`/api/user/remove-user/${userId}`);
+      await axios.delete(`/api/admin/remove-user/${userId}`);
       await fetchAdmins();
     } catch (error: any) {
       setError(error.message);
