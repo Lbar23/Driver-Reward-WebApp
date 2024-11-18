@@ -20,7 +20,7 @@ const About: React.FC = () => {
     useEffect(() => {
         const fetchAboutInfo = async () => {
             try {
-                const response = await axios.get('/api/admin/about', { withCredentials: true});
+                const response = await axios.get('/api/system/about', { withCredentials: true});
                 console.log('API Response:', response.data); 
                 setAboutInfo(response.data);
             } catch (error: any) {

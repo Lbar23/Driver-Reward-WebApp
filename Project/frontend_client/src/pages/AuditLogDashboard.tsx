@@ -89,7 +89,7 @@ const AuditLogDashboard: React.FC = () => {
       params.append('page', (filter.page + 1).toString());
       params.append('pageSize', filter.pageSize.toString());
 
-      const response = await axios.get<AuditLogResponse>(`/api/admin/audit-logs?${params.toString()}`);
+      const response = await axios.get<AuditLogResponse>(`/api/reports/audit-logs?${params.toString()}`);
       setLogs(response.data.logs);
       setTotalCount(response.data.totalCount);
     } catch (err) {
@@ -107,7 +107,7 @@ const AuditLogDashboard: React.FC = () => {
       if (filter.endDate) params.append('endDate', filter.endDate.toISOString());
       if (filter.category) params.append('category', filter.category);
 
-      const response = await axios.get(`/api/admin/audit-logs/export?${params.toString()}`, {
+      const response = await axios.get(`/api/reports/audit-logs/export?${params.toString()}`, {
         responseType: 'blob'
       });
 

@@ -82,7 +82,7 @@ namespace Backend_Server.Services
 
             var content = await response.Content.ReadAsStringAsync();
             var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
-            // _logger.LogInformation("eBay API response: {ResponseContent}", content);
+            _logger.LogInformation("eBay API response: {ResponseContent}", content);
 
 
             return productResponse?.ItemSummaries?.ConvertAll(item => new Product
