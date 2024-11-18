@@ -40,6 +40,12 @@ namespace Backend_Server.Models.DTO
         public string? Status { get; init; }
     }
 
+    public record PurchaseRequest
+    {
+        public required int SponsorID { get; init; }
+        public required int PointsSpent { get; init; }
+    }
+
     [NotMapped]
     public record DriverListDto
     {
