@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
+  Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText,
   Container,
   Typography,
   Card,
@@ -14,7 +14,7 @@ import {
   Select,
   MenuItem,
   Button,
-  Snackbar,
+  Snackbar
 } from '@mui/material';
 import axios, { AxiosResponse } from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -25,7 +25,6 @@ interface Listing {
   price: string;
   imageUrl: string;
   pointCost?: number;
-  altText?: string;
 }
 
 interface SponsorPoints {
@@ -67,16 +66,13 @@ const ProductCatalog: React.FC = () => {
     fetchListings();
   }, []);
 
-  const addToCart = (item: Listing) => setCart((prevCart) => [...prevCart, item]);
-  const openCart = () => setIsCartOpen(true);
-  const closeCart = () => setIsCartOpen(false);
-  const clearCart = () => setCart([]);
-
   const fetchSponsorPoints = async () => {
     try {
       const response = await axios.get<SponsorPoints[]>('/api/driver/my-sponsors');
       setSponsorPoints(response.data);
-      if (response.data.length > 0) setSelectedSponsorId(response.data[0].sponsorId);
+      if (response.data.length > 0) {
+        setSelectedSponsorId(response.data[0].sponsorId);
+      }
     } catch (err) {
       setError('Failed to load sponsor points data');
       console.error('Error fetching sponsor points:', err);
@@ -86,15 +82,15 @@ const ProductCatalog: React.FC = () => {
   const fetchListings = async () => {
     try {
       const response: AxiosResponse<Listing[]> = await axios.get('/api/catalog/products');
-      const listingsWithPoints = response.data.map((listing) => ({
+      const listingsWithPoints = response.data.map(listing => ({
         ...listing,
-        pointCost: calculatePointCost(listing.price),
+        pointCost: calculatePointCost(listing.price)
       }));
       setListings(listingsWithPoints);
-      localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({ listings: listingsWithPoints, timestamp: Date.now() })
-      );
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ 
+        listings: listingsWithPoints, 
+        timestamp: Date.now() 
+      }));
     } catch (error: any) {
       setError(error.response?.data || 'Failed to load products.');
     } finally {
@@ -103,18 +99,18 @@ const ProductCatalog: React.FC = () => {
   };
 
   const calculatePointCost = (price: string): number => {
-    const selectedSponsor = sponsorPoints.find((s) => s.sponsorId === selectedSponsorId);
+    const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
     if (!selectedSponsor) return 0;
-
+    
     const numericPrice = parseFloat(price.split(' ')[0]);
     return Math.ceil(numericPrice / selectedSponsor.pointDollarValue);
   };
 
   const handlePurchase = (listing: Listing) => {
-    const selectedSponsor = sponsorPoints.find((s) => s.sponsorId === selectedSponsorId);
+    const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
     if (!selectedSponsor || !listing.pointCost) return;
 
-    if (selectedSponsor.totalPoints < listing.pointCost) {
+    if (selectedSponsor.totalPoints < calculatePointCost(listing.price)) {
       setSnackbarMessage(`Not enough points! You need ${listing.pointCost} points but have ${selectedSponsor.totalPoints}`);
     } 
     setShowSnackbar(true);
@@ -124,6 +120,29 @@ const ProductCatalog: React.FC = () => {
   if (error) return <Alert severity="error">{error}</Alert>;
 
   const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
+  const getCurrentCart = () => carts[selectedSponsorId] || [];
+
+  const addToCart = (item: Listing) => {
+    setCarts((prevCarts) => ({
+      ...prevCarts,
+      [selectedSponsorId]: [...(prevCarts[selectedSponsorId] || []), item],
+    }));
+  };
+  const openCart = () => setIsCartOpen(true);
+  const closeCart = () => setIsCartOpen(false);
+  const clearCart = () => {
+    setCarts((prevCarts) => ({
+      ...prevCarts,
+      [selectedSponsorId]: [],
+    }));
+  };
+
+  const goToOrderPage = () => {
+    history('/order', {
+      state: { cartItems: getCurrentCart(), sponsorId: selectedSponsorId, points: selectedSponsor?.totalPoints, pointValue: selectedSponsor?.pointDollarValue }  // pass cart and sponsor data to Order page
+    });
+    closeCart();
+  };
 
   return (
     <>
@@ -149,15 +168,14 @@ const ProductCatalog: React.FC = () => {
 
         {selectedSponsor && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            You have {selectedSponsor.totalPoints.toLocaleString()} points available with{' '}
-            {selectedSponsor.sponsorName}. Point Value: $
-            {selectedSponsor.pointDollarValue.toFixed(2)} per point.
+            You have {selectedSponsor.totalPoints.toLocaleString()} points available with {selectedSponsor.sponsorName}.
+            Point Value: ${selectedSponsor.pointDollarValue.toFixed(2)} per point
           </Alert>
         )}
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'flex-start' }}>
           {listings.map((listing, index) => (
-            <ProductCard
+            <Card
               key={index}
               sx={{
                 width: 'calc(33.333% - 16px)',
@@ -168,7 +186,7 @@ const ProductCatalog: React.FC = () => {
                 component="img"
                 height="200"
                 image={listing.imageUrl}
-                alt={listing.name}
+                alt={`Image of ${listing.name}`} // Added alt text
                 sx={{ objectFit: 'cover' }}
               />
               <CardContent>
@@ -186,7 +204,7 @@ const ProductCatalog: React.FC = () => {
                 <OverviewItem title="Price" value={listing.price} />
                 <OverviewItem 
                   title="Point Cost" 
-                  value={`${listing.pointCost?.toLocaleString() || 0} points`} 
+                  value={ calculatePointCost(listing.price).toLocaleString() } 
                 />
                 <Button
                   fullWidth
@@ -194,9 +212,9 @@ const ProductCatalog: React.FC = () => {
                   color="primary"
                   onClick={() => {
                     handlePurchase(listing);
-                    addToCart(listing);
+                    if (!(!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints))
+                      addToCart(listing);
                   }}
-                  disabled={!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints}
                   sx={{ mt: 2 }}
                 >
                   Add to Cart
@@ -213,14 +231,19 @@ const ProductCatalog: React.FC = () => {
           message={snackbarMessage}
         />
 
-        {/* Cart and Clear Cart Buttons Below Cards */}
-        <Box display="flex" justifyContent="center" flexDirection="column" alignItems="center" mt={4} gap={2}>
-            <Button variant="contained" color="secondary" onClick={openCart}>
-              View Cart
-            </Button>
-            <Button variant="outlined" color="error" onClick={clearCart}>
-              Clear Cart
-            </Button>
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 80,
+            right: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
+          <Button variant="contained" color="secondary" onClick={openCart}>
+            View Cart
+          </Button>
         </Box>
       </Container>
 
@@ -231,7 +254,7 @@ const ProductCatalog: React.FC = () => {
             <List>
               {getCurrentCart().map((item, index) => (
                 <ListItem key={index}>
-                  <ListItemText primary={item.name} secondary={`Price: ${parseFloat(item.pointCost).toFixed(2)}`} />
+                  <ListItemText primary={item.name} secondary={`Price: ${calculatePointCost(item.price).toLocaleString()}`} />
                 </ListItem>
               ))}
             </List>
@@ -256,55 +279,5 @@ const ProductCatalog: React.FC = () => {
     </>
   );
 };
-
-// Reusable ProductCard Component
-const ProductCard: React.FC<{
-  listing: Listing;
-  selectedSponsor: SponsorPoints | undefined;
-  onPurchase: () => void;
-}> = ({ listing, selectedSponsor, onPurchase }) => (
-  <Card
-    sx={{
-      width: 'calc(33.333% - 16px)',
-      maxWidth: 'calc(33.333% - 16px)',
-      marginBottom: 2,
-    }}
-  >
-    <CardMedia
-      component="img"
-      height="200"
-      image={listing.imageUrl}
-      alt={listing.altText || `Image of ${listing.name}`}
-      sx={{ objectFit: 'cover' }}
-    />
-    <CardContent>
-      <Typography
-        variant="h6"
-        component="p"
-        sx={{
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}
-      >
-        {listing.name}
-      </Typography>
-      <OverviewItem title="Price" value={listing.price} />
-      <OverviewItem title="Point Cost" value={`${listing.pointCost?.toLocaleString() || 0} points`} />
-      <Button
-        fullWidth
-        variant="contained"
-        color="primary"
-        onClick={onPurchase}
-        disabled={
-          !selectedSponsor || (listing.pointCost || 0) > (selectedSponsor?.totalPoints || 0)
-        }
-        sx={{ mt: 2 }}
-      >
-        Add to Cart
-      </Button>
-    </CardContent>
-  </Card>
-);
 
 export default ProductCatalog;
