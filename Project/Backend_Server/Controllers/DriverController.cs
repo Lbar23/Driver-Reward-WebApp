@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Backend_Server.Infrastructure;
 using Backend_Server.Models;
+using Backend_Server.Models.DTO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -21,12 +22,14 @@ namespace Backend_Server.Controllers
     ///
     /// Endpoints:
     /// 
-    /// [GET]  /api/driver/activity            - Retrieves driver activity (transactions and purchases)
-    /// [GET]  /api/driver/available-sponsors  - Lists sponsors not yet associated with the driver
-    /// [POST] /api/driver/register-sponsors   - Registers the driver with selected sponsors
-    /// [GET]  /api/driver/transactions        - Placeholder for retrieving driver transactions
-    /// [GET]  /api/driver/my-sponsors         - Retrieves the driver's associated sponsors and points
-    /// [GET]  /api/driver/sponsor-points/{id} - Fetches driver's point details for a specific sponsor
+    /// [GET]   /api/driver/activity                - Retrieves driver activity (transactions and purchases)
+    /// [GET]   /api/driver/available-sponsors      - Lists sponsors not yet associated with the driver
+    /// [POST]  /api/driver/apply                - Submits a new driver application
+    /// [GET]   /api/driver/status/{id}          - Retrieves the status of a specific application
+    /// [POST]  /api/driver/register-sponsors       - Registers the driver with selected sponsors
+    /// [GET]   /api/driver/transactions            - Placeholder for retrieving driver transactions
+    /// [GET]   /api/driver/my-sponsors             - Retrieves the driver's associated sponsors and points
+    /// [GET]   /api/driver/sponsor-points/{id}     - Fetches driver's point details for a specific sponsor
     /// </summary> 
     [ApiController]
     [Route("api/[controller]")]
@@ -34,7 +37,9 @@ namespace Backend_Server.Controllers
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly AppDBContext _context = context;
- 
+
+        /********* API CALLS *********/
+
         //Since transactions and purchases are one, and really, getting the default value doesn't need a separate method
         //[Authorize(Roles = "Driver")]
         [HttpGet("activity")]
@@ -240,17 +245,38 @@ namespace Backend_Server.Controllers
             }
         }
 
-        // [HttpGet("points")]
-        // public async Task<IActionResult> GetDriverPoints()
-        // {
-        //     return Ok();
-        // }
+        //sumbit application async
+        [HttpPost("apply")]
+        public async Task<IActionResult> Apply([FromBody] DriverApplications application)
+        {
+            var user = await _userManager.GetUserAsync(User); // Get the current logged-in user
 
-        // [HttpGet("purchases")]
-        // public async Task<IActionResult> GetDriverPurchases()
-        // {
-        //     return Ok();
-        // }
+            if (user == null)
+            {
+                return Unauthorized("User not found.");
+            }
+
+            // automatically assign the user's ID to the application 
+            application.UserID = user.Id;
+            application.Status = AppStatus.Submitted;
+            application.ApplyDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+            _context.DriverApplications.Add(application);
+            await _context.SaveChangesAsync();
+            return Ok("Application submitted successfully!");
+        }
+        
+        //status of application
+        [HttpGet("status/{id}")]
+        public async Task<IActionResult> GetApplicationStatus(int id)
+        {
+            var application = await _context.DriverApplications.FindAsync(id);
+            if (application == null)
+            {
+                return NotFound("Application not found.");
+            }
+            return Ok(application.Status);
+        }
 
         //For now, method is synchronous so I don't get no warnings when building and running...
         //DO NOT FORGET IF IMPLEMENTATION UPDATES IN THE FUTURE
@@ -259,18 +285,6 @@ namespace Backend_Server.Controllers
         {
             return Ok();
         }
-
-        // [HttpGet("purchase")]
-        // public async Task<IActionResult> GetDriverPurchase(int id)
-        // {
-        //     return Ok();
-        // }
-
-        // [HttpPut("purchase/{id}")]
-        // public async Task<IActionResult> CancelPurchase(int id)
-        // {
-        //     return Ok();
-        // }
 
         [HttpGet("my-sponsors")]
         public async Task<IActionResult> GetDriverSponsors()
@@ -366,35 +380,6 @@ namespace Backend_Server.Controllers
             }
         }
 
-        // [HttpGet("profile")]
-        // public async Task<IActionResult> GetDriverProfile()
-        // {
-        //     return Ok();
-        // }
     }
 
-    public record SponsorDto //mainly here so Drivers can switch between different sponsors
-    {
-        public int SponsorID { get; init; }
-        public required string CompanyName { get; init; }
-        public decimal PointDollarValue { get; init; }
-    }
-
-    public record PointValueDto
-    {
-        public int TotalPoints { get; init; }
-        public decimal PointValue { get; init; }
-        public required string SponsorName { get; init; }
-        public decimal TotalValue => TotalPoints * PointValue;
-    }
-
-    public record TransactionDto
-    {
-        public DateTime Date { get; init; }
-        public int Points { get; init; }
-        public required string Type { get; init; }
-        public required string Reason { get; init; }
-        public required string SponsorName { get; init; }
-        public string? Status { get; init; }
-    }
 }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 using System.Text;
 using Backend_Server.Models;
+using Backend_Server.Models.DTO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Backend_Server.Services;
@@ -13,23 +14,19 @@ using Backend_Server.Infrastructure;
 namespace Backend_Server.Controllers
 {
     /// <summary>
+    /// AdminController:
+    /// 
     /// This controller provides endpoints for managing users, including creation, deletion,
     /// role updates, and retrieval of details and audit logs.
     /// 
     /// Endpoints:
     /// 
-    /// [POST] /api/admin/create-user       - Creates a new user (Admin, Sponsor, Driver)
-    /// [POST] /api/admin/change-user-type  - Changes the user type for an existing user
-    /// [DELETE] /api/admin/remove-user     - Removes a user and associated records
-    /// [GET] /api/admin/reports            - Fetches reports (placeholder)
-    /// [GET] /api/admin/system-stat-logs   - Fetches system stats and logs (placeholder)
-    /// [GET] /api/admin/about              - Retrieves latest "About" information
-    /// [GET] /api/admin/test-db-connection - Tests the database connection
-    /// [GET] /api/admin/drivers/details    - Retrieves driver details with sponsor relationships
-    /// [GET] /api/admin/sponsors/details   - Retrieves sponsor details
-    /// [GET] /api/admin/admins/details     - Retrieves admin details
-    /// [GET] /api/admin/audit-logs         - Fetches audit logs with filters and pagination
-    /// [GET] /api/admin/audit-logs/export  - Exports audit logs as a CSV
+    /// [POST]      /api/admin/create-user          - Creates a new user (Admin, Sponsor, Driver)
+    /// [POST]      /api/admin/change-user-type     - Changes the user type for an existing user
+    /// [DELETE]    /api/admin/remove-user          - Removes a user and associated records
+    /// [GET]       /api/admin/drivers/details      - Retrieves driver details with sponsor relationships
+    /// [GET]       /api/admin/sponsors/details     - Retrieves sponsor details
+    /// [GET]       /api/admin/admins/details       - Retrieves admin details
     /// 
     /// </summary>
     [ApiController]
@@ -40,12 +37,12 @@ namespace Backend_Server.Controllers
         private readonly UserManager<Users> _userManager = userManager;
         private readonly NotifyService _notifyService = notifyService;
 
+        /********* API CALLS *********/
+
         /// <summary>
-        /// RBAC Needed for frontend (and general call; it works, just doesn't redirect to dashboard after Logging in):
         /// -- Admin creates any Users (Admin, Driver, Sponsors) -- Guests aren't needed since they register normally
         /// -- Sponsors can also create other Sponsors (under their Company Name) and Drivers (Also under their Company Name)
         /// -- Database current has 3 Sponsors (to test insertion) with same password hash; Delete them later to actually add in rememberable passwords
-        /// -- And one Admin; Admin Password is "TheOneONLY#456" for testing purposes with Login and Admin RBAC privileges later on
         /// -- Current implementation can be simplified, but this was done in like, 2 hours of API testing. There's no frontend yet; waiting for updates...
         /// </summary>
         /// <param name="model"></param>
@@ -54,19 +51,14 @@ namespace Backend_Server.Controllers
         [HttpPost("create-user")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserDto model)
         {
-            //Later on, I can create a permissions attribute instead of only checking for roles...
-            //But this is just updating the controllers first; not worrying about that up until Sprint 8-9
-
-            if (!ModelState.IsValid)
-            {
+            if (!ModelState.IsValid){
                 return BadRequest(ModelState);
             }
 
             // Get the execution strategy from the context
             var strategy = _context.Database.CreateExecutionStrategy();
 
-            try
-            {
+            try{
                 // Execute the entire operation with retry strategy
                 await strategy.ExecuteAsync(async () =>
                 {
@@ -166,7 +158,6 @@ namespace Backend_Server.Controllers
                 });
             }
         }
-
 
         [Authorize(Roles = "Admin")]
         [HttpPost("change-user-type")]
@@ -348,42 +339,6 @@ namespace Backend_Server.Controllers
             }
         }
 
-
-        [Authorize(Roles = "Admin")]
-        [HttpGet("reports")] //separate into smaller async tasks...obv
-
-        [HttpGet("system-stat-logs")] //Sprint 9, utilize a terminal console UI React component... :)
-
-
-        [AllowAnonymous]
-        [HttpGet("about")]
-        public async Task<IActionResult> GetAbout()
-        {
-            var aboutInfo = await _context.About
-            .OrderByDescending(a => a.Release)
-            .LastOrDefaultAsync();
-            if (aboutInfo == null)
-            {
-                return NotFound(new { message = "No about information found" });
-            }
-
-            return Ok(aboutInfo);
-        }
-
-        [HttpGet("test-db-connection")]
-        public async Task<IActionResult> TestDbConnection()
-        {
-            try
-            {
-                var userCount = await _userManager.Users.CountAsync();
-                return Ok($"Connection successful. User count: {userCount}");
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Database connection failed: {ex.Message}");
-            }
-        }
-
         [HttpGet("drivers/details")]
         [Authorize(Roles = "Admin, Sponsor")]
         public async Task<IActionResult> GetDriversWithDetails()
@@ -443,6 +398,7 @@ namespace Backend_Server.Controllers
                                     UserId = u.Id,
                                     Name = u.UserName,
                                     Email = u.Email,
+                                    SponsorID = s.SponsorID,
                                     CompanyName = s.CompanyName,
                                     SponsorType = s.SponsorType,
                                     PointDollarValue = s.PointDollarValue,
@@ -489,179 +445,10 @@ namespace Backend_Server.Controllers
             }
         }
 
-        //read audit logs from database
-        [HttpGet("audit-logs")]
-        [Authorize(Roles = "Admin, Sponsor")]
-        public async Task<IActionResult> GetAuditLogs(
-            [FromQuery] int? userId = null,
-            [FromQuery] string? category = null,
-            [FromQuery] DateTime? startDate = null,
-            [FromQuery] DateTime? endDate = null,
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            return await ExecuteQueryWithRetryAsync<IActionResult>(async () =>
-            {
-                var currentUser = await _userManager.GetUserAsync(User);
-                if (currentUser == null)
-                    return Unauthorized();
+        /********* HELPER FUNCTIONS *********/
 
-                string cacheKey = $"audit_logs_{currentUser.Id}_{userId}_{category}_{startDate}_{endDate}_{page}_{pageSize}";
-
-                return await GetCachedAsync(cacheKey, async () =>
-                {
-                    try
-                    {
-                        var query = _context.AuditLogs.AsQueryable();
-
-                        // If sponsor, restrict to their drivers' logs
-                        if (currentUser.UserType == UserType.Sponsor.ToString())
-                        {
-                            var sponsorId = await _context.Sponsors
-                                .Where(s => s.UserID == currentUser.Id)
-                                .Select(s => s.SponsorID)
-                                .FirstOrDefaultAsync();
-
-                            var sponsorDriverIds = await _context.SponsorDrivers
-                                .Where(sd => sd.SponsorID == sponsorId)
-                                .Select(sd => sd.DriverID)
-                                .ToListAsync();
-
-                            query = query.Where(l => sponsorDriverIds.Contains(l.UserID));
-                        }
-
-                        // Apply filters
-                        if (userId.HasValue)
-                            query = query.Where(l => l.UserID == userId);
-
-                        if (!string.IsNullOrEmpty(category) && Enum.TryParse(category, out AuditLogCategory categoryEnum))
-                            query = query.Where(l => l.Category == categoryEnum);
-
-                        if (startDate.HasValue)
-                            query = query.Where(l => l.Timestamp >= startDate.Value);
-
-                        if (endDate.HasValue)
-                            query = query.Where(l => l.Timestamp <= endDate.Value);
-
-                        var totalCount = await query.CountAsync();
-
-                        var logs = await query
-                            .OrderByDescending(l => l.Timestamp)
-                            .Skip((page - 1) * pageSize)
-                            .Take(pageSize)
-                            .Select(l => new
-                            {
-                                l.LogID,
-                                l.Timestamp,
-                                l.Category,
-                                l.UserID,
-                                UserName = _context.Users
-                                    .Where(u => u.Id == l.UserID)
-                                    .Select(u => u.UserName)
-                                    .FirstOrDefault(),
-                                l.Description
-                            })
-                            .ToListAsync();
-
-                        return Ok(new
-                        {
-                            totalCount,
-                            page,
-                            pageSize,
-                            logs
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Error retrieving audit logs");
-                        return StatusCode(500, "Error retrieving audit logs");
-                    }
-                }, TimeSpan.FromMinutes(5));
-            });
-        }
-
-        //aduit log CSV export
-        [HttpGet("audit-logs/export")]
-        [Authorize(Roles = "Admin, Sponsor")]
-        public async Task<IActionResult> ExportAuditLogs(
-            [FromQuery] DateTime? startDate,
-            [FromQuery] DateTime? endDate,
-            [FromQuery] string? category)
-        {
-            var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser == null)
-                return Unauthorized();
-
-            try
-            {
-                var query = _context.AuditLogs.AsQueryable();
-
-                // Apply the same permission filtering as above
-                if (currentUser.UserType == UserType.Sponsor.ToString())
-                {
-                    var sponsorId = await _context.Sponsors
-                        .Where(s => s.UserID == currentUser.Id)
-                        .Select(s => s.SponsorID)
-                        .FirstOrDefaultAsync();
-
-                    var sponsorDriverIds = await _context.SponsorDrivers
-                        .Where(sd => sd.SponsorID == sponsorId)
-                        .Select(sd => sd.DriverID)
-                        .ToListAsync();
-
-                    query = query.Where(l => sponsorDriverIds.Contains(l.UserID));
-                }
-
-                // Apply date range filter
-                if (startDate.HasValue)
-                    query = query.Where(l => l.Timestamp >= startDate.Value);
-                if (endDate.HasValue)
-                    query = query.Where(l => l.Timestamp <= endDate.Value);
-
-                // Apply category filter
-                if (!string.IsNullOrEmpty(category) && Enum.TryParse<AuditLogCategory>(category, out var categoryEnum))
-                    query = query.Where(l => l.Category == categoryEnum);
-
-                var logs = await query
-                    .OrderByDescending(l => l.Timestamp)
-                    .Select(l => new
-                    {
-                        l.LogID,
-                        Timestamp = l.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
-                        l.Category,
-                        l.UserID,
-                        l.Description,
-                        UserName = _context.Users
-                            .Where(u => u.Id == l.UserID)
-                            .Select(u => u.UserName)
-                            .FirstOrDefault()
-                    })
-                    .ToListAsync();
-
-                // Create CSV content
-                var csv = new StringBuilder();
-                csv.AppendLine("Log ID,Timestamp,Category,User ID,User Name,Description");
-                
-                foreach (var log in logs)
-                {
-                    csv.AppendLine($"{log.LogID},{log.Timestamp},{log.Category},{log.UserID},{log.UserName},{log.Description}");
-                }
-
-                return File(Encoding.UTF8.GetBytes(csv.ToString()), 
-                    "text/csv", 
-                    $"audit_logs_{DateTime.Now:yyyyMMdd}.csv");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "UserID: {UserID}, Category: {Category}, Description: Error exporting audit logs",
-                    currentUser.Id,
-                    AuditLogCategory.System);
-                return StatusCode(500, "Error exporting audit logs");
-            }
-        }
-
-        //Method to whenever Admin needs to change or reset a user's password to random jumble
-        //Temp password...
+        // Method to whenever Admin needs to change or reset a user's password to random jumble
+        // Temp password...
         private static string GeneratePassword()
         {
             const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*";
@@ -669,55 +456,5 @@ namespace Backend_Server.Controllers
             return new string(Enumerable.Repeat(chars, 12).Select(s => s[random.Next(s.Length)]).ToArray());
         }
     }
-    public class ChangeUserTypeDto
-    {
-        public int UserId { get; set; }
-        public string NewUserType { get; set; }
-    }
-    public record CreateUserDto
-    {
-        //For all users; Required
-        public required string Username { get; set; }
-        public required string Email { get; set; }
-        public required UserType UserType { get; set; }
-        public required string Password { get; set; }
-
-        // For sponsors; So make them conditional
-        public string? CompanyName { get; set; }
-        public string? SponsorType { get; set; }
-        public decimal? PointDollarValue { get; set; }
-
-        // For drivers; So make them conditional
-        public int? SponsorID { get; set; }
-
-        public IEnumerable<string> Validate()
-        {
-            var errors = new List<string>();
-
-            if (string.IsNullOrWhiteSpace(Username))
-                errors.Add("Username is required");
-
-            if (string.IsNullOrWhiteSpace(Email))
-                errors.Add("Email is required");
-
-            if (string.IsNullOrWhiteSpace(Password))
-                errors.Add("Password is required");
-
-            switch (UserType)
-            {
-                case UserType.Sponsor when string.IsNullOrWhiteSpace(CompanyName):
-                    errors.Add("Company name is required for sponsors");
-                    break;
-                case UserType.Sponsor when string.IsNullOrWhiteSpace(SponsorType):
-                    errors.Add("Sponsor type is required for sponsors");
-                    break;
-                case UserType.Driver when !SponsorID.HasValue:
-                    errors.Add("Sponsor ID is required for drivers");
-                    break;
-            }
-
-            return errors;
-        }
-    };
 
 }

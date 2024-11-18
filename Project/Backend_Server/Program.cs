@@ -101,8 +101,8 @@ try {
     // Add cookie authentication
     builder.Services.ConfigureApplicationCookie(options =>
     {
-        options.LoginPath = "/api/user/login";
-        options.LogoutPath = "/api/user/logout"; 
+        options.LoginPath = "/api/system/login";
+        options.LogoutPath = "/api/system/logout"; 
         options.Cookie.HttpOnly = true;
         options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
         options.SlidingExpiration = true;

@@ -126,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logs out the user, clears session data, and redirects to login
   const logout = async () => {
     try {
-      await axios.post('/api/user/logout', {}, { withCredentials: true });
+      await axios.post('/api/system/logout', {}, { withCredentials: true });
       setUser(null);
       setIsAuthenticated(false);
       setViewRole(null); // Reset viewRole on logout
