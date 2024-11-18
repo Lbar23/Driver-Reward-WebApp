@@ -3,9 +3,11 @@ using SendGrid;
 using SendGrid.Helpers.Mail;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
+using Backend_Server.Models;
 using Twilio;
 
 namespace Backend_Server.Services;
+
 public class NotifyService
 {
     private readonly IAmazonSecretsManager _secretsManager;
@@ -18,7 +20,6 @@ public class NotifyService
     private string _fromEmailAddress;
     private string _fromPhoneNumber;
 
-    // Centralized template mapping
     private readonly Dictionary<string, string> _templateIds = new()
     {
         { "2FA", "d-16815c0473d948acb2715a5001907e8c" },
@@ -44,153 +45,134 @@ public class NotifyService
         _fromEmailAddress = secrets["FromEmailAddress"];
         _fromPhoneNumber = secrets["FromPhoneNumber"];
 
-        // Init Twilio
         _sendGridClient = new SendGridClient(_sendGridApiKey);
         TwilioClient.Init(_twilioSID, _twilioAuthToken);
-
     }
+
     private async Task<Dictionary<string, string>> LoadSecrets(IAmazonSecretsManager secretsManager)
     {
         var secretValueResponse = await secretsManager.GetSecretValueAsync(new GetSecretValueRequest
         {
-            SecretId = "team16/notifyapi/creds" 
+            SecretId = "team16/notifyapi/creds"
         });
 
         return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(secretValueResponse.SecretString)
-            ?? []; 
+            ?? throw new Exception("Failed to load secrets.");
     }
 
-    // Send general SMS using Twilio
+    private async Task NotifyUser(string email, string phoneNumber, NotificationPref preference, string templateId, Dictionary<string, string> templateData, string fallbackMessage)
+    {
+        switch (preference)
+        {
+            case NotificationPref.Email when !string.IsNullOrEmpty(email):
+                await SendTemplateEmail(email, templateId, templateData);
+                break;
+            case NotificationPref.Phone when !string.IsNullOrEmpty(phoneNumber):
+                await SendSmsAsync(phoneNumber, fallbackMessage);
+                break;
+            default:
+                _logger.LogWarning("Notification preference not supported or missing data for Email: {Email}, Phone: {Phone}", email, phoneNumber);
+                throw new InvalidOperationException("Notification preference not supported or required data missing.");
+        }
+    }
+
     public async Task SendSmsAsync(string phoneNumber, string message)
     {
-        try{
+        try
+        {
             var msg = await MessageResource.CreateAsync(
                 body: message,
                 from: new Twilio.Types.PhoneNumber(_fromPhoneNumber),
                 to: new Twilio.Types.PhoneNumber(phoneNumber)
             );
 
-        _logger.LogInformation($"SMS sent successfully to {phoneNumber}: SID {msg.Sid}");
+            _logger.LogInformation("SMS sent successfully to {PhoneNumber}: SID {Sid}", phoneNumber, msg.Sid);
         }
-        catch (Exception ex){
-            _logger.LogError($"Failed to send SMS to {phoneNumber}: {ex.Message}");
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send SMS to {PhoneNumber}", phoneNumber);
             throw;
         }
     }
 
-    // Send general Email using SendGrid
-    public async Task SendEmailAsync(string emailAddress, string subject, string message)
+    public async Task SendTemplateEmail(string emailAddress, string templateId, Dictionary<string, string> templateData)
     {
+        if (!_templateIds.TryGetValue(templateId, out var sendGridTemplateId))
+        {
+            _logger.LogError("Template ID not found for key: {TemplateId}", templateId);
+            throw new ArgumentException($"Template ID not found for key: {templateId}");
+        }
 
         try
         {
-            var msg = new SendGridMessage()
+            var msg = new SendGridMessage
             {
                 From = new EmailAddress(_fromEmailAddress, "GitGudDriversApp"),
-                Subject = subject,
-                PlainTextContent = message,
-                HtmlContent = $"<p>{message}</p>"
+                TemplateId = sendGridTemplateId
             };
+
             msg.AddTo(new EmailAddress(emailAddress));
-            
+            msg.SetTemplateData(templateData);
+
             var response = await _sendGridClient.SendEmailAsync(msg);
 
-            if (response.IsSuccessStatusCode){
-                _logger.LogInformation($"Email sent successfully to {emailAddress}");
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Email sent successfully to {EmailAddress}", emailAddress);
             }
-            else{
-                _logger.LogError($"Failed to send email to {emailAddress}: {response.StatusCode}");
+            else
+            {
+                _logger.LogError("Failed to send email to {EmailAddress}: {StatusCode}", emailAddress, response.StatusCode);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to send email to {emailAddress}: {ex.Message}");
+            _logger.LogError(ex, "Failed to send email to {EmailAddress}", emailAddress);
             throw;
         }
     }
 
-    // send email with a template id
-    public async Task SendTemplateEmail(string emailAddress, string tempID, Dictionary<string, string> tempData)
-    {
-        if (!_templateIds.TryGetValue(tempID, out var templateId))
-        {
-            _logger.LogError($"Template ID not found for key: {tempID}");
-            throw new ArgumentException($"Template ID not found for key: {tempID}");
-        }
-
-        try
-        {
-            var msg = new SendGridMessage();
-            msg.SetFrom(new EmailAddress(_fromEmailAddress, "GitGudDriversApp"));
-            msg.AddTo(new EmailAddress(emailAddress));
-            msg.SetTemplateId(tempID);
-            msg.SetTemplateData(tempData);
-            var response = await _sendGridClient.SendEmailAsync(msg);
-
-            if (response.IsSuccessStatusCode){
-                _logger.LogInformation($"Email sent successfully to {emailAddress}");
-            }
-            else{
-                _logger.LogError($"Failed to send email to {emailAddress}: {response.StatusCode}");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Failed to send email to {emailAddress}: {ex.Message}");
-            throw;
-        }
-    }
-
-    // for specific type examples
-    public async Task NotifyPurchaseAsync(string emailAddress, string productName, int cartPrice, string username)
+    // Refactored Notification Methods
+    public async Task NotifyPurchaseAsync(string email, string phone, NotificationPref pref, string productName, int cartPrice, string username)
     {
         var templateData = new Dictionary<string, string>
         {
             { "product_name", productName },
             { "cart_price", cartPrice.ToString() },
-            { "user_name", username}
+            { "user_name", username }
         };
 
-        await SendTemplateEmail(emailAddress, "Purchase", templateData);
+        var fallbackMessage = $"You purchased {productName} for {cartPrice} points.";
+        await NotifyUser(email, phone, pref, "Purchase", templateData, fallbackMessage);
     }
 
-    public async Task NotifyPointsChangeAsync(string emailAddress, int newBalance, string pointsStatus, string username)
+    public async Task NotifyPointsChangeAsync(string email, string phone, NotificationPref pref, int newBalance, string pointsStatus, string username)
     {
         var statusMessage = pointsStatus switch
         {
-            "gain" => "Congratulations, you've earned points! Kepp up the good work!",
-            "loss" => "Unfortunately, you've lost points. Please reach out to your Sponsor if you feel there has been a mistake!",
+            "gain" => "Congratulations, you've earned points! Keep up the good work!",
+            "loss" => "Unfortunately, you've lost points. Contact your sponsor if there’s a mistake.",
             _ => "Your points balance has changed."
         };
+
         var templateData = new Dictionary<string, string>
         {
-
             { "new_balance", newBalance.ToString() },
-            { "user_name", username},
-            {"status_msg", statusMessage}
-            
+            { "user_name", username },
+            { "status_msg", statusMessage }
         };
 
-        await SendTemplateEmail(emailAddress, "PointsChange", templateData);
+        var fallbackMessage = $"Your points have been updated. New balance: {newBalance}.";
+        await NotifyUser(email, phone, pref, "PointsChange", templateData, fallbackMessage);
     }
 
-    public async Task NotifySystemDropAsync(string emailAddress, string username)
-    {
-        var templateData = new Dictionary<string, string>
-        {
-            { "user_name", username}
-        };
-
-        await SendTemplateEmail(emailAddress, "SystemDrop", templateData);
-    }
-
-    public async Task NotifyAppStatusAsync(string emailAddress, string status, string username)
+    public async Task NotifyAppStatusAsync(string email, string phone, NotificationPref pref, string status, string username)
     {
         var statusMessage = status switch
         {
-            "approved" => "Congratulations! Your application has been accepted. You can now start earning points!",
-            "rejected" => "Unfortunately, your application was not accepted. Please contact support for further information.",
-            "submitted" => "Your application has been submitted and is under review. You will be notified once a decision is made.",
+            "approved" => "Your application has been accepted! Start earning points now!",
+            "rejected" => "Your application was not accepted. Contact support for further details.",
+            "submitted" => "Your application has been submitted and is under review.",
             _ => "The status of your application has changed."
         };
 
@@ -198,39 +180,10 @@ public class NotifyService
         {
             { "status", status },
             { "status_message", statusMessage },
-            { "user_name", username}
+            { "user_name", username }
         };
 
-        await SendTemplateEmail(emailAddress, "AppStatus", templateData);
+        var fallbackMessage = $"Your application status is now: {status}.";
+        await NotifyUser(email, phone, pref, "AppStatus", templateData, fallbackMessage);
     }
-
-    public async Task NotifyOrderIssueAsync(string emailAddress, string orderId, string username)
-    {
-        var templateData = new Dictionary<string, string>
-        {
-            { "order_id", orderId },
-            { "message", "An issue has occurred with your order. Please contact support for assistance." },
-            { "user_name", username}
-        };
-
-        await SendTemplateEmail(emailAddress, "OrderIssue", templateData);
-    }
-
-    public async Task NotifyPointReportAsync(string emailAddress, int earnedPoints, int lostPoints, int spentPoints, string username)
-    {
-        
-        var templateData = new Dictionary<string, string>
-        {
-            { "points_earned", earnedPoints.ToString() },
-            { "points_lost", lostPoints.ToString() },
-            { "points_spent", spentPoints.ToString() },
-            { "user_name", username}
-        };
-
-        await SendTemplateEmail(emailAddress, "PointsReport", templateData);
-    }
-
-
-
-
 }
