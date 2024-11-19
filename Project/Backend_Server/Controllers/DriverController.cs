@@ -78,7 +78,7 @@ namespace Backend_Server.Controllers
 
             // Purchases with product and sponsor info
             var purchases = await _context.Purchases
-                .Where(p => p.UserID == driver!.UserID)
+                .Where(p => p.SponsorID == driver!.UserID)
                 .Join(_context.Products,
                     pur => pur.Product.ProductID,
                     prod => prod.ProductID,
@@ -408,42 +408,104 @@ namespace Backend_Server.Controllers
 
             try
             {
-                // Validate the sponsor relationship
+                // Get sponsor driver relationship
                 var sponsorDriver = await _context.SponsorDrivers
+                    .Include(sd => sd.Driver)
                     .FirstOrDefaultAsync(sd => sd.DriverID == user.Id && sd.SponsorID == purchaseRequest.SponsorID);
 
                 if (sponsorDriver == null)
                 {
-                    Log.Warning("SponsorDriver relationship not found for UserID: {UserId} and SponsorID: {SponsorID}", user.Id, purchaseRequest.SponsorID);
+                    Log.Warning("SponsorDriver relationship not found");
                     return BadRequest("Sponsor relationship not found.");
                 }
 
                 if (sponsorDriver.Points < purchaseRequest.PointsSpent)
                 {
-                    Log.Warning("Insufficient points for UserID: {UserId} and SponsorID: {SponsorID}", user.Id, purchaseRequest.SponsorID);
+                    Log.Warning("Insufficient points");
                     return BadRequest("Insufficient points.");
                 }
 
+                // Get or create product
+                var product = await _context.Products
+                    .FirstOrDefaultAsync(p => p.ProductID == purchaseRequest.ProductID);
+                
+                if (product == null)
+                {
+                    product = new Products
+                    {
+                        ProductID = purchaseRequest.ProductID,
+                        Name = "External Product",
+                        Description = "Product from external catalog",
+                        PriceInPoints = purchaseRequest.PointsSpent,
+                        ExternalID = purchaseRequest.ProductID.ToString(),
+                        Availability = true,
+                        SponsorID = purchaseRequest.SponsorID
+                    };
+                    _context.Products.Add(product);
+                    await _context.SaveChangesAsync(); // Save product first
+                }
+
+                // Then, create purchase record
+                var purchase = new Purchases
+                {
+                    SponsorID = purchaseRequest.SponsorID,
+                    PointsSpent = purchaseRequest.PointsSpent,
+                    PurchaseDate = DateTime.UtcNow,
+                    Status = OrderStatus.Ordered,
+                    Driver = sponsorDriver.Driver,
+                    Product = product
+                };
+                _context.Purchases.Add(purchase);
+
+                await _context.SaveChangesAsync(); // Save that as well
+
                 // Update points
                 sponsorDriver.Points -= purchaseRequest.PointsSpent;
-
-                // Save changes to the database
                 await _context.SaveChangesAsync();
 
-                Log.Information("Points updated for UserID: {UserId} and SponsorID: {SponsorID}. Points spent: {PointsSpent}. Remaining points: {RemainingPoints}",
-                    user.Id, purchaseRequest.SponsorID, purchaseRequest.PointsSpent, sponsorDriver.Points);
+                // Finally, create transaction record
+                var pointTransaction = new PointTransactions
+                {
+                    UserID = user.Id,
+                    SponsorID = purchaseRequest.SponsorID,
+                    PointsChanged = -purchaseRequest.PointsSpent,
+                    TransactionDate = DateTime.UtcNow,
+                    Reason = $"Purchase: {product.Name}"
+                };
+                _context.PointTransactions.Add(pointTransaction);
+                await _context.SaveChangesAsync(); //Final update
+
+                // Instead of waiting for a database call, pull it directly once everything above
+                // Is finished to get the remaining points
+
+                var updatedPoints = await _context.SponsorDrivers
+                    .Where(sd => sd.DriverID == user.Id)
+                    .Join(_context.Sponsors,
+                        sd => sd.SponsorID,
+                        s => s.SponsorID,
+                        (sd, s) => new
+                        {
+                            sponsorId = s.SponsorID,
+                            sponsorName = s.CompanyName,
+                            totalPoints = sd.Points,
+                            pointDollarValue = s.PointDollarValue
+                        })
+                    .ToListAsync();
 
                 return Ok(new { 
-                    message = "Points successfully updated", 
-                    remainingPoints = sponsorDriver.Points 
+                    message = "Purchase completed successfully", 
+                    remainingPoints = updatedPoints
                 });
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error updating points for UserID: {UserId} and SponsorID: {SponsorID}", user.Id, purchaseRequest.SponsorID);
-                return StatusCode(500, "An error occurred while updating points.");
+                Log.Error(ex, "Error processing purchase for UserID: {UserId}", user.Id);
+                return StatusCode(500, "An error occurred while processing the purchase.");
             }
         }
+
+        //Next; added logic in the chance a driver wants to REFUND the purchase
+        //Order goes into REFUNDED status, and eventually into the CANCELLED status
     }
 
 }
