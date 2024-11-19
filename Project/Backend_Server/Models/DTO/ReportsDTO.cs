@@ -10,16 +10,25 @@ using Microsoft.EntityFrameworkCore;
 // turn every DTO going forward should be records instead of classes
 // (since they are inherently immutable data carriers)
 
+//Fun fact; These were the cause to my predicament, which I never took into effect...
+
+/*
+    These should NEVER be Mapped to the DB (like discussed earlier, but anyway); it overtakes any other key namesake from the DB
+    And EF Core does NOT like that (AppDBContext)
+
+    Changed them to NotMapped
+*/
+
 namespace Backend_Server.Models.DTO
 {
-    [Keyless]
+    [NotMapped]
     public record SalesSummary(
         string SponsorName,
         decimal TotalSales,
         int TotalDrivers
     );
 
-    [Keyless]
+    [NotMapped]
     public record SalesDetail(
         string SponsorName,
         string DriverName,
@@ -28,17 +37,17 @@ namespace Backend_Server.Models.DTO
         decimal SaleAmount
     );
 
-    [Keyless]
+    [NotMapped]
     public record DriverPoints(
         string DriverName,
-        int TotalPoints,
+        int TotalPoints, // <-- This little bugger in particular
         int PointsChanged,
         DateTime TransactionDate,
         string SponsorName,
         string Reason
     );
 
-    [Keyless]
+    [NotMapped]
     public record InvoiceDetail(
         string SponsorName,
         string DriverName,

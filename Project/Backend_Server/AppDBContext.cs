@@ -10,6 +10,9 @@ namespace Backend_Server
 {
     public class AppDBContext(DbContextOptions<AppDBContext> options) : IdentityDbContext<Users, IdentityRole<int>, int>(options)
     {
+        //As a note; change these to required once everything is finalized. It WILL break if changed now...
+        //Keep this as a note later; if nothing happens if someone else makes them required, then continue
+        //Otherwise, wait till Saturday/Sunday and delete these comments
         public DbSet<About> About { get; set; }
         public DbSet<Sponsors> Sponsors { get; set; }
         public DbSet<Drivers> Drivers { get; set; }
@@ -27,25 +30,27 @@ namespace Backend_Server
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<SalesSummary>(entity =>
-            {
-                entity.HasNoKey();
-            });
+            //Breaks; delete these, but just commented them for reference
+            
+            // modelBuilder.Entity<SalesSummary>(entity =>
+            // {
+            //     entity.HasNoKey();
+            // });
 
-            modelBuilder.Entity<SalesDetail>(entity =>
-            {
-                entity.HasNoKey();
-            });
+            // modelBuilder.Entity<SalesDetail>(entity =>
+            // {
+            //     entity.HasNoKey();
+            // });
 
-            modelBuilder.Entity<InvoiceDetail>(entity =>
-            {
-                entity.HasNoKey();
-            });
+            // modelBuilder.Entity<InvoiceDetail>(entity =>
+            // {
+            //     entity.HasNoKey();
+            // });
 
-            modelBuilder.Entity<DriverPoints>(entity =>
-            {
-                entity.HasNoKey();
-            });
+            // modelBuilder.Entity<DriverPoints>(entity =>
+            // {
+            //     entity.HasNoKey();
+            // });
 
             modelBuilder.Entity<Users>(entity =>
             {
@@ -159,7 +164,15 @@ namespace Backend_Server
 
                 entity.HasOne<Users>()
                     .WithMany()
-                    .HasForeignKey(d => d.UserID);
+                    .HasForeignKey(d => d.SponsorID);
+
+                entity.HasOne(p => p.Driver)
+                    .WithMany()
+                    .HasForeignKey("DriverID");  // Explicitly use DriverID instead of DriverUserID the context is seeing still
+
+                entity.HasOne(p => p.Product)
+                    .WithMany()
+                    .HasForeignKey("ProductID");
 
                 entity.Property(e => e.PointsSpent)
                     .IsRequired();
