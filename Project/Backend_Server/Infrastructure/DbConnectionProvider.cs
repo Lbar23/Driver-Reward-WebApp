@@ -34,9 +34,9 @@ namespace Backend_Server.Infrastructure
         private bool _disposed;
 
         //Added Connection Resilience instead of instantly disposing failed connections
-        private const int MAX_RECONNECT_ATTEMPTS = 3;
+        private const int MAX_RECONNECT_ATTEMPTS = 5;
         private const int RECONNECT_DELAY_MS = 1000;
-        private static readonly TimeSpan KEEP_ALIVE_INTERVAL = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan KEEP_ALIVE_INTERVAL = TimeSpan.FromHours(24);
         private static System.Timers.Timer? _keepAliveTimer;
         private static readonly ConcurrentDictionary<string, DateTime> _lastActivityTime = new();
         private static volatile bool _isReconnecting;
