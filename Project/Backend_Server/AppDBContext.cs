@@ -21,6 +21,7 @@ namespace Backend_Server
         public DbSet<Admins> Admins { get; set; }
         public DbSet<SponsorDrivers> SponsorDrivers { get; set; }
         public DbSet<FeedbackForms> FeedbackForms { get; set; }
+        public DbSet<SponsorUsers> SponsorUsers { get; set;} 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -116,13 +117,14 @@ namespace Backend_Server
                 entity.HasOne<Users>()
                     .WithMany()
                     .HasForeignKey(d => d.UserID);
-
-                // entity.HasOne<Sponsors>()
-                //     .WithMany()
-                //     .HasForeignKey(d => d.SponsorID);
-
-                // entity.Property(e => e.TotalPoints)
-                //     .HasDefaultValue(0);
+                
+                entity.Property(e => e.FirstName)
+                    //.IsRequired() uncomment once fully injected
+                    .HasMaxLength(50);
+                
+                entity.Property(e => e.LastName)
+                    //.IsRequired() same here...
+                    .HasMaxLength(50);
             });
 
             modelBuilder.Entity<Products>(entity =>
@@ -301,6 +303,36 @@ namespace Backend_Server
                 entity.Property(e => e.SubmissionDate)
                     .HasColumnType("TIMESTAMP")
                     .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            modelBuilder.Entity<SponsorUsers>(entity => 
+            {
+                entity.ToTable("SponsorUsers");
+
+                entity.HasKey(su => new { su.SponsorID, su.UserID });
+
+                entity.Property(su => su.IsPrimarySponsor)
+                    .HasDefaultValue(false);
+
+                entity.Property(su => su.JoinDate)
+                    .HasColumnType("TIMESTAMP")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.Property(su => su.SponsorRole)
+                    .HasConversion<string>()
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .HasDefaultValue(SponsorRole.Standard);
+
+                entity.HasOne(su => su.User)
+                    .WithMany(u => u.SponsorUsers)
+                    .HasForeignKey(su => su.UserID);
+                
+                entity.HasOne(su => su.Sponsor)
+                    .WithMany(s => s.SponsorUsers)
+                    .HasForeignKey(su => su.SponsorID);
+
+                entity.HasIndex(su => new { su.SponsorID, su.IsPrimarySponsor});
             });
         }
     }
