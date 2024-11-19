@@ -8,8 +8,6 @@ using MySql.Data.MySqlClient;
 using Renci.SshNet;
 using Serilog;
 using System.IO;
-using System.Collections.Concurrent;
-using System.Net.Sockets;
 
 /// <summary>
 /// Provider Infrastructure Class for database connection in multiple instances, since the same connection must be the same for any usage of it.
@@ -33,99 +31,12 @@ namespace Backend_Server.Infrastructure
         private static readonly object _initLock = new();
         private bool _disposed;
 
-        //Added Connection Resilience instead of instantly disposing failed connections
-        private const int MAX_RECONNECT_ATTEMPTS = 5;
-        private const int RECONNECT_DELAY_MS = 1000;
-        private static readonly TimeSpan KEEP_ALIVE_INTERVAL = TimeSpan.FromHours(24);
-        private static System.Timers.Timer? _keepAliveTimer;
-        private static readonly ConcurrentDictionary<string, DateTime> _lastActivityTime = new();
-        private static volatile bool _isReconnecting;
-
         public DbConnectionProvider(
             IConfiguration configuration,
             IAmazonSecretsManager secretsManager)
         {
             _configuration = configuration;
             _secretsManager = secretsManager;
-            InitializeKeepAlive();
-        }
-
-        private void InitializeKeepAlive()
-        {
-            if (_keepAliveTimer == null)
-            {
-                lock (_initLock)
-                {
-                    if (_keepAliveTimer == null)
-                    {
-                        _keepAliveTimer = new System.Timers.Timer(KEEP_ALIVE_INTERVAL.TotalMilliseconds);
-                        _keepAliveTimer.Elapsed += async (s, e) => await CheckConnectionHealth();
-                        _keepAliveTimer.Start();
-                    }
-                }
-            }
-        }
-
-        private async Task CheckConnectionHealth()
-        {
-            if (_isReconnecting || !_isInitialized) return;
-
-            try
-            {
-                if (_sshClient?.IsConnected == true)
-                {
-                    // Test SSH connection
-                    _sshClient.CreateCommand("echo 1").Execute();
-
-                    // Test database connection
-                    if (_cachedConnectionString != null)
-                    {
-                        using var conn = new MySqlConnection(_cachedConnectionString);
-                        await conn.OpenAsync();
-                        using var cmd = conn.CreateCommand();
-                        cmd.CommandText = "SELECT 1";
-                        await cmd.ExecuteScalarAsync();
-                    }
-                }
-                else
-                {
-                    await AttemptReconnection();
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Connection health check failed, attempting reconnection...");
-                await AttemptReconnection();
-            }
-        }
-
-        private async Task AttemptReconnection()
-        {
-            if (_isReconnecting) return;
-
-            _isReconnecting = true;
-            try
-            {
-                for (int attempt = 0; attempt < MAX_RECONNECT_ATTEMPTS; attempt++)
-                {
-                    try
-                    {
-                        CleanupTunnel();
-                        await SetupTunnelAsync();
-                        Log.Information("Successfully reconnected on attempt {Attempt}", attempt + 1);
-                        return;
-                    }
-                    catch (Exception ex) when (attempt < MAX_RECONNECT_ATTEMPTS - 1)
-                    {
-                        Log.Warning(ex, "Reconnection attempt {Attempt} failed", attempt + 1);
-                        await Task.Delay(RECONNECT_DELAY_MS * (attempt + 1));
-                    }
-                }
-            }
-            finally
-            {
-                _isReconnecting = false;
-            }
         }
 
         public async Task<MySqlConnection> GetDbConnectionAsync()
@@ -135,52 +46,18 @@ namespace Backend_Server.Infrastructure
                 throw new ObjectDisposedException(nameof(DbConnectionProvider));
             }
 
-            for (int attempt = 0; attempt < MAX_RECONNECT_ATTEMPTS; attempt++)
+            await EnsureSshTunnelAsync();
+
+            // Use cached connection string if available
+            if (_cachedConnectionString != null)
             {
-                try
-                {
-                    await EnsureSshTunnelAsync();
-
-                    if (_cachedConnectionString == null)
-                    {
-                        var (dbSecrets, _) = await GetSecrets();
-                        _cachedConnectionString = BuildConnectionString(dbSecrets);
-                    }
-
-                    var connection = new MySqlConnection(_cachedConnectionString);
-                    await connection.OpenAsync();
-                    
-                    // Test the connection
-                    using (var cmd = connection.CreateCommand())
-                    {
-                        cmd.CommandText = "SELECT 1";
-                        await cmd.ExecuteScalarAsync();
-                    }
-
-                    UpdateActivityTime();
-                    return connection;
-                }
-                catch (Exception ex) when (attempt < MAX_RECONNECT_ATTEMPTS - 1 && 
-                    (ex is MySqlException || ex is SocketException))
-                {
-                    Log.Warning(ex, "Connection attempt {Attempt} failed, retrying...", attempt + 1);
-                    await Task.Delay(RECONNECT_DELAY_MS * (attempt + 1));
-                    
-                    // Force tunnel recreation on failure
-                    if (attempt == 0)
-                    {
-                        await AttemptReconnection();
-                    }
-                }
+                return new MySqlConnection(_cachedConnectionString);
             }
 
-            throw new InvalidOperationException("Failed to establish database connection after retries");
-        }
+            var (dbSecrets, _) = await GetSecrets();
+            _cachedConnectionString = BuildConnectionString(dbSecrets);
 
-        private void UpdateActivityTime()
-        {
-            var sessionId = System.Threading.Thread.CurrentThread.ManagedThreadId.ToString();
-            _lastActivityTime.AddOrUpdate(sessionId, DateTime.UtcNow, (_, __) => DateTime.UtcNow);
+            return new MySqlConnection(_cachedConnectionString);
         }
 
         private async Task EnsureSshTunnelAsync()
@@ -256,13 +133,6 @@ namespace Backend_Server.Infrastructure
         {
             var baseString = _configuration.GetConnectionString("DefaultConnection")
                 ?? throw new InvalidOperationException("DefaultConnection string not found.");
-            
-            //Check to ensure password carries to the connection string from secrets manager
-            var password = dbSecrets["password"].GetString();
-            if (string.IsNullOrEmpty(password))
-            {
-                throw new InvalidOperationException("Database password not found in secrets");
-            }
 
             return baseString
                 .Replace("{Username}", dbSecrets["username"].GetString())
@@ -271,10 +141,7 @@ namespace Backend_Server.Infrastructure
                 .Replace("{Port}", _forwardedPort?.BoundPort.ToString())
                 + ";Convert Zero Datetime=True;Allow Zero Datetime=True;"
                 + "Pooling=true;Min Pool Size=5;Max Pool Size=100;"
-                + "Connection Lifetime=300;Connection Timeout=30;"
-                + "Keep Alive=30;Allow User Variables=true;"
-                + "Connect Timeout=30;Default Command Timeout=30;"
-                + "Auto Enlist=true;Persist Security Info=true"; //Extra requirements for DB connection to remain efficient and secure (scalable as well)
+                + "Connection Lifetime=300;Connection Timeout=30;"; //Extra requirements for DB connection to remain efficient and secure (scalable as well)
         }
 
         private async Task<(Dictionary<string, JsonElement> dbSecrets, Dictionary<string, string> sshSecrets)> GetSecrets()
@@ -391,11 +258,6 @@ namespace Backend_Server.Infrastructure
             lock (_initLock)
             {
                 if (_disposed) return;
-                
-                _keepAliveTimer?.Stop();
-                _keepAliveTimer?.Dispose();
-                _keepAliveTimer = null;
-                
                 CleanupTunnel();
                 _disposed = true;
             }

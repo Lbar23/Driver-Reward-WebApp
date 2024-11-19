@@ -3,16 +3,25 @@ import axios from 'axios';
 import { Container, Grid, Box, Typography, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+interface CartItem {
+  productID: number;
+  productId?: number;
+  name: string;
+  price: string;
+  pointCost?: number;
+}
+
 const Order: React.FC = () => {
 
     const [orderCompleted, setOrderCompleted] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     
       const handleCloseDialog = () => {
         setOrderCompleted(false);
         navigate('/catalog');
       };      
 
-    const location = useLocation<{ cartItems: any[]; sponsorId: number; points: number; pointValue: number }>();
+    const location = useLocation<{ cartItems: CartItem[]; sponsorId: number; points: number; pointValue: number }>();
     const { cartItems, sponsorId, points, pointValue } = location.state || {};
     const navigate = useNavigate();
 
@@ -24,17 +33,25 @@ const Order: React.FC = () => {
     };
 
     const handleCompleteOrder = async () => {
-      const pointsSpent = calculateCartTotalPoints(); // Call the function to calculate points spent
-        try {
-          const response = await axios.post('/api/driver/purchase', {
+      try {
+        // Create a purchase request for each item
+        const purchasePromises = cartItems.map(item => {
+          const pointsForItem = Math.ceil(parseFloat(item.price.split(' ')[0]) / pointValue);
+          
+          return axios.post('/api/driver/purchase', {
             SponsorID: sponsorId,
-            PointsSpent: pointsSpent,
+            ProductID: item.productID || item.productId, // Use productId from cart item
+            PointsSpent: pointsForItem
           });
-        setOrderCompleted(true); // Update state on success
-      } catch (err: any) {
-        alert(`Failed to complete order: ${err.message}`); // Display error to user
-      }
+        });
 
+        await Promise.all(purchasePromises);
+        setOrderCompleted(true);
+      } catch (err: any) {
+        console.error('Purchase error:', err);
+        const errorMessage = err.response?.data?.message || 'Failed to complete order';
+        alert(errorMessage);
+      }
     };
 
   return (

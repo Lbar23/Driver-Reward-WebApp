@@ -72,41 +72,41 @@ namespace Backend_Server.Controllers
             
 
             // Get sponsor's ID
-            var sponsor = await _context.Sponsors
-                .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
-            if (sponsor == null)
+            var sponsorUser = await _context.SponsorUsers
+                .FirstOrDefaultAsync(su => su.UserID == currentUser.Id);
+            if (sponsorUser == null)
             {
                 Log.Warning("UserID: {UserId}, Category: System, Description: No sponsor found for User ID: {UserId}", currentUser.Id, currentUser.Id);
                 return NotFound("Sponsor information not found.");
             }
 
-                    Log.Information("User ID: {UserId}", currentUser.Id);
-                    
-                    // Query drivers for this sponsor
-                    var drivers = await _context.SponsorDrivers
-                        .Where(sd => sd.SponsorID == sponsor.SponsorID)
-                        .Join(
-                            _context.Users,
-                            sd => sd.DriverID,
-                            u => u.Id,
-                            (sd, u) => new DriverListDto
-                            {
-                                UserID = u.Id,
-                                Name = u.UserName,
-                                Email = u.Email,
-                                TotalPoints = sd.Points
-                            })
-                        .ToListAsync();
+            Log.Information("User ID: {UserId}", currentUser.Id);
+            
+            // Query drivers for this sponsor
+            var drivers = await _context.SponsorDrivers
+                .Where(sd => sd.SponsorID == sponsorUser.SponsorID)
+                .Join(
+                    _context.Users,
+                    sd => sd.DriverID,
+                    u => u.Id,
+                    (sd, u) => new DriverListDto
+                    {
+                        UserID = u.Id,
+                        Name = u.UserName,
+                        Email = u.Email,
+                        TotalPoints = sd.Points
+                    })
+                .ToListAsync();
 
             Log.Information("UserID: N/A, Category: User, Description: Found {Count} drivers for sponsor", drivers.Count);
             if (drivers == null)
             {
-                Log.Warning("UserID: N/A, Category: User, Description: No drivers found for sponsor with ID: {SponsorId}", sponsor.SponsorID);
+                Log.Warning("UserID: N/A, Category: User, Description: No drivers found for sponsor with ID: {SponsorId}", sponsorUser.SponsorID);
                 return NotFound("No drivers found");
             }
 
-                    return Ok(drivers);
-                }            
+                return Ok(drivers);
+            }            
 
         //Same here with name, address, etc. Points and Id remain the same
         [HttpGet("drivers/{id}")]
@@ -117,14 +117,14 @@ namespace Backend_Server.Controllers
                 return Unauthorized("User not found.");
             }
 
-            var sponsor = await _context.Sponsors
-                .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
-            if (sponsor == null){
+            var sponsorUser = await _context.SponsorUsers
+                .FirstOrDefaultAsync(su => su.UserID == currentUser.Id);
+            if (sponsorUser == null){
                 return NotFound("Sponsor not found.");
             }
 
             var driverInfo = await _context.SponsorDrivers
-                .Where(sd => sd.SponsorID == sponsor.SponsorID && sd.DriverID == id)
+                .Where(sd => sd.SponsorID == sponsorUser.SponsorID && sd.DriverID == id)
                 .Join(
                     _context.Users,
                     sd => sd.DriverID,
@@ -155,8 +155,8 @@ namespace Backend_Server.Controllers
             }
 
             // Get sponsor's ID
-            var sponsor = await _context.Sponsors.FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
-            if (sponsor == null)
+            var sponsorUser = await _context.SponsorUsers.FirstOrDefaultAsync(su => su.UserID == currentUser.Id);
+            if (sponsorUser == null)
             {
                 Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
                 return NotFound("Sponsor information not found.");
@@ -164,7 +164,7 @@ namespace Backend_Server.Controllers
 
             // Get all applications for the sponsor, regardless of status
             var applications = await _context.DriverApplications
-                .Where(app => app.SponsorID == sponsor.SponsorID)
+                .Where(app => app.SponsorID == sponsorUser.SponsorID)
                 .Select(app => new
                 {
                     app.ApplicationID,
@@ -187,10 +187,26 @@ namespace Backend_Server.Controllers
         [HttpPost("applications/{applicationID}/process")]
         public async Task<IActionResult> ProcessApplication(int applicationID, [FromQuery] string action)
         {
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                return Unauthorized("User not found.");
+            }
+
             var application = await _context.DriverApplications.FindAsync(applicationID);
             if (application == null)
             {
                 return NotFound("Application not found.");
+            }
+
+            //Because of multiple sponsors per main sponsor/company, check if the sponsor can actually access application
+            //To edit it and such. We can (actually, probably, DBMS showcase...) also add permissions logic from AspNetRoleClaims to be more specific
+            var sponsorUser = await _context.SponsorUsers
+                .FirstOrDefaultAsync(su => su.UserID == currentUser.Id && su.SponsorID == application.SponsorID);
+            if (sponsorUser == null)
+            {
+                return Unauthorized("Sponsor user does not have access to this application.");
             }
 
             if (action == "approve")
