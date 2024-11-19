@@ -43,6 +43,7 @@ namespace Backend_Server.Controllers
             throw new InvalidOperationException("Max retries exceeded for operation.");
         }
 
+        //Update for multiple sponsor specific to company...
         [HttpGet("sales-sponsor")]
         public async Task<IActionResult> sp_GetSalesBySponsor(
             [FromQuery] int? sponsorId,
@@ -89,6 +90,7 @@ namespace Backend_Server.Controllers
             }
         }
 
+        //Update for multiple sponsor specific to company...
         [HttpGet("sales-driver")]
         public async Task<IActionResult> sp_GetSalesByDriver(
             [FromQuery] int? sponsorId,
@@ -138,6 +140,7 @@ namespace Backend_Server.Controllers
             }
         }
 
+        //Update for multiple sponsor specific to company...
         [HttpGet("invoice")]
         public async Task<IActionResult> GetInvoiceReport(
             [FromQuery] int? sponsorId,
@@ -166,6 +169,7 @@ namespace Backend_Server.Controllers
             }
         }
 
+        //Update for multiple sponsor specific to company...
         [HttpGet("driver-points")]
         public async Task<IActionResult> sp_GetDriverPointTracking(
             [FromQuery] int? driverId,
@@ -196,6 +200,7 @@ namespace Backend_Server.Controllers
             }
         }
 
+        //Update for multiple sponsor specific to company...
         [HttpGet("audit-logs")]
         public async Task<IActionResult> GetAuditLogs(
             [FromQuery] int? userId = null,

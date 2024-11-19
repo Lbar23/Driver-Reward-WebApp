@@ -101,12 +101,16 @@ namespace Backend_Server.Controllers
             // Get all sponsor point values for this driver
             var sponsorPoints = await _context.SponsorDrivers
                 .Where(sd => sd.DriverID == user.Id)
-                .Join(_context.Sponsors,
+                .Join(_context.SponsorUsers, //Added new join that must run first...
                     sd => sd.SponsorID,
+                    su => su.SponsorID,
+                    (sd, su) => new { sd, su })
+                .Join(_context.Sponsors,
+                    ssu => ssu.su.SponsorID,
                     s => s.SponsorID,
-                    (sd, s) => new PointValueDto
+                    (ssu, s) => new PointValueDto
                     {
-                        TotalPoints = sd.Points,
+                        TotalPoints = ssu.sd.Points,
                         PointValue = s.PointDollarValue,
                         SponsorName = s.CompanyName
                     })
@@ -305,15 +309,18 @@ namespace Backend_Server.Controllers
                     {
                         var sponsorPoints = await _context.SponsorDrivers
                             .Where(sd => sd.DriverID == user.Id)
-                            .Join(
-                                _context.Sponsors,
+                            .Join(_context.SponsorUsers, //Once again, added new join that must be first...
                                 sd => sd.SponsorID,
+                                su => su.SponsorID,
+                                (sd, su) => new { sd, su })
+                            .Join(_context.Sponsors,
+                                ssu => ssu.su.SponsorID,
                                 s => s.SponsorID,
-                                (sd, s) => new
+                                (ssu, s) => new
                                 {
                                     sponsorId = s.SponsorID,
                                     sponsorName = s.CompanyName,
-                                    totalPoints = sd.Points,
+                                    totalPoints = ssu.sd.Points,
                                     pointDollarValue = s.PointDollarValue
                                 })
                             .ToListAsync();
@@ -342,15 +349,18 @@ namespace Backend_Server.Controllers
             {
                 var sponsorPoints = await _context.SponsorDrivers
                     .Where(sd => sd.DriverID == user.Id && sd.SponsorID == sponsorId)
-                    .Join(
-                        _context.Sponsors,
+                    .Join(_context.SponsorUsers, //Again; added join where needed
                         sd => sd.SponsorID,
-                        s => s.UserID,
-                        (sd, s) => new
+                        su => su.SponsorID,
+                        (sd, su) => new { sd, su })
+                    .Join(_context.Sponsors,
+                        ssu => ssu.su.SponsorID,
+                        s => s.SponsorID,
+                        (ssu, s) => new
                         {
-                            sponsorId = s.UserID,
+                            sponsorId = s.SponsorID,
                             sponsorName = s.CompanyName,
-                            totalPoints = sd.Points,
+                            totalPoints = ssu.sd.Points,
                             pointDollarValue = s.PointDollarValue,
                             pointsHistory = _context.PointTransactions
                                 .Where(pt => pt.UserID == user.Id && pt.SponsorID == sponsorId)
