@@ -11,6 +11,13 @@ using Backend_Server.Models.DTO;
 using Backend_Server.Infrastructure;
 using Serilog;
 
+/// <summary>
+/// I know you just added Reports Controller, but as usual, it did break (and will possibly break) future db migrations or implemtations
+/// So, as a workaround, Use raw SQL queries with manual mapping instead... 
+/// However, do not explicitly state them as HasNoKey in DB Context; same error will apply for future references if same key value name.
+/// EF Core works weird w/ MySQL 
+/// </summary>
+
 namespace Backend_Server.Controllers
 {
     [ApiController]
@@ -43,6 +50,7 @@ namespace Backend_Server.Controllers
             throw new InvalidOperationException("Max retries exceeded for operation.");
         }
 
+        //Update for multiple sponsor specific to company...
         [HttpGet("sales-sponsor")]
         public async Task<IActionResult> sp_GetSalesBySponsor(
             [FromQuery] int? sponsorId,
@@ -89,6 +97,7 @@ namespace Backend_Server.Controllers
             }
         }
 
+        //Update for multiple sponsor specific to company...
         [HttpGet("sales-driver")]
         public async Task<IActionResult> sp_GetSalesByDriver(
             [FromQuery] int? sponsorId,
@@ -138,6 +147,7 @@ namespace Backend_Server.Controllers
             }
         }
 
+        //Update for multiple sponsor specific to company...
         [HttpGet("invoice")]
         public async Task<IActionResult> GetInvoiceReport(
             [FromQuery] int? sponsorId,
@@ -166,6 +176,7 @@ namespace Backend_Server.Controllers
             }
         }
 
+        //Update for multiple sponsor specific to company...
         [HttpGet("driver-points")]
         public async Task<IActionResult> sp_GetDriverPointTracking(
             [FromQuery] int? driverId,
@@ -196,6 +207,7 @@ namespace Backend_Server.Controllers
             }
         }
 
+        //Update for multiple sponsor specific to company...
         [HttpGet("audit-logs")]
         public async Task<IActionResult> GetAuditLogs(
             [FromQuery] int? userId = null,

@@ -43,6 +43,7 @@ namespace Backend_Server.Models.DTO
     public record PurchaseRequest
     {
         public required int SponsorID { get; init; }
+        public required int ProductID { get; init; }
         public required int PointsSpent { get; init; }
     }
 
@@ -145,5 +146,14 @@ namespace Backend_Server.Models.DTO
     {
         public required string CurrentPassword { get; set; }
         public required string NewPassword { get; set; }
+    }
+
+    public record ProductDto
+    {
+        public int ProductID { get; set; }  // Add this
+        public required string Name { get; set; }
+        public required string Price { get; set; }
+        public required string ImageUrl { get; set; }
+        public int PointCost { get; set; }
     }
 }

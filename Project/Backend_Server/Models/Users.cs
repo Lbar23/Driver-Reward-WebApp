@@ -25,6 +25,7 @@ namespace Backend_Server.Models
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLogin { get; set; }
         public NotificationPref NotifyPref { get; set; } = NotificationPref.None; 
+        public ICollection<SponsorUsers> SponsorUsers { get; set; } = [];
     }
     // Package inherits AspNetUser Properties:
         // `Id` int NOT NULL AUTO_INCREMENT,

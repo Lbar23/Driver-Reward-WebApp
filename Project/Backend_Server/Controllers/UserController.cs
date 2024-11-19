@@ -42,24 +42,55 @@ namespace Backend_Server.Controllers
         [HttpGet("currentuser")]
         public async Task<IActionResult> GetCurrentUser()
         {
-            // Gets the current logged-in user based on the HttpContext
-            var user = await _userManager.GetUserAsync(User); 
+            var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
                 return Unauthorized("User is not logged in");
             }
 
             var roles = await _userManager.GetRolesAsync(user);
-            return Ok(new
+
+            object response;
+            if (user.UserType == "Sponsor") //This check has to be here since we're dealing with multiple sponsors under the same company...
             {
-                user.Id,
-                user.UserName,
-                user.Email,
-                user.UserType,
-                user.CreatedAt,
-                user.LastLogin,
-                Roles = roles,
-            });
+                var sponsorUser = await _context.SponsorUsers
+                    .Include(su => su.Sponsor)
+                    .FirstOrDefaultAsync(su => su.UserID == user.Id);
+
+                response = new
+                {
+                    user.Id,
+                    user.UserName,
+                    user.Email,
+                    user.UserType,
+                    user.CreatedAt,
+                    user.LastLogin,
+                    Roles = roles,
+                    SponsorDetails = sponsorUser != null ? new
+                    {
+                        sponsorUser.SponsorID,
+                        sponsorUser.Sponsor.CompanyName,
+                        sponsorUser.IsPrimarySponsor,
+                        sponsorUser.JoinDate,
+                        sponsorUser.SponsorRole
+                    } : null
+                };
+            }
+            else
+            {
+                response = new
+                {
+                    user.Id,
+                    user.UserName,
+                    user.Email,
+                    user.UserType,
+                    user.CreatedAt,
+                    user.LastLogin,
+                    Roles = roles
+                };
+            }
+
+            return Ok(response);
         }
 
         [HttpGet("getuser")]
@@ -71,17 +102,47 @@ namespace Backend_Server.Controllers
                 return NotFound();
             }
             var roles = await _userManager.GetRolesAsync(user);
-            return Ok(new
+            object response;
+            if (user.UserType == "Sponsor") //Same here
             {
-                user.Id,
-                user.UserName,
-                user.Email,
-                user.UserType,
-                user.CreatedAt,
-                user.LastLogin,
-                Roles = roles,
-            });
-            
+                var sponsorUser = await _context.SponsorUsers
+                    .Include(su => su.Sponsor)
+                    .FirstOrDefaultAsync(su => su.UserID == user.Id);
+
+                response = new
+                {
+                    user.Id,
+                    user.UserName,
+                    user.Email,
+                    user.UserType,
+                    user.CreatedAt,
+                    user.LastLogin,
+                    Roles = roles,
+                    SponsorDetails = sponsorUser != null ? new
+                    {
+                        sponsorUser.SponsorID,
+                        sponsorUser.Sponsor.CompanyName,
+                        sponsorUser.IsPrimarySponsor,
+                        sponsorUser.JoinDate,
+                        sponsorUser.SponsorRole
+                    } : null
+                };
+            }
+            else
+            {
+                response = new
+                {
+                    user.Id,
+                    user.UserName,
+                    user.Email,
+                    user.UserType,
+                    user.CreatedAt,
+                    user.LastLogin,
+                    Roles = roles
+                };
+            }
+
+            return Ok(response);
         }
 
         [HttpPost("change-password")]
