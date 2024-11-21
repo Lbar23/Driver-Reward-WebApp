@@ -7,7 +7,11 @@ using Backend_Server.Models;
 using Backend_Server.Models.DTO;
 using Backend_Server.Infrastructure;
 using Serilog;
-using MySqlConnector; 
+using MySqlConnector;
+using QuestPDF.Infrastructure;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+
 
 namespace Backend_Server.Controllers
 {
@@ -44,6 +48,7 @@ namespace Backend_Server.Controllers
         [HttpGet("sales-sponsor")]
         public async Task<IActionResult> sp_GetSalesBySponsor(
             [FromQuery] int? sponsorId,
+            [FromQuery] int? driverId,
             [FromQuery] DateTime? startDate,
             [FromQuery] DateTime? endDate,
             [FromQuery] string viewType = "summary")
@@ -55,6 +60,7 @@ namespace Backend_Server.Controllers
                     var result = await _context.Set<SalesSummary>().FromSqlRaw(
                         "CALL sp_GetSalesBySponsor(@sponsorId, @startDate, @endDate, @viewType)",
                         new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
+                        new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
                         new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
                         new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
                         new MySqlParameter("@viewType", viewType ?? "summary")
@@ -130,8 +136,8 @@ namespace Backend_Server.Controllers
 
         [HttpGet("driver-points")]
         public async Task<IActionResult> sp_GetDriverPointTracking(
-            [FromQuery] int? sponsorId,
             [FromQuery] int? driverId,
+            [FromQuery] int? sponsorId,
             [FromQuery] DateTime? startDate,
             [FromQuery] DateTime? endDate)
         {
@@ -140,7 +146,7 @@ namespace Backend_Server.Controllers
                 return await ExecuteWithRetryAsync(async () =>
                 {
                     var result = await _context.Set<DriverPoints>().FromSqlRaw(
-                        "CALL sp_GetDriverPointTracking(@sponsorId, @driverId, @startDate, @endDate)",
+                        "CALL sp_GetDriverPointTracking(@driverId, @sponsorId, @startDate, @endDate)",
                         new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
                         new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
                         new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
@@ -200,5 +206,169 @@ namespace Backend_Server.Controllers
                 return StatusCode(500, "Error retrieving audit logs");
             }
         }
+
+        [HttpPost("export-pdf")]
+        public IActionResult ExportPdf([FromBody] ExportRequest request)
+        {
+            try
+            {
+                // Validate input
+                if (request == null || request.Data == null || !request.Data.Any())
+                {
+                    return BadRequest("No data provided to export.");
+                }
+
+                // Generate PDF using QuestPDF
+                var pdfBytes = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4);
+                        page.Margin(50);
+                        page.DefaultTextStyle(x => x.FontSize(12));
+                        
+                        // Header Section
+                        page.Header().Element(ComposeHeader(request.ReportType, request.Metadata));
+
+                        // Content Section
+                        page.Content().Element(ComposeTable(request.Data));
+
+                        // Footer Section
+                        page.Footer().AlignCenter().Text(text =>
+                        {
+                            text.Span("Generated on ");
+                            text.Span($"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC").Bold();
+                            text.Span(" | Page ");
+                            text.CurrentPageNumber();
+                            text.Span(" / ");
+                            text.TotalPages();
+                        });
+                    });
+                }).GeneratePdf();
+
+                // Return PDF
+                return File(pdfBytes, "application/pdf", $"{request.ReportType}_report.pdf");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error generating PDF report");
+                return StatusCode(500, "Failed to generate PDF report.");
+            }
+        }
+
+        [HttpPost("export-csv")]
+        public IActionResult ExportCsv([FromBody] ExportRequest request)
+        {
+            try
+            {
+                // Validate input
+                if (request == null || request.Data == null || !request.Data.Any())
+                {
+                    return BadRequest("No data provided to export.");
+                }
+
+                var csvLines = new List<string>();
+
+                // Add Headers
+                var headers = string.Join(",", request.Data.First().Keys);
+                csvLines.Add(headers);
+
+                // Add Data Rows
+                foreach (var row in request.Data)
+                {
+                    var values = string.Join(",", row.Values.Select(v => v?.ToString()?.Replace(",", ";") ?? "N/A"));
+                    csvLines.Add(values);
+                }
+
+                // Convert to CSV
+                var csvContent = string.Join(Environment.NewLine, csvLines);
+                var csvBytes = System.Text.Encoding.UTF8.GetBytes(csvContent);
+
+                // Return CSV
+                return File(csvBytes, "text/csv", $"{request.ReportType}_report.csv");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error generating CSV report");
+                return StatusCode(500, "Failed to generate CSV report.");
+            }
+        }
+
+        // helper method for generate pdf
+        private static Action<IContainer> ComposeHeader(string reportType, Dictionary<string, string>? metadata)
+        {
+            return container =>
+            {
+                container.Column(column =>
+                {
+                    column.Spacing(10);
+                    
+                    column.Item().Text($"Report: {reportType.ToUpper()}")
+                        .SemiBold().FontSize(20).FontColor(Colors.Blue.Medium);
+
+                    if (metadata != null)
+                    {
+                        foreach (var item in metadata)
+                        {
+                            column.Item().Text($"{item.Key}: {item.Value}").FontSize(12);
+                        }
+                    }
+                });
+            };
+        }
+
+        // helper method for generate pdf
+        private static Action<IContainer> ComposeTable(List<Dictionary<string, object>> data)
+        {
+            return container =>
+            {
+                var headerStyle = TextStyle.Default.SemiBold();
+
+                container.PaddingVertical(10).Table(table =>
+                {
+                    // Define table columns
+                    var columnCount = data.First().Keys.Count;
+                    table.ColumnsDefinition(columns =>
+                    {
+                        for (int i = 0; i < columnCount; i++)
+                        {
+                            columns.RelativeColumn();
+                        }
+                    });
+
+                    // Add headers
+                    table.Header(header =>
+                    {
+                        foreach (var key in data.First().Keys)
+                        {
+                            header.Cell().Element(cell =>
+                            {
+                                cell.Text(key)
+                                    .Style(headerStyle);
+                            });
+                        }
+                        header.Cell().ColumnSpan((uint)columnCount).PaddingTop(5).BorderBottom(1).BorderColor(Colors.Black);
+                    });
+
+                    // Add rows
+                    foreach (var row in data)
+                    {
+                        foreach (var value in row.Values)
+                        {
+                            table.Cell().Element(cell =>
+                            {
+                                cell.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).PaddingVertical(5)
+                                    .Text(value?.ToString() ?? "N/A")
+                                    .FontSize(10);
+                            });
+                        }
+                    }
+                });
+            };
+        }
+
+        
+
+
     }
 }
