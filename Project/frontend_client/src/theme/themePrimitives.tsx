@@ -1,4 +1,8 @@
-import { createTheme, alpha, PaletteMode, Shadows } from '@mui/material/styles';
+import { createTheme, 
+         alpha, 
+         PaletteMode, 
+         Shadows } from '@mui/material/styles';
+import { deepmerge } from '@mui/utils';
 
 declare module '@mui/material/Paper' {
   interface PaperPropsVariantOverrides {
@@ -401,3 +405,60 @@ const defaultShadows: Shadows = [
   ...defaultTheme.shadows.slice(2),
 ];
 export const shadows = defaultShadows;
+
+export const getAccessibilityTokens = (profile: string) => {
+  switch (profile) {
+    case 'highContrast':
+      return {
+        palette: {
+          text: {
+            primary: 'hsl(0, 0%, 100%)', // White text for high contrast
+            secondary: 'hsl(0, 0%, 90%)',
+          },
+          background: {
+            default: 'hsl(0, 0%, 10%)', // Dark background for contrast
+            paper: 'hsl(0, 0%, 15%)',
+          },
+        },
+        typography: {
+          fontSize: 16, // Slightly larger font for readability
+        },
+      };
+    case 'RGColorblind':
+      return {
+        palette: {
+          primary: { main: 'hsl(210, 79%, 46%)' }, // Adjusted colors for accessibility
+          secondary: { main: 'hsl(51, 100%, 50%)' },
+        },
+      };
+    case 'monochrome':
+      return {
+        palette: {
+          primary: { main: 'hsl(0, 0%, 50%)' },
+          text: { primary: 'hsl(0, 0%, 20%)', secondary: 'hsl(0, 0%, 50%)' },
+        },
+      };
+    default:
+      return {}; // No accessibility changes
+  }
+};
+
+export const createCustomTheme = (
+  mode: PaletteMode,
+  profile: string = '',
+  fontSize: number = 14) => {
+  const baseTokens = getDesignTokens(mode);
+  const accessibilityTokens = getAccessibilityTokens(profile);
+
+  const mergedTokens = deepmerge(baseTokens, accessibilityTokens);
+
+  return createTheme({
+    ...mergedTokens,
+    typography: {
+      ...mergedTokens.typography,
+      fontSize, // Allow fontSize overrides
+    },
+  });
+};
+
+

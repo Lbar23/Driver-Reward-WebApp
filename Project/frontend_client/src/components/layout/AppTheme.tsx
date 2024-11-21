@@ -1,51 +1,61 @@
-import * as React from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import type { ThemeOptions } from '@mui/material/styles';
-import { inputsCustomizations } from '../../theme/inputs';
-import { dataDisplayCustomizations } from '../../theme/dataDisplay';
-import { feedbackCustomizations } from '../../theme/feedback';
-import { navigationCustomizations } from '../../theme/navigation';
-import { surfacesCustomizations } from '../../theme/surfaces';
-import { colorSchemes, typography, shadows, shape } from '../../theme/themePrimitives';
+import CssBaseline from '@mui/material/CssBaseline';
+import { deepmerge } from '@mui/utils';
+import { getDesignTokens, getAccessibilityTokens } from '../../theme/themePrimitives';
 
-interface AppThemeProps {
-  children: React.ReactNode;
-  disableCustomTheme?: boolean;
-  themeComponents?: ThemeOptions['components'];
+interface AppThemeContextProps {
+  fontSize: number;
+  setFontSize: (size: number) => void;
+  accessibleTokens: any;
+  setAccessibleTokens: (tokens: any) => void;
 }
 
-export default function AppTheme({
-  children,
-  disableCustomTheme,
-  themeComponents,
-}: AppThemeProps) {
-  const theme = React.useMemo(() => {
-    return disableCustomTheme
-      ? {}
-      : createTheme({
-          cssVariables: {
-            colorSchemeSelector: 'data-mui-color-scheme',
-            cssVarPrefix: 'template',
-          },
-          colorSchemes, // for light/dark mode
-          shadows,
-          shape,
-          components: {
-            ...inputsCustomizations,
-            ...dataDisplayCustomizations,
-            ...feedbackCustomizations,
-            ...navigationCustomizations,
-            ...surfacesCustomizations,
-            ...themeComponents,
-          },
-        });
-  }, [disableCustomTheme, themeComponents]);
-  if (disableCustomTheme) {
-    return <React.Fragment>{children}</React.Fragment>;
+const AppThemeContext = createContext<AppThemeContextProps | undefined>(undefined);
+
+export const useAppTheme = () => {
+  const context = useContext(AppThemeContext);
+  if (!context) {
+    throw new Error('useAppTheme must be used within an AppThemeProvider');
   }
-  return (
-    <ThemeProvider theme={theme} disableTransitionOnChange>
-      {children}
-    </ThemeProvider>
+  return context;
+};
+
+const AppThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [fontSize, setFontSize] = useState<number>(14); // Default font size
+  const [accessibleTokens, setAccessibleTokens] = useState<any>(getAccessibilityTokens('default')); // Default profile
+
+  const theme = useMemo(() => {
+    const baseTokens = getDesignTokens('light', fontSize); // Default light mode
+    const mergedTokens = deepmerge(baseTokens, accessibleTokens || {});
+
+    return createTheme({
+      ...mergedTokens,
+      cssVariables: {
+        colorSchemeSelector: 'data-mui-color-scheme',
+        cssVarPrefix: 'template', // Ensure CSS variables stay intact
+      },
+    });
+  }, [fontSize, accessibleTokens]);
+
+  const value = useMemo(
+    () => ({
+      fontSize,
+      setFontSize,
+      accessibleTokens,
+      setAccessibleTokens,
+    }),
+    [fontSize, accessibleTokens]
   );
-}
+
+  return (
+    <AppThemeContext.Provider value={value}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </ThemeProvider>
+    </AppThemeContext.Provider>
+  );
+};
+
+export default AppThemeProvider;
