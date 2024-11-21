@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
@@ -10,13 +7,7 @@ using Backend_Server.Models;
 using Backend_Server.Models.DTO;
 using Backend_Server.Infrastructure;
 using Serilog;
-
-/// <summary>
-/// I know you just added Reports Controller, but as usual, it did break (and will possibly break) future db migrations or implemtations
-/// So, as a workaround, Use raw SQL queries with manual mapping instead... 
-/// However, do not explicitly state them as HasNoKey in DB Context; same error will apply for future references if same key value name.
-/// EF Core works weird w/ MySQL 
-/// </summary>
+using MySqlConnector; 
 
 namespace Backend_Server.Controllers
 {
@@ -50,7 +41,6 @@ namespace Backend_Server.Controllers
             throw new InvalidOperationException("Max retries exceeded for operation.");
         }
 
-        //Update for multiple sponsor specific to company...
         [HttpGet("sales-sponsor")]
         public async Task<IActionResult> sp_GetSalesBySponsor(
             [FromQuery] int? sponsorId,
@@ -62,32 +52,15 @@ namespace Backend_Server.Controllers
             {
                 return await ExecuteWithRetryAsync(async () =>
                 {
-                    if (viewType == "summary")
-                    {
-                        var result = await _context.Set<SalesSummary>()
-                            .FromSqlRaw("CALL sp_GetSalesBySponsor({0}, {1}, {2}, {3})",
-                                sponsorId ?? 0,
-                                startDate ?? DateTime.MinValue,
-                                endDate ?? DateTime.MaxValue,
-                                viewType)
-                            .AsNoTracking()
-                            .ToListAsync();
+                    var result = await _context.Set<SalesSummary>().FromSqlRaw(
+                        "CALL sp_GetSalesBySponsor(@sponsorId, @startDate, @endDate, @viewType)",
+                        new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
+                        new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
+                        new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
+                        new MySqlParameter("@viewType", viewType ?? "summary")
+                    ).ToListAsync();
 
-                        return Ok(result);
-                    }
-                    else
-                    {
-                        var result = await _context.Set<SalesDetail>()
-                            .FromSqlRaw("CALL sp_GetSalesBySponsor({0}, {1}, {2}, {3})",
-                                sponsorId ?? 0,
-                                startDate ?? DateTime.MinValue,
-                                endDate ?? DateTime.MaxValue,
-                                viewType)
-                            .AsNoTracking()
-                            .ToListAsync();
-
-                        return Ok(result);
-                    }
+                    return Ok(result);
                 });
             }
             catch (Exception ex)
@@ -97,7 +70,6 @@ namespace Backend_Server.Controllers
             }
         }
 
-        //Update for multiple sponsor specific to company...
         [HttpGet("sales-driver")]
         public async Task<IActionResult> sp_GetSalesByDriver(
             [FromQuery] int? sponsorId,
@@ -110,34 +82,16 @@ namespace Backend_Server.Controllers
             {
                 return await ExecuteWithRetryAsync(async () =>
                 {
-                    if (viewType == "summary")
-                    {
-                        var result = await _context.Set<SalesSummary>()
-                            .FromSqlRaw("CALL sp_GetSalesByDriver({0}, {1}, {2}, {3}, {4})",
-                                sponsorId ?? 0,
-                                driverId ?? 0,
-                                startDate ?? DateTime.MinValue,
-                                endDate ?? DateTime.MaxValue,
-                                viewType)
-                            .AsNoTracking()
-                            .ToListAsync();
+                    var result = await _context.Set<SalesDetail>().FromSqlRaw(
+                        "CALL sp_GetSalesByDriver(@sponsorId, @driverId, @startDate, @endDate, @viewType)",
+                        new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
+                        new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
+                        new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
+                        new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
+                        new MySqlParameter("@viewType", viewType ?? "summary")
+                    ).ToListAsync();
 
-                        return Ok(result);
-                    }
-                    else
-                    {
-                        var result = await _context.Set<SalesDetail>()
-                            .FromSqlRaw("CALL sp_GetSalesByDriver({0}, {1}, {2}, {3}, {4})",
-                                sponsorId ?? 0,
-                                driverId ?? 0,
-                                startDate ?? DateTime.MinValue,
-                                endDate ?? DateTime.MaxValue,
-                                viewType)
-                            .AsNoTracking()
-                            .ToListAsync();
-
-                        return Ok(result);
-                    }
+                    return Ok(result);
                 });
             }
             catch (Exception ex)
@@ -147,7 +101,6 @@ namespace Backend_Server.Controllers
             }
         }
 
-        //Update for multiple sponsor specific to company...
         [HttpGet("invoice")]
         public async Task<IActionResult> GetInvoiceReport(
             [FromQuery] int? sponsorId,
@@ -158,13 +111,12 @@ namespace Backend_Server.Controllers
             {
                 return await ExecuteWithRetryAsync(async () =>
                 {
-                    var result = await _context.Set<InvoiceDetail>()
-                        .FromSqlRaw("CALL sp_GetInvoiceReport({0}, {1}, {2})",
-                            sponsorId ?? 0,
-                            startDate ?? DateTime.MinValue,
-                            endDate ?? DateTime.MaxValue)
-                        .AsNoTracking()
-                        .ToListAsync();
+                    var result = await _context.Set<InvoiceDetail>().FromSqlRaw(
+                        "CALL sp_GetInvoiceReport(@sponsorId, @startDate, @endDate)",
+                        new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
+                        new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
+                        new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value)
+                    ).ToListAsync();
 
                     return Ok(result);
                 });
@@ -176,11 +128,10 @@ namespace Backend_Server.Controllers
             }
         }
 
-        //Update for multiple sponsor specific to company...
         [HttpGet("driver-points")]
         public async Task<IActionResult> sp_GetDriverPointTracking(
-            [FromQuery] int? driverId,
             [FromQuery] int? sponsorId,
+            [FromQuery] int? driverId,
             [FromQuery] DateTime? startDate,
             [FromQuery] DateTime? endDate)
         {
@@ -188,26 +139,24 @@ namespace Backend_Server.Controllers
             {
                 return await ExecuteWithRetryAsync(async () =>
                 {
-                    var result = await _context.Set<DriverPoints>()
-                        .FromSqlRaw("CALL sp_GetDriverPointTracking({0}, {1}, {2}, {3})",
-                            driverId ?? 0,
-                            sponsorId ?? 0,
-                            startDate ?? DateTime.MinValue,
-                            endDate ?? DateTime.MaxValue)
-                        .AsNoTracking()
-                        .ToListAsync();
+                    var result = await _context.Set<DriverPoints>().FromSqlRaw(
+                        "CALL sp_GetDriverPointTracking(@sponsorId, @driverId, @startDate, @endDate)",
+                        new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
+                        new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
+                        new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
+                        new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value)
+                    ).ToListAsync();
 
                     return Ok(result);
                 });
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error fetching driver point tracking");
+                Log.Error(ex, "Error fetching driver points tracking");
                 return StatusCode(500, "Error fetching data");
             }
         }
 
-        //Update for multiple sponsor specific to company...
         [HttpGet("audit-logs")]
         public async Task<IActionResult> GetAuditLogs(
             [FromQuery] int? userId = null,

@@ -4,7 +4,7 @@ import { BarChart, PieChart } from '@mui/x-charts';
 import axios from 'axios';
 
 interface ReportChartProps {
-  reportType: 'sales' | 'points' | 'invoice';
+  reportType: 'sales' | 'driver-points' | 'invoice';
   viewType: 'summary' | 'detailed';
   selectedSponsor?: number | 'all';
   selectedDriver?: number | 'all';
@@ -19,7 +19,7 @@ export default function ReportChart({
   dateRange,
 }: ReportChartProps) {
   const theme = useTheme();
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]); // Ensure initialization as an array
   const [xLabels, setXLabels] = useState<string[]>([]);
 
   useEffect(() => {
@@ -35,20 +35,24 @@ export default function ReportChart({
 
         const endpoint = `/api/reports/${reportType}`;
         const response = await axios.get(endpoint, { params });
-        const data = response.data;
+
+        // Ensure the response data is an array
+        const data = Array.isArray(response.data) ? response.data : [];
+        setChartData(data);
 
         // Map xLabels based on report type
         const labels = data.map((item: any) => {
           if (reportType === 'sales') return item.SponsorName || 'Unknown';
-          if (reportType === 'points') return item.DriverName || 'Unknown';
+          if (reportType === 'driver-points') return item.DriverName || 'Unknown';
           if (reportType === 'invoice') return item.DriverName || 'Unknown';
           return 'Unknown';
         });
 
-        setChartData(data);
         setXLabels(labels);
       } catch (error) {
         console.error('Failed to fetch report data:', error);
+        setChartData([]); // Reset chartData on error
+        setXLabels([]); // Reset xLabels on error
       }
     };
 
@@ -59,14 +63,14 @@ export default function ReportChart({
     const seriesData =
       reportType === 'sales'
         ? chartData.map((item) => item.TotalPoints || 0)
-        : reportType === 'points'
+        : reportType === 'driver-points'
         ? chartData.map((item) => item.PointsChanged || 0)
         : chartData.map((item) => item.TotalFee || 0);
 
     const label =
       reportType === 'sales'
         ? 'Total Sales'
-        : reportType === 'points'
+        : reportType === 'driver-points'
         ? 'Points Changed'
         : 'Total Fee';
 

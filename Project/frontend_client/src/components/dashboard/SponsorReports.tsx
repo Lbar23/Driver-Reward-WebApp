@@ -19,7 +19,7 @@ interface Driver {
 
 const SponsorReports: React.FC = () => {
   const [filters, setFilters] = useState({
-    reportType: "driver-points" as "driver-points" | "audit-log",
+    reportType: "driver-points" as "driver-points",
     selectedDriver: null as number | null,
     dateRange: [null, null] as [Date | null, Date | null],
     auditCategory: null as string | null,
@@ -47,10 +47,7 @@ const SponsorReports: React.FC = () => {
     try {
       setError(null);
 
-      const endpoint =
-        filters.reportType === "audit-log"
-          ? "/api/reports/audit-log"
-          : "/api/reports/driver-points";
+      const endpoint = "/api/reports/driver-points";
 
       const [startDate, endDate] = filters.dateRange;
 
@@ -61,8 +58,6 @@ const SponsorReports: React.FC = () => {
 
       if (filters.reportType === "driver-points") {
         params.selectedDriver = filters.selectedDriver;
-      } else if (filters.reportType === "audit-log") {
-        params.category = filters.auditCategory;
       }
 
       const response = await axios.get(endpoint, { params });
@@ -97,12 +92,11 @@ const SponsorReports: React.FC = () => {
             onChange={(e) =>
               setFilters((prev) => ({
                 ...prev,
-                reportType: e.target.value as "driver-points" | "audit-log",
+                reportType: e.target.value as "driver-points",
               }))
             }
           >
             <MenuItem value="driver-points">Driver Point Tracking</MenuItem>
-            <MenuItem value="audit-log">Audit Log</MenuItem>
           </Select>
         </FormControl>
 
@@ -133,7 +127,7 @@ const SponsorReports: React.FC = () => {
           </FormControl>
         )}
 
-        {/* Audit Log Category (for Audit Log) */}
+        {/* Audit Log Category (for Audit Log)
         {filters.reportType === "audit-log" && (
           <FormControl sx={{ minWidth: 200 }}>
             <InputLabel>Audit Log Category</InputLabel>
@@ -152,7 +146,7 @@ const SponsorReports: React.FC = () => {
               <MenuItem value="Transaction">Transaction</MenuItem>
             </Select>
           </FormControl>
-        )}
+        )} */}
       </Box>
 
       {/* Custom Date Range Picker */}
@@ -180,7 +174,7 @@ const SponsorReports: React.FC = () => {
         </Typography>
         {filters.dateRange[0] && filters.dateRange[1] && filters.reportType === "driver-points" && (
           <ReportChart
-            reportType="points"
+            reportType="driver-points"
             viewType="detailed"
             selectedDriver={filters.selectedDriver || "all"}
             dateRange={filters.dateRange}
