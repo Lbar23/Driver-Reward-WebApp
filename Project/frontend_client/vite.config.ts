@@ -30,6 +30,9 @@ export default defineConfig({
           // Core React libraries
           vendor: ['react', 'react-dom', 'react-router-dom'],
 
+          // pdf components
+          pdf: ['jspdf', 'jspdf-autotable'],
+
           // Core MUI components
           'mui-core': [
             '@mui/material/Button',
