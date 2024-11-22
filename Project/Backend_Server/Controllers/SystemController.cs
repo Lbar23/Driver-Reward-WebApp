@@ -65,6 +65,25 @@ namespace Backend_Server.Controllers
                 await _userManager.AddToRoleAsync(user, user.UserType);
                 Log.Information("UserID: {UserID}, Category: User, Description: User registered correctly! {Username}, {Id}",user.Id, user.UserName, user.Id);
 
+                //New check to include new Sponsor details DTO; will add later...
+                if (user.UserType == UserType.Sponsor.ToString())
+                {
+                    var sponsor = await _context.Sponsors.FirstOrDefaultAsync(s => s.UserID == user.Id);
+                    if (sponsor != null)
+                    {
+                        var sponsorUser = new SponsorUsers
+                        {
+                            User = user,
+                            Sponsor = sponsor,
+                            IsPrimarySponsor = true,
+                            JoinDate = DateTime.UtcNow,
+                            SponsorRole = SponsorRole.Admin
+                        };
+                        await _context.SponsorUsers.AddAsync(sponsorUser);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
                 // Optionally, if 2FA is enabled, send the first 2FA code
                 if (userDto.Enable2FA)
                 {
@@ -152,6 +171,34 @@ namespace Backend_Server.Controllers
                     AuditLogCategory.User,
                     $"User {user.UserName} logged in successfully"
                 );
+
+                //New Response check if Sponsor User
+                if (user.UserType == UserType.Sponsor.ToString())
+                {
+                    // Retrieve the sponsor user details
+                    var sponsorUser = await _context.SponsorUsers
+                        .Include(su => su.Sponsor)
+                        .FirstOrDefaultAsync(su => su.UserID == user.Id);
+
+                    if (sponsorUser != null)
+                    {
+                        return Ok(new
+                        {
+                            message = "Login successful",
+                            userId = user.Id,
+                            role = user.UserType,
+                            succeeded = true,
+                            sponsorDetails = new
+                            {
+                                sponsorId = sponsorUser.SponsorID,
+                                companyName = sponsorUser.Sponsor.CompanyName,
+                                isPrimarySponsor = sponsorUser.IsPrimarySponsor,
+                                joinDate = sponsorUser.JoinDate,
+                                sponsorRole = sponsorUser.SponsorRole
+                            }
+                        });
+                    }
+                }
                 return Ok(new { message = "Login successful", userId = user.Id, role = user.UserType, succeeded = true });
             }
 

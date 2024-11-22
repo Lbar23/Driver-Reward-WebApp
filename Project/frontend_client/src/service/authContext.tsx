@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
+// SponsorDetails interface
+interface SponsorDetails {
+  sponsorID: number;
+  companyName: string;
+  isPrimarySponsor: boolean;
+  joinDate: string;
+  sponsorRole: number;
+}
+
 // User interface definition
 interface User {
   id: number;
@@ -10,6 +19,7 @@ interface User {
   createdAt: string;
   lastLogin: string;
   roles: string[];
+  sponsorDetails?: SponsorDetails; // Optional field for Sponsor users
 }
 
 interface NotifySettings {
@@ -108,6 +118,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await axios.get('/api/user/currentuser', { withCredentials: true });
+      const currentUser = response.data;
+      // Check if the user is a sponsor and has sponsorDetails
+      if (response.data.userType === 'Sponsor' && response.data.sponsorDetails) {
+        currentUser.sponsorDetails = {
+          sponsorID: currentUser.sponsorDetails.sponsorID,
+          companyName: currentUser.sponsorDetails.companyName,
+          isPrimarySponsor: currentUser.sponsorDetails.isPrimarySponsor,
+          joinDate: currentUser.sponsorDetails.joinDate,
+          sponsorRole: currentUser.sponsorDetails.sponsorRole,
+        };
+      }
       setUser(response.data);
       setIsAuthenticated(true);
 
@@ -125,13 +146,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Logs out the user, clears session data, and redirects to login
   const logout = async () => {
+    // Check if userType is null
+    if (!user || !user.userType) {
+      setViewRole(null);
+      setIsAuthenticated(false);
+      console.warn('User type is already null. Skipping logout process.');
+      return;
+    }
+
     try {
       await axios.post('/api/system/logout', {}, { withCredentials: true });
       setUser(null);
       setIsAuthenticated(false);
       setViewRole(null); // Reset viewRole on logout
       sessionStorage.clear(); // Clear all session data
-    } catch (error) {
+    } 
+    catch (error) {
       console.error('Logout failed:', error);
     }
   };

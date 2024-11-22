@@ -20,7 +20,6 @@ import Order from './pages/Order';
 // Other pages for authenticated routes
 import PasswordChangeForm from './pages/PasswordChangeForm';
 import Settings from './pages/Settings'
-import AuditLogDashboard from './pages/AuditLogDashboard';
 
 const ProtectedRoute = () => {
     const { isAuthenticated } = useAuth();
@@ -93,7 +92,8 @@ const App = () => (
             <Route path="/change-password" element={<PasswordChangeForm />} />
             <Route path="/settings" element={<Settings/>}/>
             <Route path="/order" element={<Order />} />
-            
+            <Route path="/profile" element={<ProfilePage />} />
+
           </Route>
         </Routes>
       </Box>

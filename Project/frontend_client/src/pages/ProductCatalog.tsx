@@ -21,6 +21,8 @@ import { useNavigate } from 'react-router-dom';
 import OverviewItem from '../components/layout/OverviewItem';
 
 interface Listing {
+  id: number;
+  productId: number;
   name: string;
   price: string;
   imageUrl: string;
@@ -81,11 +83,16 @@ const ProductCatalog: React.FC = () => {
 
   const fetchListings = async () => {
     try {
-      const response: AxiosResponse<Listing[]> = await axios.get('/api/catalog/products');
+      const response: AxiosResponse<any[]> = await axios.get('/api/catalog/products');
       const listingsWithPoints = response.data.map(listing => ({
-        ...listing,
+        id: listing.productID,        //Map from API response
+        productId: listing.productID, //Add both formats for compatibility
+        name: listing.name,
+        price: listing.price,
+        imageUrl: listing.imageUrl,
         pointCost: calculatePointCost(listing.price)
       }));
+      console.log('Processed listings:', listingsWithPoints); //My logging purposes
       setListings(listingsWithPoints);
       localStorage.setItem(CACHE_KEY, JSON.stringify({ 
         listings: listingsWithPoints, 
@@ -106,7 +113,7 @@ const ProductCatalog: React.FC = () => {
     return Math.ceil(numericPrice / selectedSponsor.pointDollarValue);
   };
 
-  const handlePurchase = (listing: Listing) => {
+  const handlePurchase = async (listing: Listing) => {
     const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
     if (!selectedSponsor || !listing.pointCost) return;
 
@@ -114,6 +121,26 @@ const ProductCatalog: React.FC = () => {
       setSnackbarMessage(`Not enough points! You need ${listing.pointCost} points but have ${selectedSponsor.totalPoints}`);
     } 
     setShowSnackbar(true);
+
+    try {
+      // First add to cart
+      addToCart(listing);
+
+      //Remove this later
+      const response = await axios.post('/api/driver/purchase', {
+        SponsorID: selectedSponsorId,
+        ProductID: listing.productId,
+        PointsSpent: listing.pointCost
+      });
+      
+      //Not updating the catalog dynamically...might just have to do a raw sql or add another function instead
+      setSponsorPoints(response.data.remainingPoints);
+      
+    } catch (error) {
+      setSnackbarMessage('Failed to update points');
+      setShowSnackbar(true);
+    }
+
   };
 
   if (loading) return <CircularProgress />;
@@ -123,9 +150,17 @@ const ProductCatalog: React.FC = () => {
   const getCurrentCart = () => carts[selectedSponsorId] || [];
 
   const addToCart = (item: Listing) => {
+    if (typeof selectedSponsorId !== 'number') return;
+    
     setCarts((prevCarts) => ({
       ...prevCarts,
-      [selectedSponsorId]: [...(prevCarts[selectedSponsorId] || []), item],
+      [selectedSponsorId]: [
+        ...(prevCarts[selectedSponsorId] || []),
+        {
+          ...item,
+          productId: item.id  // Ensure productId is set
+        }
+      ],
     }));
   };
   const openCart = () => setIsCartOpen(true);
@@ -137,9 +172,16 @@ const ProductCatalog: React.FC = () => {
     }));
   };
 
-  const goToOrderPage = () => {
+  const goToOrderPage = async () => {
+    const currentCart = getCurrentCart();
+
     history('/order', {
-      state: { cartItems: getCurrentCart(), sponsorId: selectedSponsorId, points: selectedSponsor?.totalPoints, pointValue: selectedSponsor?.pointDollarValue }  // pass cart and sponsor data to Order page
+      state: { 
+        cartItems: currentCart,
+        sponsorId: selectedSponsorId, 
+        points: selectedSponsor?.totalPoints, 
+        pointValue: selectedSponsor?.pointDollarValue 
+      }
     });
     closeCart();
   };

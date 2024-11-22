@@ -101,10 +101,21 @@ namespace Backend_Server.Controllers
                                 {
                                     UserID = user.Id,
                                     CompanyName = model.CompanyName,
-                                    SponsorType = model.SponsorType,
+                                    SponsorType = SponsorType.Independent,
                                     PointDollarValue = model.PointDollarValue ?? 0.01m
                                 };
                                 await _context.Sponsors.AddAsync(sponsor);
+
+                                //Now needs to be added when creating a new Sponsor for the first time as an Admin or Admin Sponsor
+                                var sponsorUser = new SponsorUsers
+                                {
+                                    User = user,
+                                    Sponsor = sponsor,
+                                    IsPrimarySponsor = false,
+                                    JoinDate = DateTime.UtcNow,
+                                    SponsorRole = SponsorRole.Standard
+                                };
+                                await _context.SponsorUsers.AddAsync(sponsorUser);
 
                                 //Send credentials email (I'm not sure which template you're using in the future)
                                 //So, edit dis later
@@ -202,9 +213,9 @@ namespace Backend_Server.Controllers
                                     _context.Admins.Remove(admin);
                                 break;
                             case "Sponsor":
-                                var sponsor = await _context.Sponsors.FirstOrDefaultAsync(s => s.UserID == user.Id);
-                                if (sponsor != null)
-                                    _context.Sponsors.Remove(sponsor);
+                                var sponsorUser = await _context.SponsorUsers.FirstOrDefaultAsync(su => su.UserID == user.Id);
+                                if (sponsorUser != null)
+                                    _context.SponsorUsers.Remove(sponsorUser);
                                 break;
                             case "Driver":
                                 var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == user.Id);
@@ -220,13 +231,26 @@ namespace Backend_Server.Controllers
                                 await _context.Admins.AddAsync(new Admins { UserID = user.Id });
                                 break;
                             case "Sponsor":
-                                await _context.Sponsors.AddAsync(new Sponsors 
+                            
+                            //Updated Sponsor case for multiple sponsors handling...this is tedious
+                                var sponsor = new Sponsors 
                                 { 
                                     UserID = user.Id,
                                     CompanyName = "Pending Update", // Default value, should be updated later
-                                    SponsorType = "Standard",
+                                    SponsorType = SponsorType.Independent,
                                     PointDollarValue = 0.01m
-                                });
+                                };
+                                await _context.Sponsors.AddAsync(sponsor);
+
+                                var sponsorUser = new SponsorUsers
+                                {
+                                    User = user,
+                                    Sponsor = sponsor,
+                                    IsPrimarySponsor = true,
+                                    JoinDate = DateTime.UtcNow,
+                                    SponsorRole = SponsorRole.Admin
+                                };
+                                await _context.SponsorUsers.AddAsync(sponsorUser);
                                 break;
                             case "Driver":
                                 await _context.Drivers.AddAsync(new Drivers 
@@ -293,9 +317,9 @@ namespace Backend_Server.Controllers
                                     _context.Admins.Remove(admin);
                                 break;
                             case "Sponsor":
-                                var sponsor = await _context.Sponsors.FirstOrDefaultAsync(s => s.UserID == userId);
-                                if (sponsor != null)
-                                    _context.Sponsors.Remove(sponsor);
+                                var sponsorUser = await _context.SponsorUsers.FirstOrDefaultAsync(su => su.UserID == userId);
+                                if (sponsorUser != null)
+                                    _context.SponsorUsers.Remove(sponsorUser);
                                 break;
                             case "Driver":
                                 var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == userId);
@@ -391,6 +415,7 @@ namespace Backend_Server.Controllers
             try
             {
                 var sponsorsQuery = from u in _context.Users
+                                join su in _context.SponsorUsers on u.Id equals su.UserID
                                 join s in _context.Sponsors on u.Id equals s.UserID
                                 where u.UserType == "Sponsor"
                                 select new
@@ -403,7 +428,11 @@ namespace Backend_Server.Controllers
                                     SponsorType = s.SponsorType,
                                     PointDollarValue = s.PointDollarValue,
                                     //TotalDrivers = _context.Drivers.Count(d => d.SponsorID == s.SponsorID),
-                                    UserType = u.UserType
+                                    u.UserType,
+                                    //added for more required sponsor details
+                                    su.IsPrimarySponsor,
+                                    su.JoinDate,
+                                    su.SponsorRole
                                 };
 
                 var sponsors = await sponsorsQuery.ToListAsync();

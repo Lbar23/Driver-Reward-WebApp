@@ -1,57 +1,64 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
-
-
-// For better scalability, 
-// turn every DTO going forward should be records instead of classes
-// (since they are inherently immutable data carriers)
 
 namespace Backend_Server.Models.DTO
 {
-    [Keyless]
-    public record SalesSummary(
-        string SponsorName,
-        decimal TotalSales,
-        int TotalDrivers
+    [NotMapped]
+    public record ExportRequest
+    {
+        public string ReportType { get; set; } = "report";
+        public List<Dictionary<string, object>> Data { get; set; } = new();
+        public Dictionary<string, string>? Metadata { get; set; }
+    }
+    [NotMapped]
+    public record DrSalesSummary(
+        string? DriverName,        
+        string? SponsorName,       
+        decimal TotalSales,       
+        int? TotalDrivers,         
+        int? PurchaseCount        
     );
 
-    [Keyless]
+    [NotMapped]
+    public record SpSalesSummary(
+        string? SponsorName,       
+        decimal TotalSales,       
+        int? TotalDrivers,         
+        int? PurchaseCount        
+    );
+
+    [NotMapped]
     public record SalesDetail(
-        string SponsorName,
-        string DriverName,
-        DateTime TransactionDate,
-        string ProductName,
-        decimal SaleAmount
+        string? DriverName,      
+        string? SponsorName,       
+        DateTime TransactionDate,  
+        string? ProductName,       
+        decimal SaleAmount       
     );
 
-    [Keyless]
+    [NotMapped]
     public record DriverPoints(
-        string DriverName,
-        int TotalPoints,
+        string? DriverName,
+        int? TotalPoints,
         int PointsChanged,
-        DateTime TransactionDate,
+        DateTime? TransactionDate,
         string SponsorName,
         string Reason
     );
 
-    [Keyless]
+    [NotMapped]
     public record InvoiceDetail(
-        string SponsorName,
-        string DriverName,
+        string? SponsorName,
+        string? DriverName,
         decimal TotalPurchaseValue,
         decimal DriverFee,
-        int PurchaseCount
+        int? PurchaseCount
     );
 
     [NotMapped]
     public record AuditLog(
         DateTime Timestamp,
         string Category,
-        string DriverName,
+        string? DriverName,
         string Description
     );
 }

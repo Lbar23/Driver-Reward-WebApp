@@ -24,7 +24,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
-import { BarChart, LineChart, PieChart } from '@mui/x-charts';
+import { PieChart } from '@mui/x-charts/PieChart';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import Dialog from '@mui/material/Dialog';
