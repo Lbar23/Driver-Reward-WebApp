@@ -13,7 +13,7 @@ namespace Backend_Server.Models
     }
     public class Purchases
     {
-        public int UserID { get; set; }
+        public int SponsorID { get; set; } //change to sponsorID
         public int PurchaseID { get; set; }
         public int PointsSpent { get; set; }
         public DateTime PurchaseDate { get; set; }

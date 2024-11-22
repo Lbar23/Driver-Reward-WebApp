@@ -1,5 +1,6 @@
 import React, { useState, FormEvent, ChangeEvent } from 'react';
 import { TextField, Button, Typography, Box, Snackbar, Alert } from '@mui/material';
+import axios from 'axios';
 
 const FeedbackForm: React.FC = () => {
   const [name, setName] = useState<string>('');
@@ -8,7 +9,7 @@ const FeedbackForm: React.FC = () => {
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!name || !email || !message) {
@@ -20,13 +21,23 @@ const FeedbackForm: React.FC = () => {
       return;
     }
 
-    console.log('Feedback submitted:', { name, email, message });
-    setSubmitted(true);
-
-    setName('');
-    setEmail('');
-    setMessage('');
-    setError('');
+    try {
+      await axios.post('/api/user/feedback', {
+        Name: name,
+        Email: email,
+        Description: message,
+        SubmissionDate: new Date().toISOString(),
+      });
+      console.log('Feedback submitted:', { name, email, message });
+      setSubmitted(true);
+      setName('');
+      setEmail('');
+      setMessage('');
+      setError('');
+    } catch (err) {
+      console.error('Error submitting feedback:', err);
+      setError('An error occurred while submitting your feedback. Please try again later.');
+    }
   };
 
   const handleCloseSnackbar = (_event: React.SyntheticEvent | Event, reason?: string) => {

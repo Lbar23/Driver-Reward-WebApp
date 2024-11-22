@@ -60,7 +60,7 @@ namespace Backend_Server.Migrations
                     b.ToTable("Admins", (string)null);
                 });
 
-            modelBuilder.Entity("Backend_Server.Models.AuditLog", b =>
+            modelBuilder.Entity("Backend_Server.Models.AuditLogs", b =>
                 {
                     b.Property<int>("LogID")
                         .ValueGeneratedOnAdd()
@@ -89,7 +89,7 @@ namespace Backend_Server.Migrations
 
                     b.HasIndex("UserID");
 
-                    b.ToTable("AuditLog", (string)null);
+                    b.ToTable("AuditLogs", (string)null);
                 });
 
             modelBuilder.Entity("Backend_Server.Models.DriverApplications", b =>
@@ -142,17 +142,15 @@ namespace Backend_Server.Migrations
                     b.Property<int>("UserID")
                         .HasColumnType("int");
 
-                    b.Property<int>("SponsorID")
-                        .HasColumnType("int");
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
 
-                    b.Property<int>("TotalPoints")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                    b.Property<string>("LastName")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
 
                     b.HasKey("UserID");
-
-                    b.HasIndex("SponsorID");
 
                     b.ToTable("Drivers", (string)null);
                 });
@@ -181,27 +179,6 @@ namespace Backend_Server.Migrations
                     b.HasKey("Name");
 
                     b.ToTable("FeedbackForms", (string)null);
-                });
-
-            modelBuilder.Entity("Backend_Server.Models.Permissions", b =>
-                {
-                    b.Property<int>("PermissionID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("PermissionID"));
-
-                    b.Property<string>("Permission")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("PermissionID");
-
-                    b.ToTable("Permissions", (string)null);
                 });
 
             modelBuilder.Entity("Backend_Server.Models.PointTransactions", b =>
@@ -286,7 +263,7 @@ namespace Backend_Server.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("PurchaseID"));
 
-                    b.Property<int>("DriverUserID")
+                    b.Property<int>("DriverID")
                         .HasColumnType("int");
 
                     b.Property<int>("PointsSpent")
@@ -300,22 +277,22 @@ namespace Backend_Server.Migrations
                         .HasColumnType("TIMESTAMP")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<int>("SponsorID")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("longtext")
                         .HasDefaultValue("Ordered");
 
-                    b.Property<int>("UserID")
-                        .HasColumnType("int");
-
                     b.HasKey("PurchaseID");
 
-                    b.HasIndex("DriverUserID");
+                    b.HasIndex("DriverID");
 
                     b.HasIndex("ProductID");
 
-                    b.HasIndex("UserID");
+                    b.HasIndex("SponsorID");
 
                     b.ToTable("Purchases", (string)null);
                 });
@@ -328,11 +305,50 @@ namespace Backend_Server.Migrations
                     b.Property<int>("DriverID")
                         .HasColumnType("int");
 
+                    b.Property<int>("Points")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.HasKey("SponsorID", "DriverID");
 
                     b.HasIndex("DriverID");
 
                     b.ToTable("SponsorDrivers", (string)null);
+                });
+
+            modelBuilder.Entity("Backend_Server.Models.SponsorUsers", b =>
+                {
+                    b.Property<int>("SponsorID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsPrimarySponsor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime>("JoinDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TIMESTAMP")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("SponsorRole")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasDefaultValue("Standard");
+
+                    b.HasKey("SponsorID", "UserID");
+
+                    b.HasIndex("UserID");
+
+                    b.HasIndex("SponsorID", "IsPrimarySponsor");
+
+                    b.ToTable("SponsorUsers", (string)null);
                 });
 
             modelBuilder.Entity("Backend_Server.Models.Sponsors", b =>
@@ -354,9 +370,8 @@ namespace Backend_Server.Migrations
                         .HasColumnType("decimal(10,2)")
                         .HasDefaultValue(0.01m);
 
-                    b.Property<string>("SponsorType")
-                        .IsRequired()
-                        .HasColumnType("longtext");
+                    b.Property<int>("SponsorType")
+                        .HasColumnType("int");
 
                     b.Property<int>("UserID")
                         .HasColumnType("int");
@@ -593,7 +608,7 @@ namespace Backend_Server.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Backend_Server.Models.AuditLog", b =>
+            modelBuilder.Entity("Backend_Server.Models.AuditLogs", b =>
                 {
                     b.HasOne("Backend_Server.Models.Users", null)
                         .WithMany()
@@ -619,12 +634,6 @@ namespace Backend_Server.Migrations
 
             modelBuilder.Entity("Backend_Server.Models.Drivers", b =>
                 {
-                    b.HasOne("Backend_Server.Models.Sponsors", null)
-                        .WithMany()
-                        .HasForeignKey("SponsorID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Backend_Server.Models.Users", null)
                         .WithMany()
                         .HasForeignKey("UserID")
@@ -660,7 +669,7 @@ namespace Backend_Server.Migrations
                 {
                     b.HasOne("Backend_Server.Models.Drivers", "Driver")
                         .WithMany()
-                        .HasForeignKey("DriverUserID")
+                        .HasForeignKey("DriverID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -672,7 +681,7 @@ namespace Backend_Server.Migrations
 
                     b.HasOne("Backend_Server.Models.Users", null)
                         .WithMany()
-                        .HasForeignKey("UserID")
+                        .HasForeignKey("SponsorID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -684,13 +693,13 @@ namespace Backend_Server.Migrations
             modelBuilder.Entity("Backend_Server.Models.SponsorDrivers", b =>
                 {
                     b.HasOne("Backend_Server.Models.Drivers", "Driver")
-                        .WithMany("SponsorDriver")
+                        .WithMany("SponsorDrivers")
                         .HasForeignKey("DriverID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Backend_Server.Models.Sponsors", "Sponsor")
-                        .WithMany("SponsorDriver")
+                        .WithMany("SponsorDrivers")
                         .HasForeignKey("SponsorID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -698,6 +707,25 @@ namespace Backend_Server.Migrations
                     b.Navigation("Driver");
 
                     b.Navigation("Sponsor");
+                });
+
+            modelBuilder.Entity("Backend_Server.Models.SponsorUsers", b =>
+                {
+                    b.HasOne("Backend_Server.Models.Sponsors", "Sponsor")
+                        .WithMany("SponsorUsers")
+                        .HasForeignKey("SponsorID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend_Server.Models.Users", "User")
+                        .WithMany("SponsorUsers")
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Sponsor");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Backend_Server.Models.Sponsors", b =>
@@ -762,12 +790,19 @@ namespace Backend_Server.Migrations
 
             modelBuilder.Entity("Backend_Server.Models.Drivers", b =>
                 {
-                    b.Navigation("SponsorDriver");
+                    b.Navigation("SponsorDrivers");
                 });
 
             modelBuilder.Entity("Backend_Server.Models.Sponsors", b =>
                 {
-                    b.Navigation("SponsorDriver");
+                    b.Navigation("SponsorDrivers");
+
+                    b.Navigation("SponsorUsers");
+                });
+
+            modelBuilder.Entity("Backend_Server.Models.Users", b =>
+                {
+                    b.Navigation("SponsorUsers");
                 });
 #pragma warning restore 612, 618
         }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Backend_Server.Infrastructure;
 using Backend_Server.Models;
+using Backend_Server.Models.DTO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,23 @@ using Serilog;
 
 namespace Backend_Server.Controllers
 {
+    /// <summary>
+    /// DriverController:
+    /// 
+    /// This controller handles driver-specific functionalities, including activity tracking, 
+    /// sponsor management, point transactions, and sponsor relationships.
+    ///
+    /// Endpoints:
+    /// 
+    /// [GET]   /api/driver/activity                - Retrieves driver activity (transactions and purchases)
+    /// [GET]   /api/driver/available-sponsors      - Lists sponsors not yet associated with the driver
+    /// [POST]  /api/driver/apply                - Submits a new driver application
+    /// [GET]   /api/driver/status/{id}          - Retrieves the status of a specific application
+    /// [POST]  /api/driver/register-sponsors       - Registers the driver with selected sponsors
+    /// [GET]   /api/driver/transactions            - Placeholder for retrieving driver transactions
+    /// [GET]   /api/driver/my-sponsors             - Retrieves the driver's associated sponsors and points
+    /// [GET]   /api/driver/sponsor-points/{id}     - Fetches driver's point details for a specific sponsor
+    /// </summary> 
     [ApiController]
     [Route("api/[controller]")]
     public class DriverController(UserManager<Users> userManager, AppDBContext context, IMemoryCache cache) : CachedBaseController(cache)
@@ -20,9 +38,9 @@ namespace Backend_Server.Controllers
         private readonly UserManager<Users> _userManager = userManager;
         private readonly AppDBContext _context = context;
 
-        //uh, this is two stories combined, really
+        /********* API CALLS *********/
+
         //Since transactions and purchases are one, and really, getting the default value doesn't need a separate method
-        //we ball with dis
         //[Authorize(Roles = "Driver")]
         [HttpGet("activity")]
         public async Task<IActionResult> GetDriverActivity()
@@ -60,7 +78,7 @@ namespace Backend_Server.Controllers
 
             // Purchases with product and sponsor info
             var purchases = await _context.Purchases
-                .Where(p => p.UserID == driver!.UserID)
+                .Where(p => p.SponsorID == driver!.UserID)
                 .Join(_context.Products,
                     pur => pur.Product.ProductID,
                     prod => prod.ProductID,
@@ -83,12 +101,16 @@ namespace Backend_Server.Controllers
             // Get all sponsor point values for this driver
             var sponsorPoints = await _context.SponsorDrivers
                 .Where(sd => sd.DriverID == user.Id)
-                .Join(_context.Sponsors,
+                .Join(_context.SponsorUsers, //Added new join that must run first...
                     sd => sd.SponsorID,
+                    su => su.SponsorID,
+                    (sd, su) => new { sd, su })
+                .Join(_context.Sponsors,
+                    ssu => ssu.su.SponsorID,
                     s => s.SponsorID,
-                    (sd, s) => new PointValueDto
+                    (ssu, s) => new PointValueDto
                     {
-                        TotalPoints = sd.Points,
+                        TotalPoints = ssu.sd.Points,
                         PointValue = s.PointDollarValue,
                         SponsorName = s.CompanyName
                     })
@@ -227,17 +249,38 @@ namespace Backend_Server.Controllers
             }
         }
 
-        // [HttpGet("points")]
-        // public async Task<IActionResult> GetDriverPoints()
-        // {
-        //     return Ok();
-        // }
+        //sumbit application async
+        [HttpPost("apply")]
+        public async Task<IActionResult> Apply([FromBody] DriverApplications application)
+        {
+            var user = await _userManager.GetUserAsync(User); // Get the current logged-in user
 
-        // [HttpGet("purchases")]
-        // public async Task<IActionResult> GetDriverPurchases()
-        // {
-        //     return Ok();
-        // }
+            if (user == null)
+            {
+                return Unauthorized("User not found.");
+            }
+
+            // automatically assign the user's ID to the application 
+            application.UserID = user.Id;
+            application.Status = AppStatus.Submitted;
+            application.ApplyDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+            _context.DriverApplications.Add(application);
+            await _context.SaveChangesAsync();
+            return Ok("Application submitted successfully!");
+        }
+        
+        //status of application
+        [HttpGet("status/{id}")]
+        public async Task<IActionResult> GetApplicationStatus(int id)
+        {
+            var application = await _context.DriverApplications.FindAsync(id);
+            if (application == null)
+            {
+                return NotFound("Application not found.");
+            }
+            return Ok(application.Status);
+        }
 
         //For now, method is synchronous so I don't get no warnings when building and running...
         //DO NOT FORGET IF IMPLEMENTATION UPDATES IN THE FUTURE
@@ -246,18 +289,6 @@ namespace Backend_Server.Controllers
         {
             return Ok();
         }
-
-        // [HttpGet("purchase")]
-        // public async Task<IActionResult> GetDriverPurchase(int id)
-        // {
-        //     return Ok();
-        // }
-
-        // [HttpPut("purchase/{id}")]
-        // public async Task<IActionResult> CancelPurchase(int id)
-        // {
-        //     return Ok();
-        // }
 
         [HttpGet("my-sponsors")]
         public async Task<IActionResult> GetDriverSponsors()
@@ -278,15 +309,18 @@ namespace Backend_Server.Controllers
                     {
                         var sponsorPoints = await _context.SponsorDrivers
                             .Where(sd => sd.DriverID == user.Id)
-                            .Join(
-                                _context.Sponsors,
+                            .Join(_context.SponsorUsers, //Once again, added new join that must be first...
                                 sd => sd.SponsorID,
+                                su => su.SponsorID,
+                                (sd, su) => new { sd, su })
+                            .Join(_context.Sponsors,
+                                ssu => ssu.su.SponsorID,
                                 s => s.SponsorID,
-                                (sd, s) => new
+                                (ssu, s) => new
                                 {
                                     sponsorId = s.SponsorID,
                                     sponsorName = s.CompanyName,
-                                    totalPoints = sd.Points,
+                                    totalPoints = ssu.sd.Points,
                                     pointDollarValue = s.PointDollarValue
                                 })
                             .ToListAsync();
@@ -315,15 +349,18 @@ namespace Backend_Server.Controllers
             {
                 var sponsorPoints = await _context.SponsorDrivers
                     .Where(sd => sd.DriverID == user.Id && sd.SponsorID == sponsorId)
-                    .Join(
-                        _context.Sponsors,
+                    .Join(_context.SponsorUsers, //Again; added join where needed
                         sd => sd.SponsorID,
-                        s => s.UserID,
-                        (sd, s) => new
+                        su => su.SponsorID,
+                        (sd, su) => new { sd, su })
+                    .Join(_context.Sponsors,
+                        ssu => ssu.su.SponsorID,
+                        s => s.SponsorID,
+                        (ssu, s) => new
                         {
-                            sponsorId = s.UserID,
+                            sponsorId = s.SponsorID,
                             sponsorName = s.CompanyName,
-                            totalPoints = sd.Points,
+                            totalPoints = ssu.sd.Points,
                             pointDollarValue = s.PointDollarValue,
                             pointsHistory = _context.PointTransactions
                                 .Where(pt => pt.UserID == user.Id && pt.SponsorID == sponsorId)
@@ -358,30 +395,116 @@ namespace Backend_Server.Controllers
         // {
         //     return Ok();
         // }
+
+        [HttpPost("purchase")]
+        public async Task<IActionResult> UpdateSponsorPoints([FromBody] PurchaseRequest purchaseRequest)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                Log.Warning("No user found.");
+                return Unauthorized("User not found.");
+            }
+
+            try
+            {
+                // Get sponsor driver relationship
+                var sponsorDriver = await _context.SponsorDrivers
+                    .Include(sd => sd.Driver)
+                    .FirstOrDefaultAsync(sd => sd.DriverID == user.Id && sd.SponsorID == purchaseRequest.SponsorID);
+
+                if (sponsorDriver == null)
+                {
+                    Log.Warning("SponsorDriver relationship not found");
+                    return BadRequest("Sponsor relationship not found.");
+                }
+
+                if (sponsorDriver.Points < purchaseRequest.PointsSpent)
+                {
+                    Log.Warning("Insufficient points");
+                    return BadRequest("Insufficient points.");
+                }
+
+                // Get or create product
+                var product = await _context.Products
+                    .FirstOrDefaultAsync(p => p.ProductID == purchaseRequest.ProductID);
+                
+                if (product == null)
+                {
+                    product = new Products
+                    {
+                        Name = "External Product", // change to actual product b=name
+                        Description = "Product from external catalog", // same for description
+                        PriceInPoints = purchaseRequest.PointsSpent,
+                        ExternalID = purchaseRequest.ProductID.ToString(),
+                        Availability = true,
+                        SponsorID = purchaseRequest.SponsorID
+                    };
+                    _context.Products.Add(product);
+                    await _context.SaveChangesAsync(); // Save product first
+                }
+
+                // Then, create purchase record
+                var purchase = new Purchases
+                {
+                    SponsorID = purchaseRequest.SponsorID,
+                    PointsSpent = purchaseRequest.PointsSpent,
+                    PurchaseDate = DateTime.UtcNow,
+                    Status = OrderStatus.Ordered,
+                    Driver = sponsorDriver.Driver,
+                    Product = product
+                };
+                _context.Purchases.Add(purchase);
+
+                await _context.SaveChangesAsync(); // Save that as well
+
+                // Update points
+                sponsorDriver.Points -= purchaseRequest.PointsSpent;
+                await _context.SaveChangesAsync();
+
+                // Finally, create transaction record
+                var pointTransaction = new PointTransactions
+                {
+                    UserID = user.Id,
+                    SponsorID = purchaseRequest.SponsorID,
+                    PointsChanged = -purchaseRequest.PointsSpent,
+                    TransactionDate = DateTime.UtcNow,
+                    Reason = $"Purchase: {product.Name}"
+                };
+                _context.PointTransactions.Add(pointTransaction);
+                await _context.SaveChangesAsync(); //Final update
+
+                // Instead of waiting for a database call, pull it directly once everything above
+                // Is finished to get the remaining points
+
+                var updatedPoints = await _context.SponsorDrivers
+                    .Where(sd => sd.DriverID == user.Id)
+                    .Join(_context.Sponsors,
+                        sd => sd.SponsorID,
+                        s => s.SponsorID,
+                        (sd, s) => new
+                        {
+                            sponsorId = s.SponsorID,
+                            sponsorName = s.CompanyName,
+                            totalPoints = sd.Points,
+                            pointDollarValue = s.PointDollarValue
+                        })
+                    .ToListAsync();
+
+                return Ok(new { 
+                    message = "Purchase completed successfully", 
+                    remainingPoints = updatedPoints
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error processing purchase for UserID: {UserId}", user.Id);
+                return StatusCode(500, "An error occurred while processing the purchase.");
+            }
+        }
+
+        //Next; added logic in the chance a driver wants to REFUND the purchase
+        //Order goes into REFUNDED status, and eventually into the CANCELLED status
     }
 
-    public record SponsorDto //mainly here so Drivers can switch between different sponsors
-    {
-        public int SponsorID { get; init; }
-        public required string CompanyName { get; init; }
-        public decimal PointDollarValue { get; init; }
-    }
-
-    public record PointValueDto
-    {
-        public int TotalPoints { get; init; }
-        public decimal PointValue { get; init; }
-        public required string SponsorName { get; init; }
-        public decimal TotalValue => TotalPoints * PointValue;
-    }
-
-    public record TransactionDto
-    {
-        public DateTime Date { get; init; }
-        public int Points { get; init; }
-        public required string Type { get; init; }
-        public required string Reason { get; init; }
-        public required string SponsorName { get; init; }
-        public string? Status { get; init; }
-    }
 }

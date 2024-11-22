@@ -82,14 +82,41 @@ namespace Backend_Server.Services
                             File.Delete(backupFile);
                         }
 
-                    await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
+                        // Instead of infinite delay, use a timed wait that can be cancelled
+                        try 
+                        {
+                            await Task.Delay(TimeSpan.FromDays(1), combinedToken.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Log.Information("Backup service shutting down gracefully after completing backup");
+                            break;
+                        }
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        Log.Error(ex, "Error during database backup process");
+                        
+                        // Only retry if not shutting down
+                        if (!combinedToken.Token.IsCancellationRequested)
+                        {
+                            try
+                            {
+                                await Task.Delay(TimeSpan.FromMinutes(30), combinedToken.Token);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                Log.Information("Backup service shutting down after error");
+                                break;
+                            }
+                        }
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "UserID: N/A, Category: System, Description: Error during database backup process");
-                    Log.Information("This is normal for right now; configure implementation to end task normally later; server doesn't really need that anyway");
-                    await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken); //Retry after 30 mins
-                }
+            }
+            finally
+            {
+                // Cleanup any resources
+                _emergencyStopToken.Dispose();
             }
         }
 
@@ -109,7 +136,8 @@ namespace Backend_Server.Services
                 }
             };
             
-            await connection.OpenAsync();
+            //Uneeded since connection stays open long enough for reconnection...
+            //await connection.OpenAsync();
             
             // This is to handle datetime conversions, since some data in database includes DateOnly
             await using var sessionCmd = new MySqlCommand(@"

@@ -1,83 +1,69 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
-import path from 'path'
-const API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'http://localhost:5000'  // prod url
-  : 'http://localhost:5041'; // dev url
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react-swc';
+import path from 'path';
 
-// https://vitejs.dev/config/
+const API_BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'http://localhost:5000'  // Production URL
+  : 'http://localhost:5041'; // Development URL
+
 export default defineConfig({
-  plugins: [
-    react()
-  ],
+  plugins: [react()],
   server: {
     port: 5173,
     proxy: {
       '/api': {
         target: API_BASE_URL,
         changeOrigin: true,
-        secure: process.env.NODE_ENV === 'production', // Secure proxy only in production
+        secure: true,
       }
-    }
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'), // Simplifies imports with '@' prefix
     }
   },
   build: {
     outDir: path.resolve(__dirname, '../Backend_Server/wwwroot'),
     emptyOutDir: true,
     assetsDir: 'assets',
-    sourcemap: process.env.NODE_ENV !== 'production', // Only generate source maps in development
-    minify: 'esbuild', // Faster minification
+    sourcemap: false, // Disable source maps for production to reduce build size
+    minify: 'esbuild', // Use faster minifier
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            // Specific chunks for commonly used MUI components
-            if (id.includes('@mui/material/Button')) {
-              return 'mui-button';
-            }
-            if (id.includes('@mui/material/Card')) {
-              return 'mui-card';
-            }
-            if (id.includes('@mui/material/Alert')) {
-              return 'mui-alert';
-            }
-            if (id.includes('@mui/material/Typography')) {
-              return 'mui-typography';
-            }
-            if (id.includes('@mui/material/Grid')) {
-              return 'mui-grid';
-            }
-            if (id.includes('@mui/material/TextField')) {
-              return 'mui-textfield';
-            }
-            if (id.includes('@mui/icons-material')) {
-              return 'mui-icons';
-            }
+        manualChunks: {
+          // Core React libraries
+          vendor: ['react', 'react-dom', 'react-router-dom'],
 
-            // Groups other parts of @mui/material into a base chunk
-            if (id.includes('@mui/material')) {
-              return 'mui-material';
-            }
+          // Core MUI components
+          'mui-core': [
+            '@mui/material/Button',
+            '@mui/material/Card',
+            '@mui/material/Dialog',
+            '@mui/material/Typography',
+            '@mui/material/Input',
+          ],
 
-            // Split other large dependencies
-            if (id.includes('react')) {
-              return 'vendor-react';
-            }
+          // MUI data and visualization
+          'mui-data-visualization': [
+            '@mui/x-charts',
+            '@mui/x-data-grid',
+            '@mui/x-date-pickers',
+          ],
 
-            // Default chunking for all other node_modules
-            return id.toString().split('node_modules/')[1].split('/')[0];
+          // MUI icons
+          'mui-icons': ['@mui/icons-material'],
 
-          }
+          // Utility libraries
+          utilities: ['axios', 'date-fns'],
         },
       },
     },
-    chunkSizeWarningLimit: 500, // Set warning limit for chunk sizes
+    chunkSizeWarningLimit: 500,
   },
   esbuild: {
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [], // Remove console and debugger in production
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+  },
+  optimizeDeps: {
+    include: ["@emotion/react", "@emotion/styled"]
+  },
+  ssr: {
+    noExternal: ["@emotion/react", "@emotion/styled"]
   }
+  
 });

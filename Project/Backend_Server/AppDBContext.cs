@@ -2,6 +2,7 @@ using System;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore;
 using Backend_Server.Models;
+using Backend_Server.Models.DTO;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 
@@ -9,6 +10,9 @@ namespace Backend_Server
 {
     public class AppDBContext(DbContextOptions<AppDBContext> options) : IdentityDbContext<Users, IdentityRole<int>, int>(options)
     {
+        //As a note; change these to required once everything is finalized. It WILL break if changed now...
+        //Keep this as a note later; if nothing happens if someone else makes them required, then continue
+        //Otherwise, wait till Saturday/Sunday and delete these comments
         public DbSet<About> About { get; set; }
         public DbSet<Sponsors> Sponsors { get; set; }
         public DbSet<Drivers> Drivers { get; set; }
@@ -16,15 +20,29 @@ namespace Backend_Server
         public DbSet<Purchases> Purchases { get; set; }
         public DbSet<PointTransactions> PointTransactions { get; set; }
         public DbSet<DriverApplications> DriverApplications { get; set; }
-        public DbSet<AuditLog> AuditLog { get; set; }
-        //public DbSet<Permissions> Permissions { get; set; }
+        public DbSet<AuditLogs> AuditLogs { get; set; }
         public DbSet<Admins> Admins { get; set; }
         public DbSet<SponsorDrivers> SponsorDrivers { get; set; }
         public DbSet<FeedbackForms> FeedbackForms { get; set; }
+        public DbSet<SponsorUsers> SponsorUsers { get; set;} 
+        // for the procedure calls
+        public DbSet<DrSalesSummary> DrSalesSummaries { get; set; }
+        public DbSet<SalesDetail> SalesDetails { get; set; }
+        public DbSet<InvoiceDetail> InvoiceDetails { get; set; }
+        public DbSet<DriverPoints> DriverPoints { get; set; }
+        public DbSet<SpSalesSummary> SpSalesSummaries { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+             // breaks if not here rn
+            modelBuilder.Entity<DrSalesSummary>().HasNoKey();
+            modelBuilder.Entity<SalesDetail>().HasNoKey();
+            modelBuilder.Entity<InvoiceDetail>().HasNoKey();
+            modelBuilder.Entity<DriverPoints>().HasNoKey();
+            modelBuilder.Entity<AuditLog>().HasNoKey();
+            modelBuilder.Entity<SpSalesSummary>().HasNoKey();
 
             modelBuilder.Entity<Users>(entity =>
             {
@@ -96,13 +114,14 @@ namespace Backend_Server
                 entity.HasOne<Users>()
                     .WithMany()
                     .HasForeignKey(d => d.UserID);
-
-                // entity.HasOne<Sponsors>()
-                //     .WithMany()
-                //     .HasForeignKey(d => d.SponsorID);
-
-                // entity.Property(e => e.TotalPoints)
-                //     .HasDefaultValue(0);
+                
+                entity.Property(e => e.FirstName)
+                    //.IsRequired() uncomment once fully injected
+                    .HasMaxLength(50);
+                
+                entity.Property(e => e.LastName)
+                    //.IsRequired() same here...
+                    .HasMaxLength(50);
             });
 
             modelBuilder.Entity<Products>(entity =>
@@ -137,7 +156,15 @@ namespace Backend_Server
 
                 entity.HasOne<Users>()
                     .WithMany()
-                    .HasForeignKey(d => d.UserID);
+                    .HasForeignKey(d => d.SponsorID);
+
+                entity.HasOne(p => p.Driver)
+                    .WithMany()
+                    .HasForeignKey("DriverID");  // Explicitly use DriverID instead of DriverUserID the context is seeing still
+
+                entity.HasOne(p => p.Product)
+                    .WithMany()
+                    .HasForeignKey("ProductID");
 
                 entity.Property(e => e.PointsSpent)
                     .IsRequired();
@@ -207,9 +234,9 @@ namespace Backend_Server
                     .HasDefaultValue(string.Empty);
             });
 
-            modelBuilder.Entity<AuditLog>(entity =>
+            modelBuilder.Entity<AuditLogs>(entity =>
             {
-                entity.ToTable("AuditLog");
+                entity.ToTable("AuditLogs");
 
                 entity.HasKey(e => e.LogID);
 
@@ -229,19 +256,6 @@ namespace Backend_Server
                     .HasDefaultValueSql("CURRENT_TIMESTAMP")
                     .HasColumnType("TIMESTAMP");
             });
-
-            // modelBuilder.Entity<Permissions>(entity =>
-            // {
-            //     entity.ToTable("Permissions");
-
-            //     entity.HasKey(e => e.PermissionID);
-
-            //     entity.Property(d => d.Role)
-            //         .IsRequired();
-
-            //     entity.Property(d => d.Permission)
-            //         .HasConversion<string>();
-            // });
 
             modelBuilder.Entity<Admins>(entity =>
             {
@@ -294,6 +308,36 @@ namespace Backend_Server
                 entity.Property(e => e.SubmissionDate)
                     .HasColumnType("TIMESTAMP")
                     .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            modelBuilder.Entity<SponsorUsers>(entity => 
+            {
+                entity.ToTable("SponsorUsers");
+
+                entity.HasKey(su => new { su.SponsorID, su.UserID });
+
+                entity.Property(su => su.IsPrimarySponsor)
+                    .HasDefaultValue(false);
+
+                entity.Property(su => su.JoinDate)
+                    .HasColumnType("TIMESTAMP")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.Property(su => su.SponsorRole)
+                    .HasConversion<string>()
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .HasDefaultValue(SponsorRole.Standard);
+
+                entity.HasOne(su => su.User)
+                    .WithMany(u => u.SponsorUsers)
+                    .HasForeignKey(su => su.UserID);
+                
+                entity.HasOne(su => su.Sponsor)
+                    .WithMany(s => s.SponsorUsers)
+                    .HasForeignKey(su => su.SponsorID);
+
+                entity.HasIndex(su => new { su.SponsorID, su.IsPrimarySponsor});
             });
         }
     }

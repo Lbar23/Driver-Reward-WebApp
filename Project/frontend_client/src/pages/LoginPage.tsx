@@ -45,7 +45,7 @@ const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await axios.post('/api/user/login', { username, password });
+      const response = await axios.post('/api/system/login', { username, password });
 
       if (response.data.requiresTwoFactor) {
         setStep('2fa');
@@ -71,7 +71,7 @@ const LoginPage: React.FC = () => {
 
     try {
       const response = await axios.post(
-        '/api/user/verify-2fa',
+        '/api/system/verify-2fa',
         { userId: String(userId), code: twoFactorCode },
         { withCredentials: true }
       );

@@ -82,11 +82,12 @@ namespace Backend_Server.Services
 
             var content = await response.Content.ReadAsStringAsync();
             var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
-            // _logger.LogInformation("eBay API response: {ResponseContent}", content);
+            _logger.LogInformation("eBay API response: {ResponseContent}", content);
 
 
             return productResponse?.ItemSummaries?.ConvertAll(item => new Product
             {
+                ProductID = Math.Abs(item.ItemId.GetHashCode()),
                 Name = item.Title.ToString(),
                 ImageUrl = item.Image.ImageUrl,
                 Price = $"{item.Price.Value} {item.Price.Currency}"
@@ -96,6 +97,7 @@ namespace Backend_Server.Services
         // Model classes
         public class Product
         {
+            public int ProductID { get; set; }
             public required string Name { get; set; }
             public required string ImageUrl { get; set; }
             public required string Price { get; set; }
@@ -118,6 +120,9 @@ namespace Backend_Server.Services
 
         public class ItemSummary
         {
+            [JsonProperty("itemId")]
+            public required string ItemId { get; set; }
+
             [JsonProperty("title")]
             public required string Title { get; set; }
 

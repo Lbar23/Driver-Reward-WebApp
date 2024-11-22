@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, List, ListItem, ListItemText,
+  Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText,
   Container,
   Typography,
   Card,
@@ -17,9 +17,12 @@ import {
   Snackbar
 } from '@mui/material';
 import axios, { AxiosResponse } from 'axios';
+import { useNavigate } from 'react-router-dom';
 import OverviewItem from '../components/layout/OverviewItem';
 
 interface Listing {
+  id: number;
+  productId: number;
   name: string;
   price: string;
   imageUrl: string;
@@ -40,24 +43,17 @@ const ProductCatalog: React.FC = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [cart, setCart] = useState<Listing[]>([]);
+  const [carts, setCarts] = useState<{ [sponsorId: number]: Listing[] }>({});
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [sponsorPoints, setSponsorPoints] = useState<SponsorPoints[]>([]);
   const [selectedSponsorId, setSelectedSponsorId] = useState<number | ''>('');
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
+  const history = useNavigate();
 
   useEffect(() => {
     fetchSponsorPoints();
   }, []);
-
-  const addToCart = (item: Listing) => {
-    setCart((prevCart) => [...prevCart, item]);
-  };
-
-  const openCart = () => setIsCartOpen(true);
-  const closeCart = () => setIsCartOpen(false);
-  const clearCart = () => setCart([]);
 
   useEffect(() => {
     const cachedData = localStorage.getItem(CACHE_KEY);
@@ -87,11 +83,16 @@ const ProductCatalog: React.FC = () => {
 
   const fetchListings = async () => {
     try {
-      const response: AxiosResponse<Listing[]> = await axios.get('/api/catalog/products');
+      const response: AxiosResponse<any[]> = await axios.get('/api/catalog/products');
       const listingsWithPoints = response.data.map(listing => ({
-        ...listing,
+        id: listing.productID,        //Map from API response
+        productId: listing.productID, //Add both formats for compatibility
+        name: listing.name,
+        price: listing.price,
+        imageUrl: listing.imageUrl,
         pointCost: calculatePointCost(listing.price)
       }));
+      console.log('Processed listings:', listingsWithPoints); //My logging purposes
       setListings(listingsWithPoints);
       localStorage.setItem(CACHE_KEY, JSON.stringify({ 
         listings: listingsWithPoints, 
@@ -112,20 +113,80 @@ const ProductCatalog: React.FC = () => {
     return Math.ceil(numericPrice / selectedSponsor.pointDollarValue);
   };
 
-  const handlePurchase = (listing: Listing) => {
+  const handlePurchase = async (listing: Listing) => {
     const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
     if (!selectedSponsor || !listing.pointCost) return;
 
-    if (selectedSponsor.totalPoints < listing.pointCost) {
+    if (selectedSponsor.totalPoints < calculatePointCost(listing.price)) {
       setSnackbarMessage(`Not enough points! You need ${listing.pointCost} points but have ${selectedSponsor.totalPoints}`);
     } 
     setShowSnackbar(true);
+
+    try {
+      // First add to cart
+      addToCart(listing);
+
+      //Remove this later
+      const response = await axios.post('/api/driver/purchase', {
+        SponsorID: selectedSponsorId,
+        ProductID: listing.productId,
+        PointsSpent: listing.pointCost
+      });
+      
+      //Not updating the catalog dynamically...might just have to do a raw sql or add another function instead
+      setSponsorPoints(response.data.remainingPoints);
+      
+    } catch (error) {
+      setSnackbarMessage('Failed to update points');
+      setShowSnackbar(true);
+    }
+
   };
 
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
+  const getCurrentCart = () => carts[selectedSponsorId] || [];
+
+  const addToCart = (item: Listing) => {
+    if (typeof selectedSponsorId !== 'number') return;
+    
+    setCarts((prevCarts) => ({
+      ...prevCarts,
+      [selectedSponsorId]: [
+        ...(prevCarts[selectedSponsorId] || []),
+        {
+          ...item,
+          productId: item.id  // Ensure productId is set
+        }
+      ],
+    }));
+  };
+  const openCart = () => setIsCartOpen(true);
+  const closeCart = () => setIsCartOpen(false);
+  const clearCart = () => {
+    setCarts((prevCarts) => ({
+      ...prevCarts,
+      [selectedSponsorId]: [],
+    }));
+  };
+
+  const goToOrderPage = async () => {
+    const currentCart = getCurrentCart();
+
+    history('/order', {
+      state: { 
+        cartItems: currentCart,
+        sponsorId: selectedSponsorId, 
+        points: selectedSponsor?.totalPoints, 
+        pointValue: selectedSponsor?.pointDollarValue 
+      }
+    });
+    closeCart();
+  };
+
+  
 
   return (
     <>
@@ -187,7 +248,7 @@ const ProductCatalog: React.FC = () => {
                 <OverviewItem title="Price" value={listing.price} />
                 <OverviewItem 
                   title="Point Cost" 
-                  value={`${listing.pointCost?.toLocaleString() || 0} points`} 
+                  value={ calculatePointCost(listing.price).toLocaleString() } 
                 />
                 <Button
                   fullWidth
@@ -195,9 +256,9 @@ const ProductCatalog: React.FC = () => {
                   color="primary"
                   onClick={() => {
                     handlePurchase(listing);
-                    addToCart(listing);
+                    if (!(!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints))
+                      addToCart(listing);
                   }}
-                  disabled={!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints}
                   sx={{ mt: 2 }}
                 >
                   Add to Cart
@@ -215,24 +276,30 @@ const ProductCatalog: React.FC = () => {
         />
 
         {/* Cart and Clear Cart Buttons Below Cards */}
-        <Box display="flex" justifyContent="center" flexDirection="column" alignItems="center" mt={4} gap={2}>
-            <Button variant="contained" color="secondary" onClick={openCart}>
-              View Cart
-            </Button>
-            <Button variant="outlined" color="error" onClick={clearCart}>
-              Clear Cart
-            </Button>
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 80,
+            right: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
+          <Button variant="contained" color="secondary" onClick={openCart}>
+            View Cart
+          </Button>
         </Box>
       </Container>
 
       <Dialog open={isCartOpen} onClose={closeCart}>
         <DialogTitle>Your Cart</DialogTitle>
         <DialogContent>
-          {cart.length > 0 ? (
+          {getCurrentCart().length > 0 ? (
             <List>
-              {cart.map((item, index) => (
+              {getCurrentCart().map((item, index) => (
                 <ListItem key={index}>
-                  <ListItemText primary={item.name} secondary={`Price: ${parseFloat(item.pointCost).toFixed(2)}`} />
+                  <ListItemText primary={item.name} secondary={`Price: ${calculatePointCost(item.price).toLocaleString()}`} />
                 </ListItem>
               ))}
             </List>
@@ -240,6 +307,19 @@ const ProductCatalog: React.FC = () => {
             <Typography variant="body1">Your cart is empty.</Typography>
           )}
         </DialogContent>
+        <DialogActions>
+          <Button onClick={clearCart} color="error">
+            Clear Cart
+          </Button>
+          <Button 
+            onClick={goToOrderPage} 
+            color="primary" 
+            variant="contained" 
+            disabled={getCurrentCart().length === 0}
+          >
+            Proceed to Checkout
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   );
