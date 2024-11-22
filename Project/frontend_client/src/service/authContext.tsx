@@ -148,7 +148,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     // Check if userType is null
     if (!user || !user.userType) {
-      sessionStorage.clear();
       setViewRole(null);
       setIsAuthenticated(false);
       console.warn('User type is already null. Skipping logout process.');

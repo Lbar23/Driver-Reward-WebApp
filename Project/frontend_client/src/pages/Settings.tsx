@@ -9,26 +9,21 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  SelectChangeEvent,
-  FormControlLabel,
   Tooltip,
   Button,
   Collapse,
   Switch,
+  SelectChangeEvent,
 } from '@mui/material';
 import Grid2 from '@mui/material/Grid2';
 import { useAuth } from '../service/authContext';
 import { useAppTheme } from '../components/layout/AppTheme';
-import { getAccessibilityTokens } from '../theme/themePrimitives';
 import Section from '../components/form-elements/Section';
 
 const Settings: React.FC = () => {
   const { notifySettings, updateNotifySetting, user } = useAuth();
   const [showPreferences, setShowPreferences] = useState(false);
-  const { fontSize, setFontSize, accessibleTokens, setAccessibleTokens } = useAppTheme();
-  const [selectedProfile, setSelectedProfile] = useState<string>('default'); // Default accessibility token
-
-
+  const { fontSize, setFontSize, accessibilityProfile, setAccessibilityProfile } = useAppTheme();
 
   const handleTogglePreferences = () => {
     setShowPreferences((prev) => !prev);
@@ -40,13 +35,10 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleProfileChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+  const handleProfileChange = (event: SelectChangeEvent<string>) => {
     const profileKey = event.target.value as string;
-    setSelectedProfile(profileKey);
-    setAccessibleTokens(getAccessibilityTokens(profileKey)); // Fetch and apply the token dynamically
+    setAccessibilityProfile(profileKey);// Dynamically fetch and apply the token
   };
-
-
 
   return (
     <Box sx={{ width: '100%', maxWidth: 600, margin: 'auto' }}>
@@ -80,7 +72,6 @@ const Settings: React.FC = () => {
           <CardContent>
             <Grid2 container spacing={2}>
               {Object.keys(notifySettings).map((key) => {
-                // Display "applicationApproved" and "orderIssue" only for Driver role
                 if (
                   (key === 'applicationApproved' || key === 'orderIssue') &&
                   user?.userType !== 'Driver'
@@ -96,28 +87,23 @@ const Settings: React.FC = () => {
                           ? 'This setting cannot be disabled.'
                           : ''
                       }
-                      placement="top"
-                    >
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={notifySettings[key as keyof typeof notifySettings]}
-                            onChange={() =>
-                              updateNotifySetting(
-                                key as keyof typeof notifySettings,
-                                !notifySettings[key as keyof typeof notifySettings]
-                              )
-                            }
-                            disabled={key === 'systemDrop' || key === 'applicationApproved'}
-                            color="primary"
-                          />
-                        }
-                        label={
-                          <Typography variant="body2">
-                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}
-                          </Typography>
-                        }
-                      />
+                      placement="top">
+                      <>
+                        <Switch
+                          checked={notifySettings[key as keyof typeof notifySettings]}
+                          onChange={() =>
+                            updateNotifySetting(
+                              key as keyof typeof notifySettings,
+                              !notifySettings[key as keyof typeof notifySettings]
+                            )
+                          }
+                          disabled={key === 'systemDrop' || key === 'applicationApproved'}
+                          color="primary"
+                        />
+                        <Typography variant="body2">
+                          {key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}
+                        </Typography>
+                        </>
                     </Tooltip>
                   </Grid2>
                 );
@@ -127,8 +113,8 @@ const Settings: React.FC = () => {
         </Card>
       </Collapse>
 
-       {/* Accessibility Settings */}
-       <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 3 }}>
+      {/* Accessibility Settings */}
+      <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 3 }}>
         Accessibility
       </Typography>
       <Card variant="outlined" sx={{ mt: 2 }}>
@@ -155,14 +141,16 @@ const Settings: React.FC = () => {
             <InputLabel id="accessibility-profile-select-label">Accessibility Profile</InputLabel>
             <Select
               labelId="accessibility-profile-select-label"
-              value={selectedProfile}
+              value={accessibilityProfile}
               onChange={handleProfileChange}
             >
-              {['default', 'highContrast', 'colorBlind', 'monochrome'].map((profileKey) => (
-                <MenuItem value={profileKey} key={profileKey}>
-                  {profileKey.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}
-                </MenuItem>
-              ))}
+              {['default', 'highContrast', 'RGColorblind', 'BYColorblind', 'monochrome'].map(
+                (profileKey) => (
+                  <MenuItem value={profileKey} key={profileKey}>
+                    {profileKey.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}
+                  </MenuItem>
+                )
+              )}
             </Select>
           </FormControl>
         </CardContent>
