@@ -433,9 +433,8 @@ namespace Backend_Server.Controllers
                 {
                     product = new Products
                     {
-                        ProductID = purchaseRequest.ProductID,
-                        Name = "External Product",
-                        Description = "Product from external catalog",
+                        Name = "External Product", // change to actual product b=name
+                        Description = "Product from external catalog", // same for description
                         PriceInPoints = purchaseRequest.PointsSpent,
                         ExternalID = purchaseRequest.ProductID.ToString(),
                         Availability = true,

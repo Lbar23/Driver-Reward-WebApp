@@ -11,6 +11,7 @@ import {
 import axios from "axios";
 import CustomDateRangePicker from "../form-elements/CustomDatePicker";
 import ReportChart from "./ReportChart";
+import { useAuth } from "../../service/authContext";
 
 interface Driver {
   userID: number;
@@ -18,11 +19,12 @@ interface Driver {
 }
 
 const SponsorReports: React.FC = () => {
+  const { user, isLoading, isAuthenticated } = useAuth();
   const [filters, setFilters] = useState({
-    reportType: "driver-points" as "driver-points" | "audit-log",
+    viewType: "summary" as "summary" | "detail",
+    reportType: "driver-points" as "driver-points",
     selectedDriver: null as number | null,
     dateRange: [null, null] as [Date | null, Date | null],
-    auditCategory: null as string | null,
   });
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [reports, setReports] = useState<any[]>([]);
@@ -30,39 +32,44 @@ const SponsorReports: React.FC = () => {
 
   // Fetch drivers on mount
   useEffect(() => {
+    if (!user?.sponsorDetails?.sponsorID || isLoading || !isAuthenticated) return;
+
     const fetchDrivers = async () => {
       try {
-        const response = await axios.get<Driver[]>("/api/sponsor/drivers");
+        const response = await axios.get<Driver[]>(`/api/sponsor/drivers`, {
+          params: { sponsorID: user.sponsorDetails?.sponsorID },
+        });
         setDrivers(response.data);
       } catch (error) {
         console.error("Error fetching drivers:", error);
         setError("Failed to fetch drivers. Please try again later.");
       }
     };
+
     fetchDrivers();
-  }, []);
+  }, [user, isLoading, isAuthenticated]);
 
   // Fetch reports only when "Fetch Reports" button is clicked
   const fetchReports = async () => {
+    if (!user?.sponsorDetails?.sponsorID) {
+      setError("Sponsor details are missing.");
+      return;
+    }
+
     try {
       setError(null);
 
-      const endpoint =
-        filters.reportType === "audit-log"
-          ? "/api/reports/audit-log"
-          : "/api/reports/driver-points";
-
+      const endpoint = "/api/reports/driver-points";
       const [startDate, endDate] = filters.dateRange;
 
       const params: any = {
+        sponsorID: user.sponsorDetails.sponsorID,
         startDate: startDate ? startDate.toISOString().split("T")[0] : "",
         endDate: endDate ? endDate.toISOString().split("T")[0] : "",
       };
 
       if (filters.reportType === "driver-points") {
-        params.selectedDriver = filters.selectedDriver;
-      } else if (filters.reportType === "audit-log") {
-        params.category = filters.auditCategory;
+        params.driverID = filters.selectedDriver;
       }
 
       const response = await axios.get(endpoint, { params });
@@ -73,10 +80,121 @@ const SponsorReports: React.FC = () => {
     }
   };
 
+  // Format data for ReportChart
+  const getChartData = () => {
+    if (filters.viewType === "summary") {
+      // (Ideal)Summary format - Each bar/pie slice corresponds to a driver with total points
+      return reports.map((item: any) => ({
+        category: item.driverName,
+        value: item.totalPoints,
+      }));
+    } else if (filters.viewType === "detail") {
+      // (Ideal)Detailed format - Stacks for bar chart, grouped by transaction date
+      // Ideal bc some db changes need to happen for reports to be proper...
+      return reports.map((item: any) => ({
+        category: item.driverName,
+        group: item.transactionDate,
+        value: item.pointsChanged,
+      }));
+    }
+    return [];
+  };
+
+  
+
+  const exportCsv = async () => {
+    if (!user?.sponsorDetails?.sponsorID) {
+        setError("Sponsor details are missing.");
+        return;
+    }
+
+    try {
+        const [startDate, endDate] = filters.dateRange;
+
+        const exportData = {
+            reportType: filters.reportType,
+            metadata: {
+                Sponsor: user.sponsorDetails.companyName,
+                StartDate: startDate ? startDate.toISOString().split("T")[0] : "N/A",
+                EndDate: endDate ? endDate.toISOString().split("T")[0] : "N/A",
+                SelectedDriver: filters.selectedDriver
+                    ? drivers.find((d) => d.userID === filters.selectedDriver)?.name || "All Drivers"
+                    : "All Drivers",
+            },
+            data: reports,
+        };
+
+        const response = await axios.post(`/api/reports/export-csv`, exportData, {
+            responseType: "blob",
+        });
+
+        const blob = new Blob([response.data], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${filters.reportType}_report.csv`;
+        link.click();
+    } catch (error) {
+        console.error("Error exporting CSV:", error);
+        setError("Failed to export CSV. Please try again later.");
+    }
+};
+
+
+  const exportPdf = async () => {
+    if (!user?.sponsorDetails?.companyName) {
+      setError("Sponsor details are missing.");
+      return;
+    }
+
+    try {
+      const [startDate, endDate] = filters.dateRange;
+
+      const exportData = {
+        reportType: filters.reportType,
+        metadata: {
+          Sponsor: user.sponsorDetails.companyName,
+          StartDate: startDate ? startDate.toISOString().split("T")[0] : "N/A",
+          EndDate: endDate ? endDate.toISOString().split("T")[0] : "N/A",
+          SelectedDriver: filters.selectedDriver
+            ? drivers.find((d) => d.userID === filters.selectedDriver)?.name || "All Drivers"
+            : "All Drivers",
+        },
+        data: reports,
+      };
+
+      const response = await axios.post(`/api/reports/export-pdf`, exportData, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${filters.reportType}_report.pdf`;
+      link.click();
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      setError("Failed to export PDF. Please try again later.");
+    }
+  };
+
+  if (isLoading) {
+    return <Typography>Loading sponsor details...</Typography>;
+  }
+
+  if (!isAuthenticated || !user?.sponsorDetails) {
+    return (
+      <Typography color="error">
+        Sponsor details are missing or user is not authenticated.
+      </Typography>
+    );
+  }
+
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Sponsor Reports
+        Sponsor Reports ({user.sponsorDetails.companyName})
       </Typography>
 
       {/* Filters */}
@@ -89,70 +207,43 @@ const SponsorReports: React.FC = () => {
           mb: 3,
         }}
       >
-        {/* Report Type */}
+        {/* View Type */}
         <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Report Type</InputLabel>
+          <InputLabel>View Type</InputLabel>
           <Select
-            value={filters.reportType}
+            value={filters.viewType}
             onChange={(e) =>
               setFilters((prev) => ({
                 ...prev,
-                reportType: e.target.value as "driver-points" | "audit-log",
+                viewType: e.target.value as "summary" | "detail",
               }))
             }
           >
-            <MenuItem value="driver-points">Driver Point Tracking</MenuItem>
-            <MenuItem value="audit-log">Audit Log</MenuItem>
+            <MenuItem value="summary">Summary</MenuItem>
+            <MenuItem value="detail">Detailed</MenuItem>
           </Select>
         </FormControl>
 
-        {/* Driver Dropdown (for Driver Point Tracking) */}
-        {filters.reportType === "driver-points" && (
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel>Select Driver</InputLabel>
-            <Select
-              value={filters.selectedDriver || ""}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  selectedDriver: e.target.value ? Number(e.target.value) : null,
-                }))
-              }
-            >
-              <MenuItem value="">All Drivers</MenuItem>
-              {drivers.length > 0 ? (
-                drivers.map((driver) => (
-                  <MenuItem key={driver.userID} value={driver.userID}>
-                    {driver.name}
-                  </MenuItem>
-                ))
-              ) : (
-                <MenuItem disabled>No drivers available</MenuItem>
-              )}
-            </Select>
-          </FormControl>
-        )}
-
-        {/* Audit Log Category (for Audit Log) */}
-        {filters.reportType === "audit-log" && (
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel>Audit Log Category</InputLabel>
-            <Select
-              value={filters.auditCategory || ""}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  auditCategory: e.target.value || null,
-                }))
-              }
-            >
-              <MenuItem value="">All Categories</MenuItem>
-              <MenuItem value="User">User</MenuItem>
-              <MenuItem value="System">System</MenuItem>
-              <MenuItem value="Transaction">Transaction</MenuItem>
-            </Select>
-          </FormControl>
-        )}
+        {/* Driver Dropdown */}
+        <FormControl sx={{ minWidth: 200 }}>
+          <InputLabel>Select Driver</InputLabel>
+          <Select
+            value={filters.selectedDriver || ""}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                selectedDriver: e.target.value ? Number(e.target.value) : null,
+              }))
+            }
+          >
+            <MenuItem value="">All Drivers</MenuItem>
+            {drivers.map((driver) => (
+              <MenuItem key={driver.userID} value={driver.userID}>
+                {driver.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
       {/* Custom Date Range Picker */}
@@ -168,71 +259,34 @@ const SponsorReports: React.FC = () => {
         />
       </Box>
 
-      {/* Fetch Button */}
-      <Button variant="contained" onClick={fetchReports}>
-        Fetch Reports
-      </Button>
+      {/* Action Buttons */}
+      <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
+        <Button variant="contained" onClick={fetchReports}>
+          Fetch Reports
+        </Button>
+        <Button variant="outlined" onClick={exportCsv}>
+          Export CSV
+        </Button>
+        <Button variant="outlined" onClick={exportPdf}>
+          Export PDF
+        </Button>
+      </Box>
 
       {/* Report Chart */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h5" gutterBottom>
           Report Chart
         </Typography>
-        {filters.dateRange[0] && filters.dateRange[1] && filters.reportType === "driver-points" && (
-          <ReportChart
-            reportType="points"
-            viewType="detailed"
-            selectedDriver={filters.selectedDriver || "all"}
-            dateRange={filters.dateRange}
-          />
-        )}
-      </Box>
-
-      {/* Report Results */}
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          Report Results
-        </Typography>
-        {error && <Typography color="error">{error}</Typography>}
-        {Array.isArray(reports) && reports.length > 0 ? (
-          <Box component="table" sx={{ width: "100%", borderCollapse: "collapse" }}>
-            <Box component="thead">
-              <Box component="tr">
-                {Object.keys(reports[0]).map((key) => (
-                  <Box
-                    component="th"
-                    key={key}
-                    sx={{
-                      border: "1px solid",
-                      padding: "8px",
-                      textAlign: "left",
-                      backgroundColor: "lightgray",
-                    }}
-                  >
-                    {key}
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-            <Box component="tbody">
-              {reports.map((report, index) => (
-                <Box component="tr" key={index}>
-                  {Object.values(report).map((value, idx) => (
-                    <Box
-                      component="td"
-                      key={idx}
-                      sx={{ border: "1px solid", padding: "8px" }}
-                    >
-                      {value !== null && value !== undefined ? value.toString() : "N/A"}
-                    </Box>
-                  ))}
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        ) : (
-          !error && <Typography>No data available for the selected report type.</Typography>
-        )}
+        <ReportChart
+          chartType="bar"
+          title={
+            filters.viewType === "summary"
+              ? "Driver Points (Summary)"
+              : "Driver Points (Detailed)"
+          }
+          viewType={filters.viewType}
+          data={getChartData()}
+        />
       </Box>
     </Box>
   );
