@@ -37,14 +37,16 @@ const Order: React.FC = () => {
         // Create a purchase request for each item
         const purchasePromises = cartItems.map(item => {
           const pointsForItem = Math.ceil(parseFloat(item.price.split(' ')[0]) / pointValue);
-          
+        
           return axios.post('/api/driver/purchase', {
             SponsorID: sponsorId,
             ProductID: item.productID || item.productId, // Use productId from cart item
-            PointsSpent: pointsForItem
+            PointsSpent: pointsForItem,
+            ProductName: item.name
           });
         });
 
+        
         await Promise.all(purchasePromises);
         setOrderCompleted(true);
       } catch (err: any) {
