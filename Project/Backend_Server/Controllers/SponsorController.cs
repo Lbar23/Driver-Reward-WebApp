@@ -265,6 +265,7 @@ namespace Backend_Server.Controllers
             }
             catch (Exception ex)
             {
+                Log.Error(ex, "Error occurred while updating point value");
                 return StatusCode(500, "An error occurred while updating point value");
             }
         }
@@ -353,14 +354,10 @@ namespace Backend_Server.Controllers
             }
             catch (Exception ex)
             {
+                Log.Error(ex, "Error occurred while retrieving point ratio");
                 return StatusCode(500, "An error occurred while retrieving point ratio");
             }
         }
-        // [HttpGet("reports")] //Same here as Admin reports...split into smaller async tasks
-        // public async Task<IActionResult> GetReports()
-        // {
-        //     return Ok();
-        // }
 
         // [HttpGet("products")]
         // public async Task<IActionResult> GetProducts()
@@ -373,15 +370,6 @@ namespace Backend_Server.Controllers
         // {
         //     return Ok();
         // }
-
-
-    public record DriverListDto
-    {
-        public int UserID { get; init; }
-        public string? Name { get; init; }
-        public string? Email { get; init; }
-        public int TotalPoints { get; init; }
-        // public string? City { get; init; }
-        // public string? State { get; init; }
+        
     }
-}}
+}

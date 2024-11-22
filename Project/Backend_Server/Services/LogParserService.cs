@@ -2,7 +2,6 @@
 using System.Text.RegularExpressions;
 using Backend_Server.Infrastructure;
 using Backend_Server.Models;
-using MySql.Data.MySqlClient;
 
 namespace Backend_Server.Services
 {
