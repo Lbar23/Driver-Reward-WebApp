@@ -12,6 +12,7 @@ using Amazon.Extensions.NETCore.Setup;
 using Serilog;
 using Amazon.S3;
 using Serilog.Events;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,6 +40,10 @@ try {
     builder.Services.AddSingleton<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
 
+    builder.Services.AddSignalR();
+    builder.Services.AddHealthChecks()
+        .AddCheck("SignalR", () => HealthCheckResult.Healthy());
+
     //Service for handling Logging more efficiently with custom services or methods relating to DB Connection
     builder.Services.AddLogging(configure => {
         configure.AddConsole();
@@ -60,12 +65,13 @@ try {
     });
 
     // CORS setup
+    // But CORS here DOES also need to handle switching between dev and production as well...
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowSpecificOrigins",
             builder =>
             {
-                builder.WithOrigins("BASE_API_URL", "http://localhost:5041")
+                builder.WithOrigins("http://localhost:5173", "http://localhost:5041") //So, found out a bit of an issue...will provide more later
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
@@ -165,8 +171,8 @@ try {
 
     app.UseStaticFiles();
     app.UseSpaStaticFiles();
-    app.UseCors("AllowSpecificOrigins");
     app.UseRouting();
+    app.UseCors("AllowSpecificOrigins");
     app.UseForwardedHeaders(new ForwardedHeadersOptions
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
@@ -175,7 +181,10 @@ try {
     app.UseAuthentication();
     app.UseAuthorization();
 
+    app.MapHub<TerminalHub>("/terminalHub");
     app.MapControllers();
+    app.MapHealthChecks("/health");
+    
 
     //SPA route
     app.UseSpa(spa =>
