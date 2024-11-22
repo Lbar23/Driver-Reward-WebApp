@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { deepmerge } from '@mui/utils';
-import { getDesignTokens, getAccessibilityTokens, colorSchemes } from '../../theme/themePrimitives';
+import { getDesignTokens, getAccessibilityTokens, colorSchemes } from './themePrimitives';
 
 interface AppThemeContextProps {
   fontSize: number;
