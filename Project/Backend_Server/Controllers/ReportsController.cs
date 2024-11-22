@@ -15,6 +15,21 @@ using QuestPDF.Helpers;
 
 namespace Backend_Server.Controllers
 {
+    /// <summary>
+    /// ReportsController:
+    /// 
+    /// This controller handles all report functionalities, including report procedure calls, 
+    ///  audit logs, and file exports.
+    ///
+    /// Endpoints:
+    
+    /// [PUT]   /api/reports/sales-sponsor                  - fetches sponsor sales report data from db procedure
+    /// [GET]   /api/reports/sales-driver                   - fetches driver sales report data from db procedure
+    /// [GET]   /api/reports/invoice                        - fetches invoice report data from db procedure
+    /// [GET]   /api/reports/driver-points                  - fetches driver points activity data from db procedure
+    /// [GET]   /api/reports/audit-logs                     - fetches audit log report data from db procedure [NOT YET - will update]
+    /// [POST]   /api/reports/export-pdf                    - general api for creating a pdf 
+    /// [POST]   /api/reports/export-csv                    - general api for creating a csv
     [ApiController]
     [Route("api/[controller]")]
     public class ReportsController : ControllerBase
@@ -45,28 +60,50 @@ namespace Backend_Server.Controllers
             throw new InvalidOperationException("Max retries exceeded for operation.");
         }
 
+        /// <summary>
+        /// Retrieves sales data by sponsor, either in summary or detailed view.
+        /// </summary>
         [HttpGet("sales-sponsor")]
         public async Task<IActionResult> sp_GetSalesBySponsor(
             [FromQuery] int? sponsorId,
-            [FromQuery] int? driverId,
             [FromQuery] DateTime? startDate,
             [FromQuery] DateTime? endDate,
             [FromQuery] string viewType = "summary")
         {
             try
             {
-                return await ExecuteWithRetryAsync(async () =>
+                return await ExecuteWithRetryAsync<IActionResult>(async () =>
                 {
-                    var result = await _context.Set<SalesSummary>().FromSqlRaw(
-                        "CALL sp_GetSalesBySponsor(@sponsorId, @startDate, @endDate, @viewType)",
-                        new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
-                        new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
-                        new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
-                        new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
-                        new MySqlParameter("@viewType", viewType ?? "summary")
-                    ).ToListAsync();
+                    if (viewType == "summary")
+                    {
+                        // Fetch summary data
+                        var summaryResult = await _context.Set<SpSalesSummary>().FromSqlRaw(
+                            "CALL sp_GetSalesBySponsor(@sponsorId, @startDate, @endDate, @viewType)",
+                            new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
+                            new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
+                            new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
+                            new MySqlParameter("@viewType", viewType)
+                        ).ToListAsync();
 
-                    return Ok(result);
+                        return Ok(summaryResult);
+                    }
+                    else if (viewType == "detail")
+                    {
+                        // Fetch detailed data
+                        var detailedResult = await _context.Set<SalesDetail>().FromSqlRaw(
+                            "CALL sp_GetSalesBySponsor(@sponsorId, @startDate, @endDate, @viewType)",
+                            new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
+                            new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
+                            new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
+                            new MySqlParameter("@viewType", viewType)
+                        ).ToListAsync();
+
+                        return Ok(detailedResult);
+                    }
+                    else
+                    {
+                        return BadRequest("Invalid viewType parameter. Must be 'summary' or 'detailed'.");
+                    }
                 });
             }
             catch (Exception ex)
@@ -76,6 +113,9 @@ namespace Backend_Server.Controllers
             }
         }
 
+        /// <summary>
+        /// Retrieves sales data by driver, either in summary or detailed view.
+        /// </summary>
         [HttpGet("sales-driver")]
         public async Task<IActionResult> sp_GetSalesByDriver(
             [FromQuery] int? sponsorId,
@@ -86,18 +126,39 @@ namespace Backend_Server.Controllers
         {
             try
             {
-                return await ExecuteWithRetryAsync(async () =>
+                return await ExecuteWithRetryAsync<IActionResult>(async () =>
                 {
-                    var result = await _context.Set<SalesDetail>().FromSqlRaw(
-                        "CALL sp_GetSalesByDriver(@sponsorId, @driverId, @startDate, @endDate, @viewType)",
-                        new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
-                        new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
-                        new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
-                        new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
-                        new MySqlParameter("@viewType", viewType ?? "summary")
-                    ).ToListAsync();
+                    if (viewType == "summary")
+                    {
+                        // Fetch summary data
+                        var summaryResult = await _context.Set<DrSalesSummary>().FromSqlRaw(
+                            "CALL sp_GetSalesByDriver(@sponsorId, @driverId, @startDate, @endDate, @viewType)",
+                            new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
+                            new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
+                            new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
+                            new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
+                            new MySqlParameter("@viewType", viewType)
+                        ).ToListAsync();
 
-                    return Ok(result);
+                        return Ok(summaryResult);
+                    }
+                    else if (viewType == "detail")
+                    {
+                        // Fetch detailed data
+                        var detailedResult = await _context.Set<SalesDetail>().FromSqlRaw(
+                            "CALL sp_GetSalesByDriver(@sponsorId, @driverId, @startDate, @endDate, @viewType)",
+                            new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
+                            new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
+                            new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
+                            new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value)
+                        ).ToListAsync();
+
+                        return Ok(detailedResult);
+                    }
+                    else
+                    {
+                        return BadRequest("Invalid viewType parameter. Must be 'summary' or 'detailed'.");
+                    }
                 });
             }
             catch (Exception ex)
@@ -106,6 +167,7 @@ namespace Backend_Server.Controllers
                 return StatusCode(500, "Error fetching data");
             }
         }
+
 
         [HttpGet("invoice")]
         public async Task<IActionResult> GetInvoiceReport(
@@ -163,6 +225,7 @@ namespace Backend_Server.Controllers
             }
         }
 
+        // currently broken rn, dw about it just needs a procedure in db
         [HttpGet("audit-logs")]
         public async Task<IActionResult> GetAuditLogs(
             [FromQuery] int? userId = null,

@@ -10,12 +10,20 @@ namespace Backend_Server.Models.DTO
         public Dictionary<string, string>? Metadata { get; set; }
     }
     [NotMapped]
-    public record SalesSummary(
+    public record DrSalesSummary(
         string? DriverName,        
         string? SponsorName,       
         decimal TotalSales,       
-        int TotalDrivers,         
-        int PurchaseCount        
+        int? TotalDrivers,         
+        int? PurchaseCount        
+    );
+
+    [NotMapped]
+    public record SpSalesSummary(
+        string? SponsorName,       
+        decimal TotalSales,       
+        int? TotalDrivers,         
+        int? PurchaseCount        
     );
 
     [NotMapped]

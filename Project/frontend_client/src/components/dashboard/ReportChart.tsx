@@ -6,7 +6,7 @@ import { Typography, Box } from '@mui/material';
 interface ReportChartProps {
   chartType: 'bar' | 'pie'; // Determines the chart type
   title: string; // Title for the chart
-  viewType: 'summary' | 'detailed'; // Determines the level of details in the chart
+  viewType: 'summary' | 'detail'; // Determines the level of details in the chart
   data: any[]; // Chart data
   categoryKey?: string; // Key for x-axis categories
   valueKey?: string; // Key for y-axis or pie chart values
@@ -25,14 +25,14 @@ interface ReportChartProps {
 
 {/* <ReportChart
   chartType="bar"
-  viewType="detailed"
-  title="Driver Points (Detailed)"
+  viewType="detail"
+  title="Driver Points (Detail)"
   data={[
     { category: 'Driver A', group: 'Category 1', value: 60 },
     { category: 'Driver A', group: 'Category 2', value: 60 },
     { category: 'Driver B', group: 'Category 1', value: 95 },
   ]}
-/> */} // <---- this is the input format expected when calling this component for detailed
+/> */} // <---- this is the input format expected when calling this component for detail
 export default function ReportChart({
   chartType,
   title,
@@ -93,7 +93,7 @@ export default function ReportChart({
       );
     }
 
-    if (viewType === 'detailed') {
+    if (viewType === 'detail') {
       // Detailed: Two-level pie chart
       const groupedData: Record<string, any[]> = {};
       data.forEach((item) => {

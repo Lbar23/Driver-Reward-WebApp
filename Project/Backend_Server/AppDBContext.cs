@@ -26,22 +26,23 @@ namespace Backend_Server
         public DbSet<FeedbackForms> FeedbackForms { get; set; }
         public DbSet<SponsorUsers> SponsorUsers { get; set;} 
         // for the procedure calls
-        public DbSet<SalesSummary> SalesSummaries { get; set; }
+        public DbSet<DrSalesSummary> DrSalesSummaries { get; set; }
         public DbSet<SalesDetail> SalesDetails { get; set; }
         public DbSet<InvoiceDetail> InvoiceDetails { get; set; }
         public DbSet<DriverPoints> DriverPoints { get; set; }
-
+        public DbSet<SpSalesSummary> SpSalesSummaries { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
              // breaks if not here rn
-            modelBuilder.Entity<SalesSummary>().HasNoKey();
+            modelBuilder.Entity<DrSalesSummary>().HasNoKey();
             modelBuilder.Entity<SalesDetail>().HasNoKey();
             modelBuilder.Entity<InvoiceDetail>().HasNoKey();
             modelBuilder.Entity<DriverPoints>().HasNoKey();
             modelBuilder.Entity<AuditLog>().HasNoKey();
+            modelBuilder.Entity<SpSalesSummary>().HasNoKey();
 
             modelBuilder.Entity<Users>(entity =>
             {

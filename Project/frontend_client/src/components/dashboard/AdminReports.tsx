@@ -25,7 +25,7 @@ interface Driver {
 const AdminReports: React.FC = () => {
   const [filters, setFilters] = useState({
     reportType: "sales-sponsor" as "sales-sponsor" | "sales-driver" | "invoice",
-    viewType: "summary" as "summary" | "detailed",
+    viewType: "summary" as "summary" | "detail",
     selectedSponsor: null as number | null,
     selectedDriver: null as number | null,
     dateRange: [null, null] as [Date | null, Date | null],
@@ -234,12 +234,12 @@ const AdminReports: React.FC = () => {
               onChange={(e) =>
                 setFilters((prev) => ({
                   ...prev,
-                  viewType: e.target.value as "summary" | "detailed",
+                  viewType: e.target.value as "summary" | "detail",
                 }))
               }
             >
               <MenuItem value="summary">Summary</MenuItem>
-              <MenuItem value="detailed">Detailed</MenuItem>
+              <MenuItem value="detail">Detailed</MenuItem>
             </Select>
           </FormControl>
         )}

@@ -21,7 +21,7 @@ interface Driver {
 const SponsorReports: React.FC = () => {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [filters, setFilters] = useState({
-    viewType: "summary" as "summary" | "detailed",
+    viewType: "summary" as "summary" | "detail",
     reportType: "driver-points" as "driver-points",
     selectedDriver: null as number | null,
     dateRange: [null, null] as [Date | null, Date | null],
@@ -88,7 +88,7 @@ const SponsorReports: React.FC = () => {
         category: item.driverName,
         value: item.totalPoints,
       }));
-    } else if (filters.viewType === "detailed") {
+    } else if (filters.viewType === "detail") {
       // (Ideal)Detailed format - Stacks for bar chart, grouped by transaction date
       // Ideal bc some db changes need to happen for reports to be proper...
       return reports.map((item: any) => ({
@@ -215,12 +215,12 @@ const SponsorReports: React.FC = () => {
             onChange={(e) =>
               setFilters((prev) => ({
                 ...prev,
-                viewType: e.target.value as "summary" | "detailed",
+                viewType: e.target.value as "summary" | "detail",
               }))
             }
           >
             <MenuItem value="summary">Summary</MenuItem>
-            <MenuItem value="detailed">Detailed</MenuItem>
+            <MenuItem value="detail">Detailed</MenuItem>
           </Select>
         </FormControl>
 
