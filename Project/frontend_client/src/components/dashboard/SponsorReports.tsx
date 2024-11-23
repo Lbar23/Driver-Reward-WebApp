@@ -7,15 +7,51 @@ import {
   MenuItem,
   Select,
   Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Chip
 } from "@mui/material";
 import axios from "axios";
 import CustomDateRangePicker from "../form-elements/CustomDatePicker";
 import ReportChart from "./ReportChart";
 import { useAuth } from "../../service/authContext";
+import { format } from "date-fns";
 
 interface Driver {
   userID: number;
   name: string;
+}
+
+//Added interfaces from AuditLogDashboard
+enum AuditLogCategory {
+  User = 'User',
+  Points = 'Points',
+  Purchase = 'Purchase',
+  Application = 'Application',
+  Product = 'Product',
+  System = 'System'
+}
+
+interface AuditLog {
+  logID: number;
+  timestamp: string;
+  category: AuditLogCategory;
+  userID: number | null;
+  userName: string | null;
+  description: string;
+}
+
+interface AuditLogResponse {
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  logs: AuditLog[];
 }
 
 const SponsorReports: React.FC = () => {
@@ -29,6 +65,24 @@ const SponsorReports: React.FC = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  //New audit log states
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const getCategoryColor = (category: AuditLogCategory): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
+    const colors: Record<AuditLogCategory, "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"> = {
+      [AuditLogCategory.User]: 'primary',
+      [AuditLogCategory.Points]: 'success',
+      [AuditLogCategory.Purchase]: 'info',
+      [AuditLogCategory.Application]: 'warning',
+      [AuditLogCategory.Product]: 'secondary',
+      [AuditLogCategory.System]: 'error'
+    };
+    return colors[category] || 'default';
+  };
 
   // Fetch drivers on mount
   useEffect(() => {
@@ -58,22 +112,51 @@ const SponsorReports: React.FC = () => {
 
     try {
       setError(null);
-
-      const endpoint = "/api/reports/driver-points";
+      
       const [startDate, endDate] = filters.dateRange;
-
-      const params: any = {
-        sponsorID: user.sponsorDetails.sponsorID,
-        startDate: startDate ? startDate.toISOString().split("T")[0] : "",
-        endDate: endDate ? endDate.toISOString().split("T")[0] : "",
-      };
-
-      if (filters.reportType === "driver-points") {
-        params.driverID = filters.selectedDriver;
+  
+      if (filters.reportType === "audit-log") {
+        // Build query parameters for audit logs
+        const params = new URLSearchParams();
+        
+        if (filters.selectedDriver) 
+          params.append('userId', filters.selectedDriver.toString());
+        
+        if (filters.auditCategory) 
+          params.append('category', filters.auditCategory);
+        
+        if (startDate) 
+          params.append('startDate', startDate.toISOString());
+        
+        if (endDate) 
+          params.append('endDate', endDate.toISOString());
+        
+        // Pagination parameters
+        params.append('page', (page + 1).toString());
+        params.append('pageSize', pageSize.toString());
+  
+        // Fetch audit logs - backend handles sponsor vs admin filtering
+        const response = await axios.get<AuditLogResponse>(`/api/reports/audit-logs?${params.toString()}`);
+        setAuditLogs(response.data.logs);
+        setTotalCount(response.data.totalCount);
+        setReports([]); // Clear other report type data
+      } 
+      else if (filters.reportType === "driver-points") {
+        // Original driver-points logic
+        const params: any = {
+          startDate: startDate ? startDate.toISOString().split("T")[0] : "",
+          endDate: endDate ? endDate.toISOString().split("T")[0] : "",
+        };
+  
+        if (filters.selectedDriver) {
+          params.driverId = filters.selectedDriver;
+        }
+  
+        const response = await axios.get('/api/reports/driver-points', { params });
+        setReports(response.data);
+        setAuditLogs([]); // Clear audit logs when viewing driver points
+        setTotalCount(0); // Reset pagination count
       }
-
-      const response = await axios.get(endpoint, { params });
-      setReports(response.data);
     } catch (error) {
       console.error("Error fetching reports:", error);
       setError("Failed to fetch reports. Please try again later.");

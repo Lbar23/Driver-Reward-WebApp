@@ -85,14 +85,13 @@ const ProductCatalog: React.FC = () => {
     try {
       const response: AxiosResponse<any[]> = await axios.get('/api/catalog/products');
       const listingsWithPoints = response.data.map(listing => ({
-        id: listing.productID,        //Map from API response
-        productId: listing.productID, //Add both formats for compatibility
+        id: listing.productID,
+        productId: listing.productID,
         name: listing.name,
         price: listing.price,
         imageUrl: listing.imageUrl,
         pointCost: calculatePointCost(listing.price)
       }));
-      console.log('Processed listings:', listingsWithPoints); //My logging purposes
       setListings(listingsWithPoints);
       localStorage.setItem(CACHE_KEY, JSON.stringify({ 
         listings: listingsWithPoints, 
@@ -113,42 +112,6 @@ const ProductCatalog: React.FC = () => {
     return Math.ceil(numericPrice / selectedSponsor.pointDollarValue);
   };
 
-  const handlePurchase = async (listing: Listing) => {
-    const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
-    if (!selectedSponsor || !listing.pointCost) return;
-
-    if (selectedSponsor.totalPoints < calculatePointCost(listing.price)) {
-      setSnackbarMessage(`Not enough points! You need ${listing.pointCost} points but have ${selectedSponsor.totalPoints}`);
-    } 
-    setShowSnackbar(true);
-
-    try {
-      // First add to cart
-      addToCart(listing);
-
-      //Remove this later
-      const response = await axios.post('/api/driver/purchase', {
-        SponsorID: selectedSponsorId,
-        ProductID: listing.productId,
-        PointsSpent: listing.pointCost
-      });
-      
-      //Not updating the catalog dynamically...might just have to do a raw sql or add another function instead
-      setSponsorPoints(response.data.remainingPoints);
-      
-    } catch (error) {
-      setSnackbarMessage('Failed to update points');
-      setShowSnackbar(true);
-    }
-
-  };
-
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
-
-  const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
-  const getCurrentCart = () => carts[selectedSponsorId] || [];
-
   const addToCart = (item: Listing) => {
     if (typeof selectedSponsorId !== 'number') return;
     
@@ -158,11 +121,33 @@ const ProductCatalog: React.FC = () => {
         ...(prevCarts[selectedSponsorId] || []),
         {
           ...item,
-          productId: item.id  // Ensure productId is set
+          productId: item.id
         }
       ],
     }));
   };
+
+  //This kind of just exists, but doesn't really need to be atm
+  const handleAddToCart = (listing: Listing) => {
+    const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
+    if (!selectedSponsor) {
+      setSnackbarMessage('Please select a sponsor first');
+      setShowSnackbar(true);
+      return;
+    }
+
+    const pointCost = calculatePointCost(listing.price);
+    if (selectedSponsor.totalPoints < pointCost) {
+      setSnackbarMessage(`Not enough points! You need ${pointCost} points but have ${selectedSponsor.totalPoints}`);
+      setShowSnackbar(true);
+      return;
+    }
+
+    addToCart(listing);
+    setSnackbarMessage('Item added to cart');
+    setShowSnackbar(true);
+  };
+
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
   const clearCart = () => {
@@ -174,7 +159,6 @@ const ProductCatalog: React.FC = () => {
 
   const goToOrderPage = async () => {
     const currentCart = getCurrentCart();
-
     history('/order', {
       state: { 
         cartItems: currentCart,
@@ -186,7 +170,11 @@ const ProductCatalog: React.FC = () => {
     closeCart();
   };
 
-  
+  if (loading) return <CircularProgress />;
+  if (error) return <Alert severity="error">{error}</Alert>;
+
+  const selectedSponsor = sponsorPoints.find(s => s.sponsorId === selectedSponsorId);
+  const getCurrentCart = () => carts[selectedSponsorId as number] || [];
 
   return (
     <>
@@ -248,16 +236,27 @@ const ProductCatalog: React.FC = () => {
                 <OverviewItem title="Price" value={listing.price} />
                 <OverviewItem 
                   title="Point Cost" 
-                  value={ calculatePointCost(listing.price).toLocaleString() } 
+                  value={calculatePointCost(listing.price).toLocaleString()} 
                 />
                 <Button
                   fullWidth
                   variant="contained"
                   color="primary"
                   onClick={() => {
-                    handlePurchase(listing);
-                    if (!(!selectedSponsor || (listing.pointCost || 0) > selectedSponsor.totalPoints))
-                      addToCart(listing);
+                    const pointCost = calculatePointCost(listing.price);
+                    if (!selectedSponsor) {
+                      setSnackbarMessage('Please select a sponsor first');
+                      setShowSnackbar(true);
+                      return;
+                    }
+                    if (pointCost > selectedSponsor.totalPoints) {
+                      setSnackbarMessage(`Not enough points! You need ${pointCost} points but have ${selectedSponsor.totalPoints}`);
+                      setShowSnackbar(true);
+                      return;
+                    }
+                    addToCart(listing);
+                    setSnackbarMessage('Item added to cart');
+                    setShowSnackbar(true);
                   }}
                   sx={{ mt: 2 }}
                 >
@@ -275,7 +274,6 @@ const ProductCatalog: React.FC = () => {
           message={snackbarMessage}
         />
 
-        {/* Cart and Clear Cart Buttons Below Cards */}
         <Box
           sx={{
             position: 'fixed',
@@ -286,8 +284,12 @@ const ProductCatalog: React.FC = () => {
             gap: 2,
           }}
         >
-          <Button variant="contained" color="secondary" onClick={openCart}>
-            View Cart
+          <Button 
+            variant="contained" 
+            color="secondary" 
+            onClick={openCart}
+          >
+            View Cart ({getCurrentCart().length})
           </Button>
         </Box>
       </Container>
@@ -297,9 +299,12 @@ const ProductCatalog: React.FC = () => {
         <DialogContent>
           {getCurrentCart().length > 0 ? (
             <List>
-              {getCurrentCart().map((item, index) => (
+              {getCurrentCart().map((item: Listing, index: number) => (
                 <ListItem key={index}>
-                  <ListItemText primary={item.name} secondary={`Price: ${calculatePointCost(item.price).toLocaleString()}`} />
+                  <ListItemText 
+                    primary={item.name} 
+                    secondary={`Points: ${calculatePointCost(item.price).toLocaleString()}`} 
+                  />
                 </ListItem>
               ))}
             </List>

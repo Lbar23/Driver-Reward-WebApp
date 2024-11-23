@@ -225,7 +225,8 @@ namespace Backend_Server.Controllers
             }
         }
 
-        // currently broken rn, dw about it just needs a procedure in db
+        //Update for multiple sponsor specific to company...
+        //Also, add for splitting between admins and sponsors
         [HttpGet("audit-logs")]
         public async Task<IActionResult> GetAuditLogs(
             [FromQuery] int? userId = null,
@@ -237,9 +238,34 @@ namespace Backend_Server.Controllers
         {
             try
             {
-                return await ExecuteWithRetryAsync(async () =>
+                return await ExecuteWithRetryAsync<IActionResult>(async () =>
                 {
+                    var currentUser = await _userManager.GetUserAsync(User);
+                    if (currentUser == null)
+                    {
+                        return Unauthorized("User not found");
+                    }
+                    var userRoles = await _userManager.GetRolesAsync(currentUser);
                     var query = _context.AuditLogs.AsQueryable();
+
+                    //User == Sponsor, only show logs related to their drivers
+                    if (userRoles.Contains("Sponsor"))
+                    {
+                        // Get the sponsor's drivers
+                        var sponsorUser = await _context.SponsorUsers
+                            .FirstOrDefaultAsync(su => su.UserID == currentUser.Id);
+
+                        if (sponsorUser == null)
+                            return BadRequest("Sponsor user not found");
+
+                        var driverIds = await _context.SponsorDrivers
+                            .Where(sd => sd.SponsorID == sponsorUser.SponsorID)
+                            .Select(sd => sd.DriverID)
+                            .ToListAsync();
+
+                        // Only show logs related to sponsor's drivers
+                        query = query.Where(l => driverIds.Contains(l.UserID));
+                    }
 
                     if (userId.HasValue)
                         query = query.Where(l => l.UserID == userId);
