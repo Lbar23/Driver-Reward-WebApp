@@ -49,9 +49,10 @@ namespace Backend_Server.Controllers
             }
 
             var roles = await _userManager.GetRolesAsync(user);
+            var claims = await _userManager.GetClaimsAsync(user); // Fetch claims for the user
 
             object response;
-            if (user.UserType == "Sponsor") //This check has to be here since we're dealing with multiple sponsors under the same company...
+            if (user.UserType == "Sponsor") // Handle sponsor-specific details
             {
                 var sponsorUser = await _context.SponsorUsers
                     .Include(su => su.Sponsor)
@@ -66,6 +67,7 @@ namespace Backend_Server.Controllers
                     user.CreatedAt,
                     user.LastLogin,
                     Roles = roles,
+                    Claims = claims.Select(c => new { c.Type, c.Value }), // Add claims to response
                     SponsorDetails = sponsorUser != null ? new
                     {
                         sponsorUser.SponsorID,
@@ -86,12 +88,14 @@ namespace Backend_Server.Controllers
                     user.UserType,
                     user.CreatedAt,
                     user.LastLogin,
-                    Roles = roles
+                    Roles = roles,
+                    Claims = claims.Select(c => new { c.Type, c.Value }) // Add claims to response
                 };
             }
 
             return Ok(response);
         }
+
 
         [HttpGet("getuser")]
         public async Task<IActionResult> GetUser(string id)
