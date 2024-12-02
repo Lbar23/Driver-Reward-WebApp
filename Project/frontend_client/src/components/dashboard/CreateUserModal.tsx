@@ -1,84 +1,152 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Modal,
-  Select,
   TextField,
   Typography,
+  Modal,
+  FormControlLabel,
+  Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
 } from '@mui/material';
+import { UsaStates } from 'usa-states';
+import axios from 'axios';
 
-const UserTypeEnum = {
-  Driver: 0,
-  Sponsor: 1,
-  Admin: 2
-};
+const Roles = [
+  { id: 1, name: 'Admin', normalizedName: 'ADMIN' },
+  { id: 2, name: 'Sponsor', normalizedName: 'SPONSOR' },
+  { id: 3, name: 'Driver', normalizedName: 'DRIVER' },
+  { id: 4, name: 'Guest', normalizedName: 'GUEST' },
+];
 
-const CreateUserModal = ({ open, onClose }) => {
+interface Sponsor {
+  sponsorID: number;
+  companyName: string;
+}
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
+
+const CreateUserModal: React.FC<Props> = ({ open, onClose }) => {
   const [formData, setFormData] = useState({
-    Username: '',  // Changed to PascalCase to match DTO
-    Email: '',
-    Password: '',
-    UserType: UserTypeEnum.Admin,  // Changed to PascalCase
-    CompanyName: '',
-    SponsorType: '',
-    PointDollarValue: 0.01,
-    SponsorID: '',  // Changed to PascalCase and empty string instead of null
+    username: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    state: '',
+    role: Roles[0].normalizedName,
+    enable2FA: false,
+    sponsorID: '',
+    driverPointValue: '', // Hidden for now
   });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    if (name === 'UserType') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: UserTypeEnum[value] // Convert string to enum value
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: name === 'SponsorID' ? (value === '' ? '' : parseInt(value)) : value
-      }));
+  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [loadingSponsors, setLoadingSponsors] = useState(false);
+  const [pointRatio, setPointRatio] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const usStates = new UsaStates().states;
+
+  // Fetch sponsors and point ratio on open
+  useEffect(() => {
+    if (open) {
+      fetchSponsors();
+      fetchPointRatio();
+    }
+  }, [open]);
+
+  const fetchSponsors = async () => {
+    setLoadingSponsors(true);
+    try {
+      const response = await axios.get<Sponsor[]>('/api/sponsor/list-all');
+      setSponsors(response.data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching sponsors:', err);
+      setError('Failed to load sponsors.');
+    } finally {
+      setLoadingSponsors(false);
     }
   };
 
-  const handleSubmit = async (e) => {
+  const fetchPointRatio = async () => {
+    try {
+      const response = await axios.get<{ pointDollarValue: number }>('/api/sponsor/point-ratio');
+      setPointRatio(response.data.pointDollarValue);
+      setFormData((prev) => ({ ...prev, driverPointValue: response.data.pointDollarValue.toString() }));
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching point ratio:', err);
+      setError('Failed to load point ratio.');
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleSelectChange = (e: React.ChangeEvent<{ name?: string; value: unknown }>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name || '']: value as string,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Transform data before sending
     const payload = {
-      ...formData,
-      // Convert empty string to null for optional fields
-      CompanyName: formData.CompanyName || null,
-      SponsorType: formData.SponsorType || null,
-      PointDollarValue: formData.PointDollarValue || null,
-      SponsorID: formData.SponsorID === '' ? null : parseInt(formData.SponsorID)
+      username: formData.username,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      password: formData.password,
+      state: formData.state,
+      role: formData.role,
+      enable2FA: formData.enable2FA,
+      sponsorID: formData.role === 'SPONSOR' ? formData.sponsorID : null,
+      driverPointValue: formData.role === 'DRIVER' ? formData.driverPointValue : null,
     };
 
     try {
       const response = await axios.post('/api/admin/create-user', payload, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
-      alert('User created successfully');
-      onClose();
-      setFormData({
-        Username: '',
-        Email: '',
-        Password: '',
-        UserType: 'Admin',
-        CompanyName: '',
-        SponsorType: '',
-        PointDollarValue: 0.01,
-        SponsorID: '',
-      });
+
+      if (response.status === 200) {
+        alert(`${formData.role} created successfully`);
+        onClose();
+        setFormData({
+          username: '',
+          firstName: '',
+          lastName: '',
+          email: '',
+          password: '',
+          state: '',
+          role: Roles[0].normalizedName,
+          enable2FA: false,
+          sponsorID: '',
+          driverPointValue: '',
+        });
+      } else {
+        alert('Failed to create user.');
+      }
     } catch (error) {
       console.error('Error creating user:', error);
-      const errorMessage = error.response?.data?.details || 'Failed to create user';
+      const errorMessage =
+        error.response?.data?.message || 'Failed to create user.';
       alert(errorMessage);
     }
   };
@@ -97,119 +165,150 @@ const CreateUserModal = ({ open, onClose }) => {
       }}
     >
       <Box
+        component="form"
+        onSubmit={handleSubmit}
         sx={{
           backgroundColor: 'white',
           padding: 4,
           borderRadius: 2,
           width: '100%',
-          maxWidth: 400,
+          maxWidth: 600,
         }}
       >
-        <Typography id="create-user-modal-title" variant="h6" component="h2">
+        <Typography id="create-user-modal-title" variant="h6" component="h2" sx={{ mb: 2 }}>
           Create New User
         </Typography>
-        <form onSubmit={handleSubmit}>
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              label="Username"
-              name="Username"
-              value={formData.Username}
-              onChange={handleInputChange}
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <TextField
+            label="First Name"
+            name="firstName"
+            value={formData.firstName}
+            onChange={handleInputChange}
+            required
+            fullWidth
+          />
+          <TextField
+            label="Last Name"
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleInputChange}
+            required
+            fullWidth
+          />
+        </Box>
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            label="Username"
+            name="username"
+            value={formData.username}
+            onChange={handleInputChange}
+            required
+            fullWidth
+          />
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <TextField
+            label="Email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            required
+            fullWidth
+          />
+          <FormControl fullWidth>
+            <InputLabel id="state-select-label">State</InputLabel>
+            <Select
+              labelId="state-select-label"
+              id="state-select"
+              name="state"
+              value={formData.state}
+              onChange={handleSelectChange}
               required
-              fullWidth
-            />
-          </Box>
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              label="Email"
-              name="Email"
-              type="email"
-              value={formData.Email}
-              onChange={handleInputChange}
+            >
+              {usStates.map((state) => (
+                <MenuItem key={state.abbreviation} value={state.abbreviation}>
+                  {state.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            label="Password"
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={handleInputChange}
+            required
+            fullWidth
+          />
+        </Box>
+        <Box sx={{ mb: 2 }}>
+          <FormControl fullWidth>
+            <InputLabel id="role-select-label">Role</InputLabel>
+            <Select
+              labelId="role-select-label"
+              id="role-select"
+              name="role"
+              value={formData.role}
+              onChange={handleSelectChange}
               required
-              fullWidth
-            />
-          </Box>
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              label="Password"
-              name="Password"
-              type="password"
-              value={formData.Password}
-              onChange={handleInputChange}
-              required
-              fullWidth
-            />
-          </Box>
+            >
+              {Roles.map((role) => (
+                <MenuItem key={role.id} value={role.normalizedName}>
+                  {role.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+        {formData.role === 'SPONSOR' && (
           <Box sx={{ mb: 2 }}>
             <FormControl fullWidth>
-              <InputLabel id="user-type-label">User Type</InputLabel>
+              <InputLabel id="sponsor-select-label">Sponsor</InputLabel>
               <Select
-                labelId="user-type-label"
-                name="UserType"
-                value={Object.keys(UserTypeEnum).find(key => UserTypeEnum[key] === formData.UserType)}
-                onChange={handleInputChange}
+                labelId="sponsor-select-label"
+                id="sponsor-select"
+                name="sponsorID"
+                value={formData.sponsorID}
+                onChange={handleSelectChange}
                 required
               >
-                <MenuItem value="Admin">Admin</MenuItem>
-                <MenuItem value="Sponsor">Sponsor</MenuItem>
-                <MenuItem value="Driver">Driver</MenuItem>
+                {loadingSponsors ? (
+                  <MenuItem disabled>
+                    <CircularProgress size={20} />
+                  </MenuItem>
+                ) : (
+                  sponsors.map((sponsor) => (
+                    <MenuItem key={sponsor.sponsorID} value={sponsor.sponsorID}>
+                      {sponsor.companyName}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
           </Box>
-          {formData.UserType === UserTypeEnum.Sponsor && (
-            <>
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  label="Company Name"
-                  name="CompanyName"
-                  value={formData.CompanyName}
-                  onChange={handleInputChange}
-                  required
-                  fullWidth
-                />
-              </Box>
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  label="Sponsor Type"
-                  name="SponsorType"
-                  value={formData.SponsorType}
-                  onChange={handleInputChange}
-                  required
-                  fullWidth
-                />
-              </Box>
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  label="Point Dollar Value"
-                  name="PointDollarValue"
-                  type="number"
-                  step="0.01"
-                  value={formData.PointDollarValue}
-                  onChange={handleInputChange}
-                  required
-                  fullWidth
-                />
-              </Box>
-            </>
-          )}
-          {formData.UserType === UserTypeEnum.Driver && (
-            <Box sx={{ mb: 2 }}>
-              <TextField
-                label="Sponsor ID"
-                name="SponsorID"
-                type="number"
-                value={formData.SponsorID}
-                onChange={handleInputChange}
-                required
-                fullWidth
-              />
-            </Box>
-          )}
-          <Button type="submit" variant="contained" color="primary" fullWidth>
-            Create User
-          </Button>
-        </form>
+        )}
+        <FormControlLabel
+          control={
+            <Checkbox
+              name="enable2FA"
+              checked={formData.enable2FA}
+              onChange={handleInputChange}
+            />
+          }
+          label="Enable Two-Factor Authentication (2FA)"
+        />
+        <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
+          Create User
+        </Button>
       </Box>
     </Modal>
   );

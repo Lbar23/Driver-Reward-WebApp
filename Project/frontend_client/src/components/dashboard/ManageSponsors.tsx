@@ -18,7 +18,7 @@ import {
   Select,
   MenuItem,
   Chip,
-  LinearProgress
+  LinearProgress,
 } from '@mui/material';
 import { PieChart, BarChart } from '@mui/x-charts';
 import SearchIcon from '@mui/icons-material/SearchRounded';
@@ -27,12 +27,13 @@ import axios from 'axios';
 
 interface Sponsor {
   userId: number;
-  name: string;
+  firstName: string;
+  lastName: string;
+  userName: string;
   email: string;
   companyName: string;
   sponsorType: string;
   pointDollarValue: number;
-  userType?: string;
   driverRelationships: {
     driverId: number;
     driverName: string;
@@ -62,8 +63,8 @@ const ManageSponsors: React.FC = () => {
     try {
       setLoading(true);
       const [sponsorsResponse, metricsResponse] = await Promise.all([
-        axios.get('/api/admin/sponsors/details'),
-        axios.get('/api/admin/drivers/details')
+        axios.get('/api/admin/view-users/sponsor'),
+        axios.get('/api/admin/view-users/driver'),
       ]);
 
       setSponsors(sponsorsResponse.data);
@@ -84,7 +85,8 @@ const ManageSponsors: React.FC = () => {
             ...existing,
             totalDrivers: existing.totalDrivers + 1,
             totalPoints: existing.totalPoints + rel.points,
-            averagePoints: (existing.totalPoints + rel.points) / (existing.totalDrivers + 1)
+            averagePoints:
+              (existing.totalPoints + rel.points) / (existing.totalDrivers + 1),
           });
         });
       });
@@ -102,7 +104,7 @@ const ManageSponsors: React.FC = () => {
   const handleChangeUserType = async (userId: string, newUserType: string) => {
     try {
       await axios.post('/api/admin/change-user-type', { userId, newUserType });
-      await fetchSponsors();
+      await fetchData(); // Use fetchData to reload the sponsor and driver data
     } catch (error: any) {
       setError(error.message);
     }
@@ -111,17 +113,18 @@ const ManageSponsors: React.FC = () => {
   const handleRemoveUser = async (userId: string) => {
     try {
       await axios.delete(`/api/admin/remove-user/${userId}`);
-      await fetchSponsors();
+      await fetchData(); // Use fetchData to reload the sponsor and driver data
     } catch (error: any) {
       setError(error.message);
     }
   };
 
-  const filteredSponsors = sponsors.filter(sponsor =>
-    sponsor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sponsor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sponsor.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredSponsors = sponsors.filter((sponsor) =>
+    sponsor.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sponsor.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sponsor.companyName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
 
   if (loading) {
     return (
@@ -140,15 +143,15 @@ const ManageSponsors: React.FC = () => {
   }
 
   // Chart data preparation
-  const driverDistributionData = sponsorMetrics.map(sponsor => ({
+  const driverDistributionData = sponsorMetrics.map((sponsor) => ({
     id: sponsor.sponsorId,
     value: sponsor.totalDrivers,
-    label: sponsor.sponsorName
+    label: sponsor.sponsorName,
   }));
 
-  const pointsData = sponsorMetrics.map(sponsor => ({
+  const pointsData = sponsorMetrics.map((sponsor) => ({
     value: sponsor.totalPoints,
-    label: sponsor.sponsorName
+    label: sponsor.sponsorName,
   }));
 
   return (
@@ -165,9 +168,7 @@ const ManageSponsors: React.FC = () => {
               <Typography variant="h6" gutterBottom>
                 Total Sponsors
               </Typography>
-              <Typography variant="h3">
-                {sponsors.length}
-              </Typography>
+              <Typography variant="h3">{sponsors.length}</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -190,7 +191,9 @@ const ManageSponsors: React.FC = () => {
                 Total Points
               </Typography>
               <Typography variant="h3">
-                {sponsorMetrics.reduce((sum, s) => sum + s.totalPoints, 0).toLocaleString()}
+                {sponsorMetrics
+                  .reduce((sum, s) => sum + s.totalPoints, 0)
+                  .toLocaleString()}
               </Typography>
             </CardContent>
           </Card>
@@ -207,10 +210,12 @@ const ManageSponsors: React.FC = () => {
               </Typography>
               <Box sx={{ height: 400 }}>
                 <PieChart
-                  series={[{
-                    data: driverDistributionData,
-                    highlightScope: { faded: 'global', highlighted: 'item' },
-                  }]}
+                  series={[
+                    {
+                      data: driverDistributionData,
+                      highlightScope: { faded: 'global', highlighted: 'item' },
+                    },
+                  ]}
                   height={350}
                 />
               </Box>
@@ -225,13 +230,17 @@ const ManageSponsors: React.FC = () => {
               </Typography>
               <Box sx={{ height: 400 }}>
                 <BarChart
-                  xAxis={[{
-                    scaleType: 'band',
-                    data: sponsorMetrics.map(s => s.sponsorName)
-                  }]}
-                  series={[{
-                    data: sponsorMetrics.map(s => s.totalPoints),
-                  }]}
+                  xAxis={[
+                    {
+                      scaleType: 'band',
+                      data: sponsorMetrics.map((s) => s.sponsorName),
+                    },
+                  ]}
+                  series={[
+                    {
+                      data: sponsorMetrics.map((s) => s.totalPoints),
+                    },
+                  ]}
                   height={350}
                 />
               </Box>
@@ -277,10 +286,14 @@ const ManageSponsors: React.FC = () => {
               </TableHead>
               <TableBody>
                 {filteredSponsors.map((sponsor) => {
-                  const metrics = sponsorMetrics.find(m => m.sponsorId === sponsor.userId);
+                  const metrics = sponsorMetrics.find(
+                    (m) => m.sponsorId === sponsor.userId
+                  );
                   return (
                     <TableRow key={sponsor.userId}>
-                      <TableCell>{sponsor.name}</TableCell>
+                      <TableCell>
+                        {sponsor.firstName} {sponsor.lastName}
+                      </TableCell>
                       <TableCell>{sponsor.email}</TableCell>
                       <TableCell>{sponsor.companyName}</TableCell>
                       <TableCell>
@@ -290,14 +303,23 @@ const ManageSponsors: React.FC = () => {
                           size="small"
                         />
                       </TableCell>
-                      <TableCell>${sponsor.pointDollarValue.toFixed(2)}</TableCell>
+                      <TableCell>
+                        ${sponsor.pointDollarValue.toFixed(2)}
+                      </TableCell>
                       <TableCell>{metrics?.totalDrivers || 0}</TableCell>
-                      <TableCell>{metrics?.totalPoints.toLocaleString() || 0}</TableCell>
+                      <TableCell>
+                        {metrics?.totalPoints.toLocaleString() || 0}
+                      </TableCell>
                       <TableCell>
                         <Select
                           size="small"
-                          value={sponsor.userType || 'sponsor'}
-                          onChange={(e) => handleChangeUserType(sponsor.userId.toString(), e.target.value)}
+                          value={sponsor.sponsorType}
+                          onChange={(e) =>
+                            handleChangeUserType(
+                              sponsor.userId.toString(),
+                              e.target.value
+                            )
+                          }
                         >
                           <MenuItem value="sponsor">Sponsor</MenuItem>
                           <MenuItem value="admin">Admin</MenuItem>
@@ -306,7 +328,9 @@ const ManageSponsors: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <IconButton
-                          onClick={() => handleRemoveUser(sponsor.userId.toString())}
+                          onClick={() =>
+                            handleRemoveUser(sponsor.userId.toString())
+                          }
                           color="error"
                           size="small"
                         >

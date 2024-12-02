@@ -22,11 +22,12 @@ import CreateUserModal from './CreateUserModal';
 
 interface Admin {
   userId: number;
-  name: string;
+  userName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   createdAt: string;
   lastLogin: string;
-  userType?: string;
 }
 
 const ManageAdmins: React.FC = () => {
@@ -43,7 +44,7 @@ const ManageAdmins: React.FC = () => {
   const fetchAdmins = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/admins/details');
+      const response = await axios.get('/api/admin/view-users/admin');
       setAdmins(response.data);
       setError('');
     } catch (err) {
@@ -73,7 +74,7 @@ const ManageAdmins: React.FC = () => {
   };
 
   const filteredAdmins = admins.filter(admin =>
-    admin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    admin.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     admin.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -103,7 +104,7 @@ const ManageAdmins: React.FC = () => {
         <TextField
           fullWidth
           variant="outlined"
-          placeholder="Search admins by name or email..."
+          placeholder="Search admins by username or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           InputProps={{
@@ -132,7 +133,7 @@ const ManageAdmins: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
+              <TableCell>UserName</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell>Last Login</TableCell>
@@ -143,14 +144,14 @@ const ManageAdmins: React.FC = () => {
           <TableBody>
             {filteredAdmins.map((admin) => (
               <TableRow key={admin.userId}>
-                <TableCell>{admin.name}</TableCell>
+                <TableCell>{admin.userName}</TableCell>
                 <TableCell>{admin.email}</TableCell>
                 <TableCell>{new Date(admin.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>{new Date(admin.lastLogin).toLocaleDateString()}</TableCell>
                 <TableCell>
                   <Select
                     size="small"
-                    value={admin.userType || 'admin'}
+                    value={'admin'}
                     onChange={(e) => handleChangeUserType(admin.userId.toString(), e.target.value)}
                   >
                     <MenuItem value="admin">Admin</MenuItem>

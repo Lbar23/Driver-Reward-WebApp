@@ -11,10 +11,13 @@ import SponsorRegistrationPage from '../dashboard/SponsorRegistrationForDriver';
 import DriverPointsHistory from '../dashboard/DriverPointHistory';
 import SponsorReports from './SponsorReports';
 import AdminReports from './AdminReports';
+import ManageSponsors from './ManageSponsors';
+import ManageAdmins from './ManageAdmins';
 import ManageDriverSponsors from './ManageDriverSponsors';
 import AuditLogDashboard from '../../pages/AuditLogDashboard';
 import { useView } from '../../service/viewContext';
 import AdminConsole from './AdminConsole';
+import Profile from './Profile';
 //import ManageSponsors from './ManageSponsorsAdmin';
 
 // Link the current view to the corresponding component

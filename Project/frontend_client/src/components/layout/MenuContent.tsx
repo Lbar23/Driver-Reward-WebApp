@@ -82,8 +82,16 @@ export default function MenuContent() {
   const { setCurrentView } = useView();
   const { user, viewRole } = useAuth();
   const navigate = useNavigate();
-  const currentRole = viewRole || user?.userType || 'Guest';
   const [openItems, setOpenItems] = useState<{ [key: string]: boolean }>({});
+
+  const currentRole = React.useMemo(() => {
+    if (viewRole) return viewRole;
+    if (!user?.roles?.length) return 'Guest';
+    // Return the first role from the array - there should only be one so its safe to assume this
+    return user.roles[0];
+  }, [viewRole, user?.roles]);
+  
+  
 
   const menuItems = [...menuConfig.base, ...(menuConfig[currentRole] || [])];
 

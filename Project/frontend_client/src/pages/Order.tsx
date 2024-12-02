@@ -50,7 +50,7 @@ const Order: React.FC = () => {
         const purchasePromises = cartItems.map(item => {
           const pointsForItem = Math.ceil(parseFloat(item.price.split(' ')[0]) / pointValue);
         
-          return axios.post('/api/driver/purchase', {
+          return axios.post('/api/purchase', {
             SponsorID: sponsorId,
             ProductID: item.productID || item.productId, // Use productId from cart item
             PointsSpent: pointsForItem,

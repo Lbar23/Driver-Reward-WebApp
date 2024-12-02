@@ -17,11 +17,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using static Backend_Server.Services.ClaimsService;
 
-
-
 var builder = WebApplication.CreateBuilder(args);
 
-//Checks if the current build is in "DesignTime" mode (running dotnet with flags other that run/start/etc)
 var isDesignTime = string.Equals(
     Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
     "Development",
@@ -29,7 +26,6 @@ var isDesignTime = string.Equals(
     AppDomain.CurrentDomain.GetAssemblies().Any(a => a?.FullName?.Contains("Microsoft.EntityFrameworkCore.Design") ?? false);
 
 try {
-    // AWS Secrets Manager setup
     var awsOptions = new AWSOptions
     {
         Region = RegionEndpoint.USEast2,
@@ -46,27 +42,22 @@ try {
     builder.Services.AddScoped<ReportService>();
     builder.Services.AddScoped<ClaimsService>();
 
-    //Service for handling Logging more efficiently with custom services or methods relating to DB Connection
     builder.Services.AddLogging(configure => {
         configure.AddConsole();
         configure.AddDebug();
         configure.SetMinimumLevel(LogLevel.Information);
     });
-
-    //Added caching for queries and requests
     
     builder.Services.AddMemoryCache();
 
     builder.Services.AddControllers();
 
-    // Swagger setup
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
     {
         c.SwaggerDoc("v1", new OpenApiInfo { Title = "Good Driver Incentive Program API", Version = "v2" });
     });
 
-    // CORS setup
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowSpecificOrigins",
@@ -76,14 +67,18 @@ try {
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
-                    
             });
     });
 
-    // JWT Authentication setup
+    // Generate random key for JWT
+    byte[] key = new byte[32];
+    using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+    {
+        rng.GetBytes(key);
+    }
 
-    var jwtSettings = builder.Configuration.GetSection("Jwt");
-    var key = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
+    // Add the key to DI container
+    builder.Services.AddSingleton<byte[]>(key);
 
     builder.Services.AddAuthentication(options =>
     {
@@ -97,30 +92,27 @@ try {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(key),
             ValidateIssuer = true,
-            ValidIssuer = jwtSettings["Issuer"],
+            ValidIssuer = "GitGud",  
             ValidateAudience = true,
-            ValidAudience = jwtSettings["Audience"],
+            ValidAudience = "GitGud",
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero // No tolerance for clock skew
+            ClockSkew = TimeSpan.Zero
         };
 
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
             {
-                // Check for token in cookies
                 context.Token = context.Request.Cookies["X-Access-Token"];
                 return Task.CompletedTask;
             }
         };
     });
 
-    // Configure authorization policies
     builder.Services.AddAuthorization(options =>
     {
         options.AddPolicy(PolicyNames.CanImpersonate, policy =>
             policy.RequireRole("Admin"));
-            // policy.Requirements.Add(new ImpersonationRequirement()));
             
         options.AddPolicy(PolicyNames.RequireSponsorRole, policy =>
             policy.RequireRole("Sponsor"));
@@ -131,11 +123,8 @@ try {
         options.AddPolicy("CanCreateUsers", policy =>
             policy.RequireRole("Admin")
                   .RequireClaim("Permission", "CreateUsers"));
-
     });
 
-
-    // Identity Services and Options
     builder.Services.AddIdentity<Users, IdentityRole<int>>(options =>
     {
         options.SignIn.RequireConfirmedAccount = false;
@@ -146,7 +135,7 @@ try {
         options.Password.RequireLowercase = true;
         options.Password.RequireNonAlphanumeric = true;
         options.Password.RequireUppercase = true;
-        options.Password.RequiredLength = 8; // Increased to 8 characters for regular (Driver) users
+        options.Password.RequiredLength = 8;
         options.Password.RequiredUniqueChars = 1;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
         options.Lockout.MaxFailedAccessAttempts = 5;
@@ -154,13 +143,12 @@ try {
         options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
         options.User.RequireUniqueEmail = true;
     })
-    .AddPasswordValidator<UserPasswordValidator>() //I forgot Identity had this, this is hella based
+    .AddPasswordValidator<UserPasswordValidator>()
     .AddEntityFrameworkStores<AppDBContext>()
     .AddDefaultTokenProviders()
     .AddTokenProvider<PhoneNumberTokenProvider<Users>>("phone")
     .AddTokenProvider<EmailTokenProvider<Users>>("email");
 
-    // Add cookie authentication
     builder.Services.ConfigureApplicationCookie(options =>
     {
         options.LoginPath = "/api/system/login";
@@ -175,7 +163,7 @@ try {
         var dbProvider = serviceProvider.GetRequiredService<DbConnectionProvider>();
         var connection = dbProvider.GetDbConnectionAsync().Result;
         options.UseMySql(connection.ConnectionString,
-            new MySqlServerVersion(new Version(8, 0, 28)), //Needed for resilience db connection
+            new MySqlServerVersion(new Version(8, 0, 28)),
             mySqlOptions => 
             {
                 mySqlOptions.EnableRetryOnFailure(
@@ -188,17 +176,14 @@ try {
             });
     });
 
-    // Automated Backup Service
     builder.Services.AddSingleton<IHostedService, BackupService>();
 
-    // Adds static files to root Backend
     builder.Services.AddSpaStaticFiles(configuration => configuration.RootPath = "wwwroot");
 
     if (!isDesignTime)
     {
         try 
         {
-
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(builder.Configuration)
                 .CreateLogger();
@@ -239,7 +224,6 @@ try {
 
     app.MapControllers();
 
-    //SPA route
     app.UseSpa(spa =>
     {
         spa.Options.SourcePath = "wwwroot";
@@ -249,9 +233,7 @@ try {
 
     if (!isDesignTime)
     {
-        // Enable Serilog Request Logging for API requests
         app.UseSerilogRequestLogging();
-        
         Log.Information("UserID: N/A, Category: System, Description: Starting Web Host...");
     }
     

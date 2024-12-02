@@ -223,18 +223,18 @@ namespace Backend_Server.Controllers
             {
                 IEnumerable<object> details = userType.ToLower() switch
                 {
-                    "drivers" => await _context.Set<ViewDriversDto>()
-                        .FromSqlRaw("SELECT * FROM v_AllDrivers")
+                    "driver" => await _context.Set<ViewDriversDto>()
+                        .FromSqlRaw("SELECT * FROM vw_AllDrivers")
                         .AsNoTracking()
                         .ToListAsync() ?? new List<ViewDriversDto>(),
                         
-                    "sponsors" => await _context.Set<ViewSponsorUsersDto>()
-                        .FromSqlRaw("SELECT * FROM v_AllSponsorUsers")
+                    "sponsor" => await _context.Set<ViewSponsorUsersDto>()
+                        .FromSqlRaw("SELECT * FROM vw_AllSponsorUsers")
                         .AsNoTracking()
                         .ToListAsync() ?? new List<ViewSponsorUsersDto>(),
                         
-                    "admins" => await _context.Set<ViewAdminsDto>()
-                        .FromSqlRaw("SELECT * FROM v_AllAdmins")
+                    "admin" => await _context.Set<ViewAdminsDto>()
+                        .FromSqlRaw("SELECT * FROM vw_AllAdmins")
                         .AsNoTracking()
                         .ToListAsync() ?? new List<ViewAdminsDto>(),
                         

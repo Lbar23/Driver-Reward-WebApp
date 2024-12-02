@@ -45,7 +45,7 @@ const ManageDriverSponsors: React.FC = () => {
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/drivers/details');
+      const response = await axios.get('/api/admin/view-users/driver');
       setDrivers(response.data);
       setError('');
     } catch (err) {

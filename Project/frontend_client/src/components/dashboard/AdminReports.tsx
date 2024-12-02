@@ -14,12 +14,20 @@ import ReportChart from "./ReportChart";
 
 interface Sponsor {
   sponsorID: number;
-  companyName: string;
+  sponsorType: string;
+  sponsorName?: string;
+  companyName?: string;
+  pointDollarValue: number;
+  milestoneThreshold: number;
 }
 
 interface Driver {
   userID: number;
-  name: string;
+  driverName: string;
+  sponsorID: number;
+  points: number;
+  milestoneLevel: number;
+  driverPointValue: number;
 }
 
 const AdminReports: React.FC = () => {
@@ -39,9 +47,10 @@ const AdminReports: React.FC = () => {
   useEffect(() => {
     const fetchSponsors = async () => {
       try {
-        const response = await axios.get<Sponsor[]>("/api/admin/sponsors/details");
+        const response = await axios.get<Sponsor[]>("/api/sponsor/list-all");
         setSponsors(response.data);
-      } catch (error) {
+      } 
+      catch (error) {
         console.error("Error fetching sponsors:", error);
         setError("Failed to fetch sponsors. Please try again later.");
       }
@@ -59,7 +68,7 @@ const AdminReports: React.FC = () => {
           });
           setDrivers(response.data);
         } catch (error) {
-          console.error("Error fetching drivers:", error);
+          console.error("Error fetching drivers: ", error);
           setError("Failed to fetch drivers. Please try again later.");
         }
       };
@@ -99,12 +108,12 @@ const AdminReports: React.FC = () => {
             reportType: filters.reportType,
             metadata: {
                 SelectedSponsor: filters.selectedSponsor
-                    ? drivers.find((d) => d.userID === filters.selectedSponsor)?.name || "All Sponsors"
+                    ? drivers.find((d) => d.userID === filters.selectedSponsor)?.driverName || "All Sponsors"
                     : "All Sponsors",
                 StartDate: startDate ? startDate.toISOString().split("T")[0] : "N/A",
                 EndDate: endDate ? endDate.toISOString().split("T")[0] : "N/A",
                 SelectedDriver: filters.selectedDriver
-                    ? drivers.find((d) => d.userID === filters.selectedDriver)?.name || "All Drivers"
+                    ? drivers.find((d) => d.userID === filters.selectedDriver)?.driverName || "All Drivers"
                     : "All Drivers",
             },
             data: reports,
@@ -136,12 +145,12 @@ const AdminReports: React.FC = () => {
         reportType: filters.reportType,
         metadata: {
           SelectedSponsor: filters.selectedSponsor
-                    ? drivers.find((d) => d.userID === filters.selectedSponsor)?.name || "All Sponsors"
+                    ? drivers.find((d) => d.userID === filters.selectedSponsor)?.driverName || "All Sponsors"
                     : "All Sponsors",
           StartDate: startDate ? startDate.toISOString().split("T")[0] : "N/A",
           EndDate: endDate ? endDate.toISOString().split("T")[0] : "N/A",
           SelectedDriver: filters.selectedDriver
-            ? drivers.find((d) => d.userID === filters.selectedDriver)?.name || "All Drivers"
+            ? drivers.find((d) => d.userID === filters.selectedDriver)?.driverName || "All Drivers"
             : "All Drivers",
         },
         data: reports,
@@ -281,7 +290,7 @@ const AdminReports: React.FC = () => {
               <MenuItem value="">All Drivers</MenuItem>
               {drivers.map((driver) => (
                 <MenuItem key={driver.userID} value={driver.userID}>
-                  {driver.name}
+                  {driver.driverName}
                 </MenuItem>
               ))}
             </Select>

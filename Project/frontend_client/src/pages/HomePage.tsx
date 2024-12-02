@@ -4,10 +4,9 @@ import {
   Typography, 
   Button, 
   Container, 
-  Grid, 
+  Grid2, 
   Paper, 
-  Avatar,
-  Divider
+  Avatar
 } from '@mui/material';
 import { 
   DirectionsCar as CarIcon, 
@@ -30,19 +29,22 @@ const FeatureCard: React.FC<{
       flexDirection: 'column',
       alignItems: 'center',
       textAlign: 'center',
-      transition: 'all 0.3s ease',
+      transition: theme => theme.transitions.create('transform', {
+        duration: theme.transitions.duration.shortest
+      }),
       '&:hover': {
-        transform: 'translateY(-10px)',
-        boxShadow: 6
+        transform: 'translateY(-8px)',
+        boxShadow: theme => theme.shadows[6]
       }
     }}
   >
     <Avatar 
       sx={{ 
         mb: 2, 
-        width: 70, 
-        height: 70, 
-        bgcolor: 'primary.main' 
+        width: 72, 
+        height: 72, 
+        bgcolor: 'primary.main', 
+        color: 'primary.contrastText' 
       }}
     >
       {icon}
@@ -62,9 +64,10 @@ const HomePage: React.FC = () => {
   return (
     <Box 
       sx={{ 
-        background: 'linear-gradient(135deg, #f0f4f8 0%, #ffffff 100%)',
+        background: theme => `linear-gradient(135deg, ${theme.palette.background.default}, ${theme.palette.background.paper})`,
         minHeight: '100vh',
-        pt: { xs: 4, md: 8 }
+        pt: 8,
+        pb: 8
       }}
     >
       <Container maxWidth="lg">
@@ -72,19 +75,12 @@ const HomePage: React.FC = () => {
         <Box 
           sx={{ 
             textAlign: 'center', 
-            mb: 6,
-            p: { xs: 2, md: 6 },
+            mb: 8,
+            p: 6,
             borderRadius: 3,
-            background: 'rgba(255,255,255,0.8)',
-            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.1)',
-            backdropFilter: 'blur(4px)',
-            opacity: 1,
-            transition: 'opacity 0.5s ease',
-            '@keyframes fadeIn': {
-              from: { opacity: 0 },
-              to: { opacity: 1 }
-            },
-            animation: 'fadeIn 0.8s ease-out'
+            backgroundColor: theme => theme.palette.background.paper,
+            boxShadow: theme => theme.shadows[3],
+            animation: theme => theme.transitions.create('opacity', { duration: theme.transitions.duration.standard }),
           }}
         >
           <Typography 
@@ -93,20 +89,19 @@ const HomePage: React.FC = () => {
             sx={{ 
               mb: 3,
               fontWeight: 700,
-              background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
+              background: theme => `linear-gradient(45deg, ${theme.palette.primary.dark}, ${theme.palette.primary.light})`,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent'
             }}
           >
-            Git Gud Drivers
+            GitGud Drivers
           </Typography>
           <Typography 
-            variant="h5" 
+            variant="h6" 
             color="text.primary" 
-            sx={{ mb: 4, maxWidth: 600, mx: 'auto' }}
+            sx={{ mb: 4, maxWidth: 700, mx: 'auto' }}
           >
-            Empowering professional drivers through a comprehensive rewards program 
-            that recognizes excellence and drives continuous improvement.
+            Join a rewards program that helps professional drivers achieve excellence and unlock valuable rewards.
           </Typography>
           <Box>
             <Button 
@@ -115,15 +110,9 @@ const HomePage: React.FC = () => {
               onClick={() => navigate('/register')}
               sx={{ 
                 mr: 2,
-                px: 4,
-                py: 1.5,
-                borderRadius: 3,
-                textTransform: 'none',
-                boxShadow: '0 4px 14px 0 rgba(0, 0, 0, 0.1)',
-                transition: 'transform 0.2s ease',
-                '&:hover': {
-                  transform: 'scale(1.05)'
-                }
+                px: 5,
+                py: 2,
+                textTransform: 'none'
               }}
             >
               Join Now
@@ -133,16 +122,9 @@ const HomePage: React.FC = () => {
               size="large"
               onClick={() => navigate('/login')}
               sx={{
-                px: 4,
-                py: 1.5,
-                borderRadius: 3,
-                textTransform: 'none',
-                borderColor: 'primary.main',
-                color: 'primary.main',
-                transition: 'transform 0.2s ease',
-                '&:hover': {
-                  transform: 'scale(1.05)'
-                }
+                px: 5,
+                py: 2,
+                textTransform: 'none'
               }}
             >
               Sign In
@@ -151,58 +133,49 @@ const HomePage: React.FC = () => {
         </Box>
 
         {/* Features Section */}
-        <Grid 
-          container 
-          spacing={4} 
-          sx={{ mb: 6 }}
+        <Typography 
+          variant="h4" 
+          align="center" 
+          gutterBottom
+          sx={{ 
+            mb: 4,
+            fontWeight: 600,
+            color: 'primary.main'
+          }}
         >
-          <Grid item xs={12}>
-            <Typography 
-              variant="h4" 
-              align="center" 
-              gutterBottom
-              sx={{ 
-                mb: 4,
-                fontWeight: 600,
-                color: 'primary.main'
-              }}
-            >
-              How Git Gud Drivers Works
-            </Typography>
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
+          Why Join GitGud Drivers
+        </Typography>
+        <Grid2 container spacing={4} sx={{ mb: 6 }}>
+          <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
             <FeatureCard 
               icon={<CarIcon fontSize="large" />}
               title="Professional Drivers"
-              description="A dedicated platform for drivers committed to delivering exceptional service and continuous improvement."
+              description="Join a community of drivers committed to excellence."
             />
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
             <FeatureCard 
               icon={<RewardsIcon fontSize="large" />}
               title="Reward System"
-              description="Earn points for safe driving, customer satisfaction, and professional excellence."
+              description="Earn points for safety, customer satisfaction, and professionalism."
             />
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
             <FeatureCard 
               icon={<StepsIcon fontSize="large" />}
-              title="Simple Process"
-              description="Easy onboarding, transparent tracking, and meaningful rewards for your hard work."
+              title="Easy Process"
+              description="Simple onboarding and transparent tracking."
             />
-          </Grid>
-        </Grid>
+          </Grid2>
+        </Grid2>
 
         {/* Steps Section */}
         <Box 
           sx={{ 
             bgcolor: 'background.paper', 
+            p: 4, 
             borderRadius: 3, 
-            p: { xs: 2, md: 4 },
-            boxShadow: 3
+            boxShadow: theme => theme.shadows[2]
           }}
         >
           <Typography 
@@ -211,50 +184,39 @@ const HomePage: React.FC = () => {
             gutterBottom
             sx={{ 
               mb: 4,
+              fontWeight: 600,
               color: 'primary.main'
             }}
           >
-            Your Journey in 4 Simple Steps
+            Your Journey in 4 Steps
           </Typography>
-          
-          <Grid container spacing={3}>
-            {[
-              'Apply as a professional driver',
-              'Get approved by a sponsor',
-              'Start earning performance points',
-              'Redeem exciting rewards'
-            ].map((step, index) => (
-              <Grid item xs={12} md={3} key={step}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center'
-                }}>
+          <Grid2 container spacing={3}>
+            {['Sign Up', 'Get Verified', 'Start Driving', 'Earn Rewards'].map((step, index) => (
+              <Grid2 size={{ xs: 12, sm: 6, md: 3 }} key={index}>
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center',
+                    textAlign: 'center'
+                  }}
+                >
                   <Avatar 
                     sx={{ 
-                      mr: 2, 
-                      bgcolor: 'primary.light',
-                      color: 'primary.contrastText'
+                      mb: 2, 
+                      bgcolor: 'primary.light', 
+                      color: 'primary.contrastText',
+                      width: 56,
+                      height: 56 
                     }}
                   >
                     {index + 1}
                   </Avatar>
-                  <Typography>{step}</Typography>
+                  <Typography variant="body1">{step}</Typography>
                 </Box>
-                {index < 3 && (
-                  <Divider 
-                    orientation="horizontal" 
-                    flexItem 
-                    sx={{ 
-                      my: 2, 
-                      display: { xs: 'none', md: 'flex' } 
-                    }} 
-                  />
-                )}
-              </Grid>
+              </Grid2>
             ))}
-          </Grid>
+          </Grid2>
         </Box>
       </Container>
     </Box>

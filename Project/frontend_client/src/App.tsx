@@ -4,6 +4,7 @@ import AppNavbar from './components/layout/AppNavbar';
 import AppTheme from './theme/AppTheme';
 import { AuthProvider, useAuth } from './service/authContext';
 import { ViewProvider } from './service/viewContext';
+import ProfilePage from './pages/ProfileView'
 import SideMenu from './components/layout/SideMenu';
 //Accessibility service
 import { AccessibilityProvider } from './service/accessibilityContext';

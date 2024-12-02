@@ -14,10 +14,10 @@ interface User {
   id: number;
   userName: string;
   email: string;
-  userType: 'Admin' | 'Driver' | 'Sponsor' | 'Guest';
   createdAt: string;
   lastLogin: string;
   roles: string[];
+  claims: any[];
   sponsorDetails?: SponsorDetails;
 }
 
@@ -112,11 +112,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data } = await axios.get<User>('/api/user/currentuser', { 
         withCredentials: true 
       });
-
-      // Ensure proper typing of user data
+      console.log("Current user data:", data); // Debug log
+      console.log("User roles:", data.roles); // Debug log
+  
       const currentUser: User = {
         ...data,
-        sponsorDetails: data.userType === 'Sponsor' ? {
+        sponsorDetails: data.roles.includes('Sponsor') ? {
           sponsorID: data.sponsorDetails?.sponsorID ?? 0,
           companyName: data.sponsorDetails?.companyName ?? '',
           IsPrimary: data.sponsorDetails?.IsPrimary ?? false,
@@ -124,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sponsorRole: data.sponsorDetails?.sponsorRole ?? 0,
         } : undefined
       };
-
+  
       setUser(currentUser);
       setIsAuthenticated(true);
       sessionStorage.setItem('user', JSON.stringify(currentUser));
@@ -146,21 +147,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [setViewRole]);
 
   const logout = useCallback(async () => {
-    if (!user?.userType) {
-      handleLogout();
-      return;
-    }
-
     try {
       await axios.post('/api/system/logout', {}, { 
         withCredentials: true 
       });
+      setUser(null);
+      setIsAuthenticated(false);
+      setViewRole(null);
+      sessionStorage.clear();
     } catch (error) {
       console.error('Logout failed:', error);
-    } finally {
-      handleLogout();
     }
-  }, [user, handleLogout]);
+  }, [setViewRole]);
+  
 
   // Initial auth check
   useEffect(() => {

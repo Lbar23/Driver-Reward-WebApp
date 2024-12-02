@@ -82,7 +82,7 @@ export default function SponsorDrivers() {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [drivers, setDrivers] = React.useState<Driver[]>([]);
-  const [sponsorInfo, setSponsorInfo] = React.useState<PointRatio | null>(null);
+  const [SponsorDetails, setSponsorDetails] = React.useState<PointRatio | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [editingPoints, setEditingPoints] = React.useState<{ [key: number]: number }>({});
@@ -122,7 +122,7 @@ export default function SponsorDrivers() {
         }
 
         const pointRatioData: PointRatio = await pointRatioResponse.json();
-        setSponsorInfo(pointRatioData);
+        setSponsorDetails(pointRatioData);
 
 
       } catch (err) {
@@ -136,7 +136,7 @@ export default function SponsorDrivers() {
   }, []);
 
   const handleUpdatePointValue = async () => {
-    if (!sponsorInfo) return;
+    if (!SponsorDetails) return;
     
     try {
       const response = await fetch(`/api/sponsor/point-value`, {
@@ -151,7 +151,7 @@ export default function SponsorDrivers() {
       if (!response.ok) throw new Error('Failed to update point value');
 
       const updatedValue = await response.json();
-      setSponsorInfo(prev => prev ? { ...prev, pointDollarValue: parseFloat(newPointValue) } : null);
+      setSponsorDetails(prev => prev ? { ...prev, pointDollarValue: parseFloat(newPointValue) } : null);
       setShowPointValueDialog(false);
       setSnackbar({ open: true, message: 'Point value updated successfully', severity: 'success' });
     } catch (err) {
@@ -164,7 +164,7 @@ export default function SponsorDrivers() {
   };
 
   const handleUpdateDriverPoints = async (driverID: number, points: number) => {
-    if (!sponsorInfo) return;
+    if (!SponsorDetails) return;
 
     try {
       const response = await fetch(
@@ -201,8 +201,8 @@ export default function SponsorDrivers() {
       });
     }
   };
-  const formattedPointValue = sponsorInfo?.pointDollarValue !== undefined 
-  ? `$${sponsorInfo.pointDollarValue.toFixed(2)}` 
+  const formattedPointValue = SponsorDetails?.pointDollarValue !== undefined 
+  ? `$${SponsorDetails.pointDollarValue.toFixed(2)}` 
   : '$0.00';
 
   if (loading) {
@@ -263,7 +263,7 @@ export default function SponsorDrivers() {
                   size="small"
                   startIcon={<EditIcon />}
                   onClick={() => {
-                    setNewPointValue(sponsorInfo?.pointDollarValue.toString() || '0.00');
+                    setNewPointValue(SponsorDetails?.pointDollarValue.toString() || '0.00');
                     setShowPointValueDialog(true);
                   }}
                 >
