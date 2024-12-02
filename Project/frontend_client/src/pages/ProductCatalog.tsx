@@ -186,8 +186,6 @@ const ProductCatalog: React.FC = () => {
     closeCart();
   };
 
-  
-
   return (
     <>
       <Container>
@@ -230,7 +228,7 @@ const ProductCatalog: React.FC = () => {
                 component="img"
                 height="200"
                 image={listing.imageUrl}
-                alt={listing.name}
+                alt={`Image of ${listing.name}`} // Added alt text
                 sx={{ objectFit: 'cover' }}
               />
               <CardContent>
@@ -275,7 +273,6 @@ const ProductCatalog: React.FC = () => {
           message={snackbarMessage}
         />
 
-        {/* Cart and Clear Cart Buttons Below Cards */}
         <Box
           sx={{
             position: 'fixed',

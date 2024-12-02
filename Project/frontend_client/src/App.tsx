@@ -20,7 +20,6 @@ import Order from './pages/Order';
 // Other pages for authenticated routes
 import PasswordChangeForm from './pages/PasswordChangeForm';
 import Settings from './pages/Settings'
-import ProfilePage from './pages/ProfileView';
 
 const ProtectedRoute = () => {
     const { isAuthenticated } = useAuth();
