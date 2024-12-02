@@ -55,7 +55,7 @@ namespace Backend_Server.Models.DTO
     );
 
     [NotMapped]
-    public record AuditLog(
+    public record AuditLogReport(
         DateTime Timestamp,
         string Category,
         string? DriverName,

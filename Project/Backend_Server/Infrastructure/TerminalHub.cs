@@ -56,64 +56,62 @@ namespace Backend_Server.Infrastructure
             await base.OnConnectedAsync();
         }
 
-        // public async Task ExecuteCommand(string command)
-        // {
-        //     if (Context.User == null || !Context.User.Identity.IsAuthenticated)
-        //     {
-        //         Log.Warning(
-        //             "UserID: N/A, Category: {Category}, Description: {Description}",
-        //             "System",
-        //             "Unauthenticated terminal command attempt"
-        //         );
-        //         await Clients.Caller.SendAsync("ReceiveError", "User not authenticated");
-        //         return;
-        //     }
+        public async Task ExecuteCommand(string command){
+            if (Context.User == null || !Context.User.Identity.IsAuthenticated){
+                Log.Warning(
+                    "UserID: N/A, Category: {Category}, Description: {Description}",
+                    "System",
+                    "Unauthenticated terminal command attempt"
+                );
+                await Clients.Caller.SendAsync("ReceiveError", "User not authenticated");
+                return;
+            }
 
-        //     var user = await _userManager.GetUserAsync(Context.User);
-        //     if (user == null)
-        //     {
-        //         Log.Warning(
-        //             "UserID: N/A, Category: {Category}, Description: {Description}",
-        //             "System",
-        //             "User not found for terminal command attempt"
-        //         );
-        //         await Clients.Caller.SendAsync("ReceiveError", "User not found");
-        //         return;
-        //     }
+            var user = await _userManager.GetUserAsync(Context.User);
+            if (user == null)
+            {
+                Log.Warning(
+                    "UserID: N/A, Category: {Category}, Description: {Description}",
+                    "System",
+                    "User not found for terminal command attempt"
+                );
+                await Clients.Caller.SendAsync("ReceiveError", "User not found");
+                return;
+            }
 
-        //     // Add debug logging
-        //     Log.Information(
-        //         "UserID: {UserID}, Category: {Category}, Description: {Description},",
-        //         user.Id,
-        //         "System",
-        //         $"Executing terminal command: {command}"
-        //     );
+            // Add debug logging
+            Log.Information(
+                "UserID: {UserID}, Category: {Category}, Description: {Description},",
+                user.Id,
+                "System",
+                $"Executing terminal command: {command}"
+            );
 
-        //     try
-        //     {
-        //         var (cmd, args) = ParseCommand(command);
-        //         var response = await HandleCommand(cmd, args, user);
-        //         await Clients.Caller.SendAsync("ReceiveOutput", response);
+            try
+            {
+                var (cmd, args) = ParseCommand(command);
+                var response = await HandleCommand(cmd, args, user);
+                await Clients.Caller.SendAsync("ReceiveOutput", response);
 
-        //         Log.Information(
-        //             "UserID: {UserID}, Category: {Category}, Description: {Description}",
-        //             user.Id,
-        //             "System",
-        //             $"Successfully executed command: {command}"
-        //         );
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         Log.Error(
-        //             ex,
-        //             "UserID: {UserID}, Category: {Category}, Description: {Description}",
-        //             user.Id,
-        //             "System",
-        //             $"Error executing command: {command}"
-        //         );
-        //         await Clients.Caller.SendAsync("ReceiveError", $"Error: {ex.Message}");
-        //     }
-        // }
+                Log.Information(
+                    "UserID: {UserID}, Category: {Category}, Description: {Description}",
+                    user.Id,
+                    "System",
+                    $"Successfully executed command: {command}"
+                );
+            }
+            catch (Exception ex)
+            {
+                Log.Error(
+                    ex,
+                    "UserID: {UserID}, Category: {Category}, Description: {Description}",
+                    user.Id,
+                    "System",
+                    $"Error executing command: {command}"
+                );
+                await Clients.Caller.SendAsync("ReceiveError", $"Error: {ex.Message}");
+            }
+        }
 
         private (string cmd, string[] args) ParseCommand(string command)
         {
@@ -191,7 +189,7 @@ namespace Backend_Server.Infrastructure
         try
         {
             var userCounts = await _context.Users
-                .GroupBy(u => u.UserType)
+                .GroupBy(u => u.Role)
                 .Select(g => new { Type = g.Key, Count = g.Count() })
                 .ToListAsync();
 
@@ -240,7 +238,6 @@ namespace Backend_Server.Infrastructure
                 .Take(5)
                 .Select(u => new {
                     u.UserName,
-                    u.UserType,
                     u.LastLogin,
                     u.NotifyPref,
                     u.TwoFactorEnabled
@@ -259,7 +256,7 @@ namespace Backend_Server.Infrastructure
                     _ => $"{(int)timeAgo.TotalDays}d ago"
                 };
 
-                output.AppendLine($"► {u.UserName} ({u.UserType})")
+                output.AppendLine($"► {u.UserName}")
                     .AppendLine($"  └─ Last seen: {timeAgoStr}")
                     .AppendLine($"  └─ 2FA: {(u.TwoFactorEnabled ? "✓" : "✗")} ({u.NotifyPref})")
                     .AppendLine();

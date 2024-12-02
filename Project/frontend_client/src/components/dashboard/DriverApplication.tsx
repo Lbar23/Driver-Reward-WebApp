@@ -14,7 +14,6 @@ import {
   Stack,
   Chip,
   Tooltip,
-  TextField,
   IconButton,
 } from '@mui/material';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
@@ -31,7 +30,6 @@ interface Sponsor {
 const DriverApplication: React.FC = () => {
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [selectedSponsors, setSelectedSponsors] = useState<number[]>([]);
-  const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -75,22 +73,13 @@ const DriverApplication: React.FC = () => {
       return;
     }
 
-    if (!reason.trim()) {
-      setError('Please provide a reason for your application');
-      return;
-    }
-
     setSubmitting(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const applicationData = {
-        sponsorIds: selectedSponsors,
-        reason: reason
-      };
-
-      const response = await axios.post('/api/driverapp/apply', applicationData, {
+      // Send just the array of sponsor IDs
+      const response = await axios.post('/api/driver/apply-sponsors', selectedSponsors, {
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
@@ -99,10 +88,9 @@ const DriverApplication: React.FC = () => {
 
       setSuccess(response.data.message || 'Application submitted successfully!');
       setSelectedSponsors([]);
-      setReason('');
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        const errorMessage = err.response?.data || 'Failed to submit application. Please try again.';
+        const errorMessage = err.response?.data?.message || 'Failed to submit application. Please try again.';
         setError(typeof errorMessage === 'string' ? errorMessage : 'Submission failed.');
       } else {
         setError('Failed to submit application. Please try again.');
@@ -187,22 +175,11 @@ const DriverApplication: React.FC = () => {
             ) : sponsorsList}
           </FormGroup>
 
-          <TextField
-            label="Reason for Application"
-            multiline
-            rows={4}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            fullWidth
-            margin="normal"
-            variant="outlined"
-          />
-
           <Button
             variant="contained"
             color="primary"
             onClick={handleSubmit}
-            disabled={selectedSponsors.length === 0 || !reason.trim() || submitting}
+            disabled={selectedSponsors.length === 0 || submitting}
             sx={{ mt: 2 }}
           >
             {submitting ? (

@@ -10,16 +10,17 @@ namespace Backend_Server.Models
         Logistics,
         Trucking,
         Fleeting,
+        Insurance,
         Independent
     }
     public class Sponsors
     {
-        public int UserID { get; set; }
         public int SponsorID { get; set; }
         public required SponsorType SponsorType { get; set; } = SponsorType.Independent;
         public required string CompanyName { get; set; }
-        public decimal PointDollarValue { get; set; } = 0.01m;
-        public ICollection<SponsorDrivers> SponsorDrivers { get; set; } = []; //Added after adding bridge entity for connection
+        public required decimal PointDollarValue { get; set; } = 0.01m;
+        public required int MilestoneThreshold { get; set; } = 0; // default is 0 and this indicates milestones arent enabled
+        public ICollection<SponsorDrivers> SponsorDrivers { get; set; } = []; 
         public ICollection<SponsorUsers> SponsorUsers { get; set; } = [];
     }
 }

@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Cryptography;
-using System.Text;
 using Backend_Server.Models;
 using Backend_Server.Models.DTO;
 using Microsoft.EntityFrameworkCore;
@@ -10,146 +8,73 @@ using Serilog;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using Backend_Server.Infrastructure;
+using System.Security.Claims;
+using static Backend_Server.Services.ClaimsService;
 
 namespace Backend_Server.Controllers
 {
     /// <summary>
     /// AdminController:
     /// 
-    /// This controller provides endpoints for managing users, including creation, deletion,
-    /// role updates, and retrieval of details.
+    /// This controller handles administrative functions related to user management,
+    /// including user creation, modification, and role management. It provides
+    /// functionality for both admin and sponsor users to manage their respective
+    /// user hierarchies.
     /// 
     /// Endpoints:
     /// 
-    /// [POST]      /api/admin/create-user          - Creates a new user (Admin, Sponsor, Driver)
-    /// [POST]      /api/admin/change-user-type     - Changes the user type for an existing user
-    /// [DELETE]    /api/admin/remove-user          - Removes a user and associated records
-    /// [GET]       /api/admin/drivers/details      - Retrieves driver details with sponsor relationships
-    /// [GET]       /api/admin/sponsors/details     - Retrieves sponsor details
-    /// [GET]       /api/admin/admins/details       - Retrieves admin details
+    /// [POST]   /api/admin/create-user             - Creates new users (Admin, Sponsor, Driver, Guest
+    /// [POST]   /api/admin/change-user-type        - Changes existing user's role/type, updates associated role data
+    /// [DELETE] /api/admin/remove-user/{userId}    - Removes user and all associated data
+    /// [GET]    /api/admin/view-users/{userType}   - Retrieves users of specified type
     /// 
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class AdminController(AppDBContext context, UserManager<Users> userManager, NotifyService notifyService, IMemoryCache cache) : CachedBaseController(cache)
+    public class AdminController : CachedBaseController
     {
-        private readonly AppDBContext _context = context;
-        private readonly UserManager<Users> _userManager = userManager;
-        private readonly NotifyService _notifyService = notifyService;
+        private readonly AppDBContext _context;
+        private readonly UserManager<Users> _userManager;
+        private readonly NotifyService _notifyService;
+        private readonly ClaimsService _claimsService;
 
-        /********* API CALLS *********/
+        public AdminController(
+            AppDBContext context,
+            UserManager<Users> userManager,
+            NotifyService notifyService,
+            ClaimsService claimsService,
+            IMemoryCache cache) : base(cache)
+        {
+            _context = context;
+            _userManager = userManager;
+            _notifyService = notifyService;
+            _claimsService = claimsService;
+        }
 
-        /// <summary>
-        /// -- Admin creates any Users (Admin, Driver, Sponsors) -- Guests aren't needed since they register normally
-        /// -- Sponsors can also create other Sponsors (under their Company Name) and Drivers (Also under their Company Name)
-        /// -- Database current has 3 Sponsors (to test insertion) with same password hash; Delete them later to actually add in rememberable passwords
-        /// -- Current implementation can be simplified, but this was done in like, 2 hours of API testing. There's no frontend yet; waiting for updates...
-        /// </summary>
-        /// <param name="model"></param>
-        /// <returns></returns>
         [Authorize(Roles = "Admin, Sponsor")]
         [HttpPost("create-user")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserDto model)
         {
-            if (!ModelState.IsValid){
+            if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            }
 
-            // Get the execution strategy from the context
             var strategy = _context.Database.CreateExecutionStrategy();
 
-            try{
-                // Execute the entire operation with retry strategy
+            try
+            {
                 await strategy.ExecuteAsync(async () =>
                 {
-                    // Start transaction
                     using var transaction = await _context.Database.BeginTransactionAsync();
                     try
                     {
-                        var user = new Users
-                        {
-                            UserName = model.Username,
-                            Email = model.Email,
-                            UserType = model.UserType.ToString(),
-                            CreatedAt = DateTime.UtcNow,
-                            EmailConfirmed = true
-                        };
-
-                        //This is where you would, essentially, generate a temp password if integrating notification SMS/Email for Sponsors or otherwise...
-                        //Using Gen password...
-
-                        var result = await _userManager.CreateAsync(user, model.Password); //<-- 
-                        if (!result.Succeeded)
-                            throw new InvalidOperationException(
-                                string.Join(", ", result.Errors.Select(e => e.Description)));
-
-                        //Add user to appropriate role
-                        await _userManager.AddToRoleAsync(user, user.UserType);
-
-                        //Create type-specific record
-                        switch (model.UserType)
-                        {
-                            case UserType.Admin:
-                                await _context.Admins.AddAsync(new Admins { UserID = user.Id });
-                                break;
-
-                            case UserType.Sponsor:
-                                if (string.IsNullOrEmpty(model.CompanyName) || string.IsNullOrEmpty(model.SponsorType))
-                                    throw new ArgumentException("CompanyName and SponsorType are required for sponsors");
-                                    
-                                var sponsor = new Sponsors
-                                {
-                                    UserID = user.Id,
-                                    CompanyName = model.CompanyName,
-                                    SponsorType = SponsorType.Independent,
-                                    PointDollarValue = model.PointDollarValue ?? 0.01m
-                                };
-                                await _context.Sponsors.AddAsync(sponsor);
-
-                                //Now needs to be added when creating a new Sponsor for the first time as an Admin or Admin Sponsor
-                                var sponsorUser = new SponsorUsers
-                                {
-                                    User = user,
-                                    Sponsor = sponsor,
-                                    IsPrimarySponsor = false,
-                                    JoinDate = DateTime.UtcNow,
-                                    SponsorRole = SponsorRole.Standard
-                                };
-                                await _context.SponsorUsers.AddAsync(sponsorUser);
-
-                                //Send credentials email (I'm not sure which template you're using in the future)
-                                //So, edit dis later
-                                await _notifyService.SendTemplateEmail(
-                                    user.Email,
-                                    "uh-me-when-uh-template",
-                                    new Dictionary<string, string> {
-                                        { "username", user.UserName },
-                                        { "temporary_password", model.Password }
-                                    }
-                                );
-                                break;
-
-                            case UserType.Driver:
-                                if (!model.SponsorID.HasValue)
-                                    throw new ArgumentException("SponsorID is required for drivers");
-                                    
-                                var driver = new Drivers
-                                {
-                                    UserID = user.Id,
-                                    // SponsorID = model.SponsorID.Value,
-                                    // TotalPoints = 0
-                                };
-                                await _context.Drivers.AddAsync(driver);
-                                break;
-
-                            default:
-                                throw new ArgumentException("Invalid user type");
-                        }
-
+                        var user = await CreateBaseUser(model);
+                        await AddUserTypeSpecificData(user, model.Role, model.SponsorID, model.IsPrimary);
+                        
                         await _context.SaveChangesAsync();
                         await transaction.CommitAsync();
 
-                        Log.Information("UserID: {UserID}, Category: User, Description: Created new {UserType}: {Username}", user.Id, model.UserType, user.UserName);
+                        Log.Information("UserID: {UserID}, Category: User, Description: Created new {UserType}: {Username}", 
+                            user.Id, model.Role, user.UserName);
                     }
                     catch
                     {
@@ -158,137 +83,68 @@ namespace Backend_Server.Controllers
                     }
                 });
 
-                return Ok(new { message = $"{model.UserType} created successfully" });
+                return Ok(new { message = $"{model.Role} created successfully" });
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "UserID: N/A, Category: User, Description: Failed to create {UserType}", model.UserType);
-                return StatusCode(500, new { 
-                    error = "Failed to create user",
-                    details = ex.Message
-                });
+                Log.Error(ex, "UserID: N/A, Category: User, Description: Failed to create {Role}", model.Role);
+                return StatusCode(500, new { error = "Failed to create user", details = ex.Message });
             }
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PolicyNames.RequireAdminRole)]
         [HttpPost("change-user-type")]
         public async Task<IActionResult> ChangeUserType([FromBody] ChangeUserTypeDto model)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             var strategy = _context.Database.CreateExecutionStrategy();
-
-            try
+            var result = await strategy.ExecuteAsync(async () =>
             {
-                await strategy.ExecuteAsync(async () =>
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    using var transaction = await _context.Database.BeginTransactionAsync();
-                    try
+                    var user = await _userManager.FindByIdAsync(model.UserId.ToString());
+                    if (user == null)
+                        return new { Success = false, Message = "User not found" };
+
+                    var oldUserType = user.Role?.Name ?? "Unknown";
+
+                    await RemoveUserTypeData(user, oldUserType);
+                    await UpdateUserRole(user, oldUserType, model.NewUserType);
+                    await AddUserTypeSpecificData(user, model.NewUserType, model.Sponsor?.SponsorID, false);
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    if (user.UserName != null)
                     {
-                        var user = await _userManager.FindByIdAsync(model.UserId.ToString());
-                        if (user == null)
-                            throw new InvalidOperationException("User not found");
-
-                        // Remove from old role
-                        var currentRoles = await _userManager.GetRolesAsync(user);
-                        await _userManager.RemoveFromRolesAsync(user, currentRoles);
-
-                        // Add to new role
-                        await _userManager.AddToRoleAsync(user, model.NewUserType);
-
-                        // Update user type in Users table
-                        user.UserType = model.NewUserType;
-                        await _userManager.UpdateAsync(user);
-
-                        // Handle type-specific records
-                        // Remove old type-specific record
-                        switch (user.UserType)
-                        {
-                            case "Admin":
-                                var admin = await _context.Admins.FirstOrDefaultAsync(a => a.UserID == user.Id);
-                                if (admin != null)
-                                    _context.Admins.Remove(admin);
-                                break;
-                            case "Sponsor":
-                                var sponsorUser = await _context.SponsorUsers.FirstOrDefaultAsync(su => su.UserID == user.Id);
-                                if (sponsorUser != null)
-                                    _context.SponsorUsers.Remove(sponsorUser);
-                                break;
-                            case "Driver":
-                                var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == user.Id);
-                                if (driver != null)
-                                    _context.Drivers.Remove(driver);
-                                break;
-                        }
-
-                        // Add new type-specific record
-                        switch (model.NewUserType)
-                        {
-                            case "Admin":
-                                await _context.Admins.AddAsync(new Admins { UserID = user.Id });
-                                break;
-                            case "Sponsor":
-                            
-                            //Updated Sponsor case for multiple sponsors handling...this is tedious
-                                var sponsor = new Sponsors 
-                                { 
-                                    UserID = user.Id,
-                                    CompanyName = "Pending Update", // Default value, should be updated later
-                                    SponsorType = SponsorType.Independent,
-                                    PointDollarValue = 0.01m
-                                };
-                                await _context.Sponsors.AddAsync(sponsor);
-
-                                var sponsorUser = new SponsorUsers
-                                {
-                                    User = user,
-                                    Sponsor = sponsor,
-                                    IsPrimarySponsor = true,
-                                    JoinDate = DateTime.UtcNow,
-                                    SponsorRole = SponsorRole.Admin
-                                };
-                                await _context.SponsorUsers.AddAsync(sponsorUser);
-                                break;
-                            case "Driver":
-                                await _context.Drivers.AddAsync(new Drivers 
-                                { 
-                                    UserID = user.Id
-                                });
-                                break;
-                            default:
-                                throw new ArgumentException("Invalid user type");
-                        }
-
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
-
-                        Log.Information("Changed user type for {Username} to {NewUserType}", user.UserName, model.NewUserType);
+                        await _notifyService.NotifySystemChangeAsync(user.Id, "RoleChange", user.UserName);
                     }
-                    catch
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                });
 
-                return Ok(new { message = "User type changed successfully" });
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to change user type for user {UserId}", model.UserId);
-                return StatusCode(500, new { 
-                    error = "Failed to change user type",
-                    details = ex.Message 
-                });
-            }
+                    Log.Information("Changed user type for {Username} from {OldType} to {NewType}", 
+                        user.UserName, oldUserType, model.NewUserType);
+
+                    return new { Success = true, Message = "User type changed successfully" };
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    Log.Error(ex, "Failed to change user type for {UserId}", model.UserId);
+                    throw;
+                }
+            });
+
+            if (!result.Success)
+                return NotFound(new { error = result.Message });
+
+            return Ok(new { message = result.Message, userType = model.NewUserType });
         }
 
-        [Authorize(Roles = "Admin")]
         [HttpDelete("remove-user/{userId}")]
-        public async Task<IActionResult> RemoveUser(int userId)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> RemoveUser(string userId)
         {
             var strategy = _context.Database.CreateExecutionStrategy();
 
@@ -299,50 +155,38 @@ namespace Backend_Server.Controllers
                     using var transaction = await _context.Database.BeginTransactionAsync();
                     try
                     {
-                        var user = await _userManager.FindByIdAsync(userId.ToString());
+                        var user = await _userManager.FindByIdAsync(userId);
                         if (user == null)
-                            throw new InvalidOperationException("User not found");
+                            throw new KeyNotFoundException("User not found");
 
-                        // Store email for notification before deletion
-                        var userEmail = user.Email;
-                        var userName = user.UserName;
-                        var userType = user.UserType;
-
-                        // Remove type-specific record first
-                        switch (userType)
-                        {
-                            case "Admin":
-                                var admin = await _context.Admins.FirstOrDefaultAsync(a => a.UserID == userId);
-                                if (admin != null)
-                                    _context.Admins.Remove(admin);
-                                break;
-                            case "Sponsor":
-                                var sponsorUser = await _context.SponsorUsers.FirstOrDefaultAsync(su => su.UserID == userId);
-                                if (sponsorUser != null)
-                                    _context.SponsorUsers.Remove(sponsorUser);
-                                break;
-                            case "Driver":
-                                var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == userId);
-                                if (driver != null)
-                                    _context.Drivers.Remove(driver);
-                                break;
-                        }
-
-                        // Remove user from roles
+                        var userType = user.Role?.Name ?? "Unknown";
+                        
+                        // Remove role-specific data
+                        await RemoveUserTypeData(user, userType);
+                        
+                        // Remove claims and roles
+                        var userClaims = await _userManager.GetClaimsAsync(user);
                         var userRoles = await _userManager.GetRolesAsync(user);
-                        await _userManager.RemoveFromRolesAsync(user, userRoles);
+                        
+                        if (userClaims.Any())
+                            await _userManager.RemoveClaimsAsync(user, userClaims);
+                        
+                        if (userRoles.Any())
+                            await _userManager.RemoveFromRolesAsync(user, userRoles);
 
                         // Delete the user
                         var result = await _userManager.DeleteAsync(user);
                         if (!result.Succeeded)
+                        {
                             throw new InvalidOperationException(
-                                string.Join(", ", result.Errors.Select(e => e.Description)));
+                                $"Failed to delete user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                        }
 
                         await _context.SaveChangesAsync();
                         await transaction.CommitAsync();
 
-
-                        Log.Information("Removed user: {Username} ({UserType})", userName, userType);
+                        Log.Information("UserID: {UserId}, Category: User, Description: User {UserType} removed successfully", 
+                            userId, userType);
                     }
                     catch
                     {
@@ -353,137 +197,170 @@ namespace Backend_Server.Controllers
 
                 return Ok(new { message = "User removed successfully" });
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException ex)
+            {
+                Log.Warning(ex, "Attempted to remove non-existent user {UserId}", userId);
+                return NotFound(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
             {
                 Log.Error(ex, "Failed to remove user {UserId}", userId);
-                return StatusCode(500, new { 
-                    error = "Failed to remove user",
-                    details = ex.Message 
-                });
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Critical error removing user {UserId}", userId);
+                return StatusCode(500, new { error = "Failed to remove user", details = ex.Message });
             }
         }
 
-        [HttpGet("drivers/details")]
-        [Authorize(Roles = "Admin, Sponsor")]
-        public async Task<IActionResult> GetDriversWithDetails()
+        
+        [HttpGet("view-users/{userType}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetUsersDetails(string userType)
         {
-            return await ExecuteQueryWithRetryAsync(async () =>
+            try
             {
-                var currentUser = await _userManager.GetUserAsync(User);
-                string cacheKey = $"drivers_details_{currentUser?.Id}";
-                
-                return await GetCachedAsync(cacheKey, async () =>
+                IEnumerable<object> details = userType.ToLower() switch
                 {
-                    try
-                    {
-                        var driversWithDetails = await _context.Users
-                            .Where(u => u.UserType == "Driver")
-                            .Select(u => new
-                            {
-                                userId = u.Id,
-                                name = u.UserName,
-                                email = u.Email,
-                                sponsorRelationships = _context.SponsorDrivers
-                                    .Where(sd => sd.DriverID == u.Id)
-                                    .Select(sd => new
-                                    {
-                                        sponsorId = sd.SponsorID,
-                                        sponsorName = _context.Sponsors
-                                            .Where(s => s.SponsorID == sd.SponsorID)
-                                            .Select(s => s.CompanyName)
-                                            .FirstOrDefault(),
-                                        points = sd.Points
-                                    })
-                                    .ToList()
-                            })
-                            .ToListAsync();
+                    "drivers" => await _context.Set<ViewDriversDto>()
+                        .FromSqlRaw("SELECT * FROM v_AllDrivers")
+                        .AsNoTracking()
+                        .ToListAsync() ?? new List<ViewDriversDto>(),
+                        
+                    "sponsors" => await _context.Set<ViewSponsorUsersDto>()
+                        .FromSqlRaw("SELECT * FROM v_AllSponsorUsers")
+                        .AsNoTracking()
+                        .ToListAsync() ?? new List<ViewSponsorUsersDto>(),
+                        
+                    "admins" => await _context.Set<ViewAdminsDto>()
+                        .FromSqlRaw("SELECT * FROM v_AllAdmins")
+                        .AsNoTracking()
+                        .ToListAsync() ?? new List<ViewAdminsDto>(),
+                        
+                    _ => throw new ArgumentException($"Invalid user type: {userType}")
+                };
 
-                        return Ok(driversWithDetails);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Error fetching drivers with details");
-                        return StatusCode(500, "Error retrieving driver details");
-                    }
-                }, TimeSpan.FromMinutes(15));
-            });
-        }
-        [Authorize(Roles = "Admin")]
-        [HttpGet("sponsors/details")]
-        public async Task<IActionResult> GetSponsorsDetails()
-        {
-            try
-            {
-                var sponsorsQuery = from u in _context.Users
-                                join su in _context.SponsorUsers on u.Id equals su.UserID
-                                join s in _context.Sponsors on u.Id equals s.UserID
-                                where u.UserType == "Sponsor"
-                                select new
-                                {
-                                    UserId = u.Id,
-                                    Name = u.UserName,
-                                    Email = u.Email,
-                                    SponsorID = s.SponsorID,
-                                    CompanyName = s.CompanyName,
-                                    SponsorType = s.SponsorType,
-                                    PointDollarValue = s.PointDollarValue,
-                                    //TotalDrivers = _context.Drivers.Count(d => d.SponsorID == s.SponsorID),
-                                    u.UserType,
-                                    //added for more required sponsor details
-                                    su.IsPrimarySponsor,
-                                    su.JoinDate,
-                                    su.SponsorRole
-                                };
-
-                var sponsors = await sponsorsQuery.ToListAsync();
-                return Ok(sponsors);
+                return Ok(details);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to retrieve sponsors details");
-                return StatusCode(500, new { error = "Failed to retrieve sponsors details" });
+                Log.Error(ex, "Failed to retrieve {UserType} details", userType);
+                return StatusCode(500, $"Failed to retrieve {userType} details");
             }
         }
 
-        [Authorize(Roles = "Admin")]
-        [HttpGet("admins/details")]
-        public async Task<IActionResult> GetAdminsDetails()
+        // Consolidated helper methods
+        private async Task<Users> CreateBaseUser(CreateUserDto model)
         {
-            try
+            var user = new Users
             {
-                var adminsQuery = from u in _context.Users
-                                join a in _context.Admins on u.Id equals a.UserID
-                                where u.UserType == "Admin"
-                                select new
-                                {
-                                    UserId = u.Id,
-                                    Name = u.UserName,
-                                    Email = u.Email,
-                                    CreatedAt = u.CreatedAt,
-                                    LastLogin = u.LastLogin,
-                                    UserType = u.UserType
-                                };
+                UserName = model.Username,
+                FirstName = model.FirstName,
+                LastName = model.Username,
+                Email = model.Email,
+                State = model.State,
+                CreatedAt = DateTime.UtcNow,
+                EmailConfirmed = false
+            };
 
-                var admins = await adminsQuery.ToListAsync();
-                return Ok(admins);
-            }
-            catch (Exception ex)
+            var password = !string.IsNullOrEmpty(model.Password) ? model.Password : GeneratePassword();
+            var result = await _userManager.CreateAsync(user, password);
+            
+            if (!result.Succeeded)
+                throw new InvalidOperationException(string.Join(", ", result.Errors.Select(e => e.Description)));
+
+            await _userManager.AddToRoleAsync(user, model.Role);
+            await _userManager.AddClaimsAsync(user, new[] { new Claim(ClaimTypes.Role, model.Role) });
+
+            return user;
+        }
+
+        private async Task RemoveUserTypeData(Users user, string userType)
+        {
+            switch (userType.ToLower())
             {
-                Log.Error(ex, "Failed to retrieve admins details");
-                return StatusCode(500, new { error = "Failed to retrieve admins details" });
+                case "sponsor":
+                    var sponsorUser = await _context.SponsorUsers
+                        .Include(su => su.Sponsor)
+                        .FirstOrDefaultAsync(su => su.UserID == user.Id);
+                    if (sponsorUser != null)
+                    {
+                        _context.SponsorUsers.Remove(sponsorUser);
+                        _context.Sponsors.Remove(sponsorUser.Sponsor);
+                    }
+                    break;
+
+                case "driver":
+                    var driver = await _context.SponsorDrivers
+                        .FirstOrDefaultAsync(d => d.UserID == user.Id);
+                    if (driver != null)
+                    {
+                        _context.SponsorDrivers.Remove(driver);
+                    }
+                    break;
             }
         }
 
-        /********* HELPER FUNCTIONS *********/
+        private async Task AddUserTypeSpecificData(Users user, string userType, int? sponsorId, bool? isPrimary)
+        {
+            if (sponsorId.HasValue)
+            {
+                var sponsor = await _context.Sponsors.FirstOrDefaultAsync(s => s.SponsorID == sponsorId.Value)
+                    ?? throw new InvalidOperationException("Sponsor not found.");
 
-        // Method to whenever Admin needs to change or reset a user's password to random jumble
-        // Temp password...
+                switch (userType.ToLower())
+                {
+                    case "sponsor":
+                        var sponsorUser = new SponsorUsers
+                        {
+                            UserID = user.Id,
+                            User = user,
+                            Sponsor = sponsor,
+                            SponsorID = sponsorId.Value,
+                            IsPrimary = isPrimary ?? false,
+                            JoinDate = DateTime.UtcNow
+                        };
+                        await _context.SponsorUsers.AddAsync(sponsorUser);
+                        break;
+
+                    case "driver":
+                        var sponsorDriver = new SponsorDrivers
+                        {
+                            UserID = user.Id,
+                            SponsorID = sponsor.SponsorID,
+                            User = user,
+                            Sponsor = sponsor,
+                            Points = 0,
+                            DriverPointValue = sponsor.PointDollarValue,
+                            MilestoneLevel = sponsor.MilestoneThreshold == 0 ? 0 : 1,
+                        };
+                        await _context.SponsorDrivers.AddAsync(sponsorDriver);
+                        break;
+                }
+            }
+        }
+
+        private async Task UpdateUserRole(Users user, string oldRole, string newRole)
+        {
+            if (!string.IsNullOrEmpty(oldRole))
+            {
+                await _userManager.RemoveFromRoleAsync(user, oldRole);
+                var oldClaims = await _userManager.GetClaimsAsync(user);
+                await _userManager.RemoveClaimsAsync(user, oldClaims);
+            }
+
+            await _userManager.AddToRoleAsync(user, newRole);
+            await _userManager.AddClaimsAsync(user, new[] { new Claim(ClaimTypes.Role, newRole) });
+            await _claimsService.UpdateUserClaims(user);
+        }
+
         private static string GeneratePassword()
         {
             const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*";
-            var random = new Random();
-            return new string(Enumerable.Repeat(chars, 12).Select(s => s[random.Next(s.Length)]).ToArray());
+            return new string(Enumerable.Repeat(chars, 12)
+                .Select(s => s[Random.Shared.Next(s.Length)])
+                .ToArray());
         }
     }
-
 }

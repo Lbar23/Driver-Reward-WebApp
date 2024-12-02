@@ -1,25 +1,20 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-
-// For better scalability, 
-// turn every DTO going forward should be records instead of classes
-// (since they are inherently immutable data carriers)
-
 namespace Backend_Server.Models.DTO
 {
+    // DTO for Sponsor details
     [NotMapped]
-    public record SponsorDto //mainly here so Drivers can switch between different sponsors
+    public record SponsorDto
     {
         public int SponsorID { get; init; }
         public required string CompanyName { get; init; }
         public decimal PointDollarValue { get; init; }
     }
 
+    // DTO for displaying point value information
     [NotMapped]
     public record PointValueDto
     {
@@ -29,24 +24,47 @@ namespace Backend_Server.Models.DTO
         public decimal TotalValue => TotalPoints * PointValue;
     }
 
+    // DTO for a transaction record
     [NotMapped]
     public record TransactionDto
     {
         public DateTime Date { get; init; }
         public int Points { get; init; }
-        public required string Type { get; init; }
+        public required string Type { get; init; } // e.g., Add or Subtract
         public required string Reason { get; init; }
         public required string SponsorName { get; init; }
-        public string? Status { get; init; }
+        public string? Status { get; init; } // Optional for status like Approved or Pending
     }
 
-    public record PurchaseRequest
+    // DTO for submitting a purchase request
+    public class PurchaseRequest
     {
-        public required int SponsorID { get; init; }
-        public required int ProductID { get; init; }
-        public required int PointsSpent { get; init; }
+        public int SponsorID { get; set; }
+        public int UserID { get; set; }
+        public int TotalPointsSpent { get; set; }
+        public DateTime PurchaseDate { get; set; }
+        public OrderStatus Status { get; set; }
+        public List<ProductDto> Products { get; set; } = new();
     }
 
+    [NotMapped]
+    public record UpdatePurchase
+    {
+        public List<ProductDto> UpdatedProducts { get; set; } = new();
+        public int UpdatedPointsSpent { get; set; }
+    }
+
+    [NotMapped]
+    public record PurchaseProductDto
+    {
+        public int ProductID { get; set; }
+        public required string ProductName { get; set; }
+        public decimal UnitPrice { get; set; }
+        public int PointsSpent { get; set; }
+        public int Quantity { get; set; }
+    }
+
+    // DTO for listing driver information
     [NotMapped]
     public record DriverListDto
     {
@@ -54,42 +72,95 @@ namespace Backend_Server.Models.DTO
         public string? Name { get; init; }
         public string? Email { get; init; }
         public int TotalPoints { get; init; }
-        // public string? City { get; init; }
-        // public string? State { get; init; }
     }
 
-    [NotMapped]
-    public record UserRegisterDto 
-    {
-        public required string Username { get; set; }
-        public required string Email { get; set; }
-        public required string Password { get; set; }
-        public bool Enable2FA { get; set; } 
-    }
 
+    // DTO for changing user type
     [NotMapped]
     public record ChangeUserTypeDto
     {
         public int UserId { get; set; }
+        public int SponsorID { get; set; }
+        public Sponsors? Sponsor { get; set; }
         public required string NewUserType { get; set; }
     }
+    
+    /// <summary>
+    /// DTO representing the vw_AllAdmins database view
+    /// Maps admin user information including role and login details
+    /// </summary>
+    [NotMapped]
+    public record ViewAdminsDto
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime? LastLogin { get; set; }
+        public string UserType { get; set; } = string.Empty;
+    }
 
+    /// <summary>
+    /// DTO representing the vw_AllDrivers database view
+    /// Maps driver information including their sponsor and point details
+    /// </summary>
+    [NotMapped]
+    public record ViewDriversDto
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public int SponsorID { get; set; }
+        public string SponsorName { get; set; } = string.Empty;
+        public int DriverPoints { get; set; }
+        public int MilestoneLevel { get; set; }
+    }
+
+    /// <summary>
+    /// DTO representing the vw_AllSponsorUsers database view
+    /// Maps sponsor user information including company and role details
+    /// </summary>
+    /// 
+    [NotMapped]
+    public record ViewSponsorUsersDto
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public int SponsorID { get; set; }
+        public string CompanyName { get; set; } = string.Empty;
+        public string SponsorType { get; set; } = string.Empty;
+        public decimal PointDollarValue { get; set; }
+        public bool IsPrimary { get; set; }
+        public DateTime JoinDate { get; set; }
+    }
+
+    // DTO for creating a new user
     [NotMapped]
     public record CreateUserDto
     {
-        //For all users; Required
+
+        // For all users (required)
         public required string Username { get; set; }
+        public required string FirstName { get; set; }
+        public required string LastName { get; set; }
         public required string Email { get; set; }
-        public required UserType UserType { get; set; }
-        public required string Password { get; set; }
+        public string? Password { get; set; }
+        public required string State { get; set; }
+        public required string Role { get; set; } // Role to assign replaces usertype
+        public string? SponsorName { get; set; }
+        public required bool Enable2FA { get; set; } 
+        public NotificationPref NotifyPref { get; set; } = NotificationPref.Email; // Updated
 
-        // For sponsors; So make them conditional
-        public string? CompanyName { get; set; }
-        public string? SponsorType { get; set; }
-        public decimal? PointDollarValue { get; set; }
-
-        // For drivers; So make them conditional
-        public int? SponsorID { get; set; }
+        // Optional fields for role-specific actions
+        public int? SponsorID { get; set; } // Required only for SponsorUsers or DriverUsers
+        public bool? IsPrimary { get; set; } = false; // Default for sponsor users
+        public decimal? DriverPointValue { get; set; } // only required for drivers
 
         public IEnumerable<string> Validate()
         {
@@ -104,23 +175,25 @@ namespace Backend_Server.Models.DTO
             if (string.IsNullOrWhiteSpace(Password))
                 errors.Add("Password is required");
 
-            switch (UserType)
+            if (string.IsNullOrWhiteSpace(State) || State.Length != 2)
+                errors.Add("State is required and must be a valid two-character abbreviation.");
+
+            if (string.IsNullOrWhiteSpace(Role))
+                errors.Add("Role is required.");
+
+            // Role-specific validations
+            if (Role.Equals("Sponsor", StringComparison.OrdinalIgnoreCase) || 
+                Role.Equals("Driver", StringComparison.OrdinalIgnoreCase))
             {
-                case UserType.Sponsor when string.IsNullOrWhiteSpace(CompanyName):
-                    errors.Add("Company name is required for sponsors");
-                    break;
-                case UserType.Sponsor when string.IsNullOrWhiteSpace(SponsorType):
-                    errors.Add("Sponsor type is required for sponsors");
-                    break;
-                case UserType.Driver when !SponsorID.HasValue:
-                    errors.Add("Sponsor ID is required for drivers");
-                    break;
+                if (!SponsorID.HasValue)
+                    errors.Add("SponsorID is required for Sponsor or Driver users.");
             }
 
             return errors;
         }
-    };
+    }
 
+    // DTO for user login
     [NotMapped]
     public record UserLoginDto
     {
@@ -128,19 +201,24 @@ namespace Backend_Server.Models.DTO
         public required string Password { get; set; }
     }
     
+    // DTO for two-factor authentication
     [NotMapped]
     public record TwoFactorDto
     {
-        public required string UserId { get; set; }
-        public required string Code { get; set; }
+        public string UserId { get; set; } // Updated to match database
+        public string Code { get; set; }
     }
     
+    // DTO for resetting password
     [NotMapped]
     public record ResetPasswordDto 
     {
+        public required int UserId { get; set; }
+        public required string Token { get; set; }
         public required string NewPassword { get; set; }
     }
 
+    // DTO for changing password
     [NotMapped]
     public record ChangePasswordDto
     {
@@ -148,12 +226,15 @@ namespace Backend_Server.Models.DTO
         public required string NewPassword { get; set; }
     }
 
+    // DTO for representing product information
     public record ProductDto
     {
-        public int ProductID { get; set; }  // Add this
-        public required string Name { get; set; }
-        public required string Price { get; set; }
-        public required string ImageUrl { get; set; }
+        public int ProductID { get; set; }
+        public required string ProductName { get; set; } // Updated to match Products model
+        public required string Category { get; set; } // New field
+        public required decimal CurrencyPrice { get; set; }
         public int PointCost { get; set; }
+        public required string ImageUrl { get; set; }
+        public string Description { get; set; } = string.Empty; // Updated to include Description
     }
 }

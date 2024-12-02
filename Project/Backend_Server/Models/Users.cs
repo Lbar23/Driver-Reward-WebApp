@@ -17,15 +17,22 @@ namespace Backend_Server.Models
         Driver,   // 0 in db
         Sponsor,  // 1 in db
         Admin,  // 2 in db
-        Guest // 3 in db, for unapproved drivers
+        Guest // 3 in db, for unapproved drivers with no sponsors
     }
     public class Users : IdentityUser<int>
     {
-        public required string UserType { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public required DateTime CreatedAt { get; set; }
+        public int? RoleID { get; set; }
         public DateTime? LastLogin { get; set; }
+        public required string FirstName { get; set; }
+        public required string LastName { get; set; }
+        public required string State { get; set; }
+        public string? ProfileImgUrl { get; set; }
+        public virtual IdentityRole<int>? Role { get; set; } // Navigation property
         public NotificationPref NotifyPref { get; set; } = NotificationPref.None; 
-        public ICollection<SponsorUsers> SponsorUsers { get; set; } = [];
+        public virtual ICollection<SponsorDrivers>? SponsorDrivers { get; set; }
+        public virtual ICollection<SponsorUsers>? SponsorUsers { get; set; }
+
     }
     // Package inherits AspNetUser Properties:
         // `Id` int NOT NULL AUTO_INCREMENT,

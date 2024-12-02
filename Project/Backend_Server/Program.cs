@@ -12,9 +12,10 @@ using Amazon.Extensions.NETCore.Setup;
 using Serilog;
 using Amazon.S3;
 using Serilog.Events;
-// using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using static Backend_Server.Services.ClaimsService;
 
 
 
@@ -42,6 +43,8 @@ try {
     builder.Services.AddSingleton<CatalogService>();
     builder.Services.AddSingleton<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
+    builder.Services.AddScoped<ReportService>();
+    builder.Services.AddScoped<ClaimsService>();
 
     //Service for handling Logging more efficiently with custom services or methods relating to DB Connection
     builder.Services.AddLogging(configure => {
@@ -78,13 +81,14 @@ try {
     });
 
     // JWT Authentication setup
-    var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "YourSecretKeyHere"; // Add this in appsettings.json
-    var key = Encoding.ASCII.GetBytes(jwtSecret);
+
+    var jwtSettings = builder.Configuration.GetSection("Jwt");
+    var key = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
 
     builder.Services.AddAuthentication(options =>
     {
-        options.DefaultAuthenticateScheme = "JwtBearer";
-        options.DefaultChallengeScheme = "JwtBearer";
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
     .AddJwtBearer("JwtBearer", options =>
     {
@@ -92,11 +96,44 @@ try {
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(key),
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidateAudience = true,
+            ValidAudience = jwtSettings["Audience"],
+            ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero // No tolerance for clock skew
         };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // Check for token in cookies
+                context.Token = context.Request.Cookies["X-Access-Token"];
+                return Task.CompletedTask;
+            }
+        };
     });
+
+    // Configure authorization policies
+    builder.Services.AddAuthorization(options =>
+    {
+        options.AddPolicy(PolicyNames.CanImpersonate, policy =>
+            policy.RequireRole("Admin"));
+            // policy.Requirements.Add(new ImpersonationRequirement()));
+            
+        options.AddPolicy(PolicyNames.RequireSponsorRole, policy =>
+            policy.RequireRole("Sponsor"));
+            
+        options.AddPolicy(PolicyNames.RequireAdminRole, policy =>
+            policy.RequireRole("Admin"));
+    
+        options.AddPolicy("CanCreateUsers", policy =>
+            policy.RequireRole("Admin")
+                  .RequireClaim("Permission", "CreateUsers"));
+
+    });
+
 
     // Identity Services and Options
     builder.Services.AddIdentity<Users, IdentityRole<int>>(options =>

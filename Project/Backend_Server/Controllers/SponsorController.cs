@@ -17,7 +17,7 @@ namespace Backend_Server.Controllers
     /// managing driver applications, and processing application statuses.
     ///
     /// Endpoints:
-    
+    ///
     /// [PUT]   /api/sponsor/update/{id}                - Updates the driver application with a sponsor decision
     /// [GET]   /api/sponsor/drivers                    - Retrieves a list of drivers associated with the sponsor
     /// [GET]   /api/sponsor/drivers/{id}               - Retrieves detailed information about a specific driver
@@ -45,7 +45,7 @@ namespace Backend_Server.Controllers
 
             application.Status = updatedApplication.Status;
             application.ProcessedDate = updatedApplication.ProcessedDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
-            application.Reason = updatedApplication.Reason;
+            application.ProcessReason = updatedApplication.ProcessReason;
             _context.DriverApplications.Update(application);
             await _context.SaveChangesAsync();
             return Ok("Application updated successfully!");
@@ -69,11 +69,11 @@ namespace Backend_Server.Controllers
             {
                 return Unauthorized("User not found.");
             }
-            
 
             // Get sponsor's ID
             var sponsorUser = await _context.SponsorUsers
                 .FirstOrDefaultAsync(su => su.UserID == currentUser.Id);
+                
             if (sponsorUser == null)
             {
                 Log.Warning("UserID: {UserId}, Category: System, Description: No sponsor found for User ID: {UserId}", currentUser.Id, currentUser.Id);
@@ -87,7 +87,7 @@ namespace Backend_Server.Controllers
                 .Where(sd => sd.SponsorID == sponsorUser.SponsorID)
                 .Join(
                     _context.Users,
-                    sd => sd.DriverID,
+                    sd => sd.UserID,
                     u => u.Id,
                     (sd, u) => new DriverListDto
                     {
@@ -124,10 +124,10 @@ namespace Backend_Server.Controllers
             }
 
             var driverInfo = await _context.SponsorDrivers
-                .Where(sd => sd.SponsorID == sponsorUser.SponsorID && sd.DriverID == id)
+                .Where(sd => sd.SponsorID == sponsorUser.SponsorID && sd.UserID == id)
                 .Join(
                     _context.Users,
-                    sd => sd.DriverID,
+                    sd => sd.UserID,
                     u => u.Id,
                     (sd, u) => new DriverListDto
                     {
@@ -171,7 +171,7 @@ namespace Backend_Server.Controllers
                     app.UserID,
                     app.ApplyDate,
                     app.Status,
-                    app.Reason
+                    app.ProcessReason
                 })
                 .ToListAsync();
 
@@ -184,8 +184,8 @@ namespace Backend_Server.Controllers
             return Ok(applications);
         }
 
-        [HttpPost("applications/{applicationID}/process")]
-        public async Task<IActionResult> ProcessApplication(int applicationID, [FromQuery] string action)
+        [HttpPost("applications/{appID}")]
+        public async Task<IActionResult> ProcessApplication(int appID, [FromQuery] string action)
         {
 
             var currentUser = await _userManager.GetUserAsync(User);
@@ -194,40 +194,35 @@ namespace Backend_Server.Controllers
                 return Unauthorized("User not found.");
             }
 
-            var application = await _context.DriverApplications.FindAsync(applicationID);
+            var application = await _context.DriverApplications.FindAsync(appID);
             if (application == null)
             {
                 return NotFound("Application not found.");
             }
-
-            //Because of multiple sponsors per main sponsor/company, check if the sponsor can actually access application
-            //To edit it and such. We can (actually, probably, DBMS showcase...) also add permissions logic from AspNetRoleClaims to be more specific
             var sponsorUser = await _context.SponsorUsers
                 .FirstOrDefaultAsync(su => su.UserID == currentUser.Id && su.SponsorID == application.SponsorID);
-            if (sponsorUser == null)
-            {
+
+            if (sponsorUser == null){
                 return Unauthorized("Sponsor user does not have access to this application.");
             }
 
-            if (action == "approve")
-            {
+            if (action == "approve"){
                 application.Status = AppStatus.Approved;
                 application.ProcessedDate = DateOnly.FromDateTime(DateTime.Now);
             }
-            else if (action == "reject")
-            {
+
+            else if (action == "reject"){
                 application.Status = AppStatus.Rejected;
                 application.ProcessedDate = DateOnly.FromDateTime(DateTime.Now);
             }
-            else
-            {
+
+            else{
                 return BadRequest("Invalid action specified. Use 'approve' or 'reject'.");
             }
 
             await _context.SaveChangesAsync();
             return Ok($"Application {action}ed successfully.");
         }
-
         [HttpPut("point-value")]
         public async Task<IActionResult> UpdatePointDollarValue([FromBody] decimal newPointValue)
         {
@@ -240,7 +235,7 @@ namespace Backend_Server.Controllers
                 }
 
                 // Get sponsor's ID
-                var sponsor = await _context.Sponsors
+                var sponsor = await _context.SponsorUsers
                     .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
                 if (sponsor == null)
                 {
@@ -255,7 +250,7 @@ namespace Backend_Server.Controllers
                 }
 
                 // Update the point-dollar value
-                sponsor.PointDollarValue = newPointValue;
+                sponsor.Sponsor.PointDollarValue = newPointValue;
                 await _context.SaveChangesAsync();
 
                 return Ok(new { 
@@ -284,7 +279,7 @@ namespace Backend_Server.Controllers
                 }
 
                 // Get sponsor's ID
-                var sponsor = await _context.Sponsors
+                var sponsor = await _context.SponsorUsers
                     .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
                 if (sponsor == null)
                 {
@@ -301,7 +296,7 @@ namespace Backend_Server.Controllers
                 var sponsorDriver = await _context.SponsorDrivers
                     .FirstOrDefaultAsync(sd => 
                         sd.SponsorID == sponsor.SponsorID && 
-                        sd.DriverID == driverId);
+                        sd.UserID == driverId);
 
                 if (sponsorDriver == null)
                 {
@@ -313,7 +308,7 @@ namespace Backend_Server.Controllers
                 await _context.SaveChangesAsync();
 
                 // Calculate dollar value based on sponsor's point-dollar ratio
-                decimal dollarValue = newPoints * sponsor.PointDollarValue;
+                decimal dollarValue = newPoints * sponsor.Sponsor.PointDollarValue;
 
                 return Ok(new { 
                     message = "Driver points updated successfully",
@@ -339,7 +334,7 @@ namespace Backend_Server.Controllers
                 }
 
                 // Get sponsor's information
-                var sponsor = await _context.Sponsors
+                var sponsor = await _context.SponsorUsers
                     .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
                 if (sponsor == null)
                 {
@@ -348,7 +343,7 @@ namespace Backend_Server.Controllers
                 }
 
                 return Ok(new { 
-                    pointDollarValue = sponsor.PointDollarValue,
+                    pointDollarValue = sponsor.Sponsor.PointDollarValue,
                     sponsorId = sponsor.SponsorID
                 });
             }
@@ -358,18 +353,5 @@ namespace Backend_Server.Controllers
                 return StatusCode(500, "An error occurred while retrieving point ratio");
             }
         }
-
-        // [HttpGet("products")]
-        // public async Task<IActionResult> GetProducts()
-        // {
-        //     return Ok();
-        // }
-
-        // [HttpGet("products/{id}")]
-        // public async Task<IActionResult> GetProduct(int id)
-        // {
-        //     return Ok();
-        // }
-        
     }
 }

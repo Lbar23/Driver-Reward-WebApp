@@ -9,6 +9,7 @@ using Serilog;
 using Backend_Server.Infrastructure;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Mvc.TagHelpers.Cache;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 
 
@@ -30,12 +31,19 @@ namespace Backend_Server.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class UserController(UserManager<Users> userManager, SignInManager<Users> signInManager, AppDBContext context, NotifyService notifyService, IMemoryCache cache) : CachedBaseController(cache)
+    public class UserController(UserManager<Users> userManager, 
+                                SignInManager<Users> signInManager, 
+                                AppDBContext context, 
+                                NotifyService notifyService, 
+                                ClaimsService claimsService,
+                                IMemoryCache cache) 
+                                : CachedBaseController(cache)
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly SignInManager<Users> _signInManager = signInManager;
         private readonly AppDBContext _context = context;
         private readonly NotifyService _notifyService = notifyService;
+        private readonly ClaimsService _claimsService = claimsService;
 
         /********* API CALLS *********/
 
@@ -52,7 +60,7 @@ namespace Backend_Server.Controllers
             var claims = await _userManager.GetClaimsAsync(user); // Fetch claims for the user
 
             object response;
-            if (user.UserType == "Sponsor") // Handle sponsor-specific details
+            if (user.Role?.Name == "Sponsor") // Handle sponsor-specific details
             {
                 var sponsorUser = await _context.SponsorUsers
                     .Include(su => su.Sponsor)
@@ -63,7 +71,6 @@ namespace Backend_Server.Controllers
                     user.Id,
                     user.UserName,
                     user.Email,
-                    user.UserType,
                     user.CreatedAt,
                     user.LastLogin,
                     Roles = roles,
@@ -72,9 +79,8 @@ namespace Backend_Server.Controllers
                     {
                         sponsorUser.SponsorID,
                         sponsorUser.Sponsor.CompanyName,
-                        sponsorUser.IsPrimarySponsor,
+                        sponsorUser.IsPrimary,
                         sponsorUser.JoinDate,
-                        sponsorUser.SponsorRole
                     } : null
                 };
             }
@@ -85,64 +91,10 @@ namespace Backend_Server.Controllers
                     user.Id,
                     user.UserName,
                     user.Email,
-                    user.UserType,
                     user.CreatedAt,
                     user.LastLogin,
                     Roles = roles,
                     Claims = claims.Select(c => new { c.Type, c.Value }) // Add claims to response
-                };
-            }
-
-            return Ok(response);
-        }
-
-
-        [HttpGet("getuser")]
-        public async Task<IActionResult> GetUser(string id)
-        {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null)
-            {
-                return NotFound();
-            }
-            var roles = await _userManager.GetRolesAsync(user);
-            object response;
-            if (user.UserType == "Sponsor") //Same here
-            {
-                var sponsorUser = await _context.SponsorUsers
-                    .Include(su => su.Sponsor)
-                    .FirstOrDefaultAsync(su => su.UserID == user.Id);
-
-                response = new
-                {
-                    user.Id,
-                    user.UserName,
-                    user.Email,
-                    user.UserType,
-                    user.CreatedAt,
-                    user.LastLogin,
-                    Roles = roles,
-                    SponsorDetails = sponsorUser != null ? new
-                    {
-                        sponsorUser.SponsorID,
-                        sponsorUser.Sponsor.CompanyName,
-                        sponsorUser.IsPrimarySponsor,
-                        sponsorUser.JoinDate,
-                        sponsorUser.SponsorRole
-                    } : null
-                };
-            }
-            else
-            {
-                response = new
-                {
-                    user.Id,
-                    user.UserName,
-                    user.Email,
-                    user.UserType,
-                    user.CreatedAt,
-                    user.LastLogin,
-                    Roles = roles
                 };
             }
 
@@ -166,37 +118,121 @@ namespace Backend_Server.Controllers
             if (!result.Succeeded)
             {
                 Log.Error("UserID: {UserID}, Category: User, Description: Password changed failed for {User}",user.Id, user.UserName);
+                
+                await _claimsService.CreateAuditLog(
+                    userId: user.Id,
+                    category: AuditLogCategory.Password,
+                    action: AuditLogAction.Update,
+                    actionSuccess: result.Succeeded,
+                    additionalDetails: result.Succeeded ? "Password changed successfully" : 
+                        System.Text.Json.JsonSerializer.Serialize(result.Errors)
+                );
+
                 return BadRequest(result.Errors.Select(e => e.Description));
             }
-            //Ugh, in Sprint 9 of project, do manual logging for better logging levels; as of now, basic http requests auto logging
-            //for EVERY return, wooooooooooooooooo
+            await _claimsService.CreateAuditLog(
+                userId: user.Id,
+                category: AuditLogCategory.Password,
+                action: AuditLogAction.Update,
+                actionSuccess: result.Succeeded,
+                additionalDetails: result.Succeeded ? "Password changed successfully" : 
+                    System.Text.Json.JsonSerializer.Serialize(result.Errors)
+            );
             Log.Information("UserID: {UserID}, Category: User, Description: Password changed successfully for {User}",user.Id, user.UserName);
             return Ok(new { message = "Password changed successfully." });
         }
 
-        [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetUserPassword(string userId, [FromBody] ResetPasswordDto request)
+        [HttpPost("init-reset-password/{userId}")]
+        public async Task<IActionResult> InitPasswordReset(string userId)
         {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
+            try
             {
-                return NotFound("User not found, Please try again.");
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    Log.Warning("Password reset attempted for non-existent user ID: {UserId}", userId);
+                    return NotFound("User not found.");
+                }
+
+                // Generate reset token
+                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+                
+                // Store token in cache with expiration
+                var cacheOptions = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(TimeSpan.FromHours(1));
+                
+                _cache.Set($"pwdreset_{userId}", resetToken, cacheOptions);
+
+                // Send notification with reset token
+                await _notifyService.NotifyAuthAsync(
+                    user.Id,
+                    resetToken,
+                    user.UserName ?? "User"
+                );
+
+                Log.Information("Password reset initiated for UserID: {UserId}", userId);
+                return Ok(new { message = "Password reset initiated. Check email for reset code." });
             }
-
-            // Generate reset token
-            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var result = await _userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
-            Log.Information("Token generated.");
-
-            Log.Information("Waiting on Notification System...");
-
-            if (!result.Succeeded)
+            catch (Exception ex)
             {
-                return BadRequest(result.Errors.Select(e => e.Description));
+                Log.Error(ex, "Failed to initiate password reset for user {UserId}", userId);
+                return StatusCode(500, "Failed to initiate password reset. Please try again.");
             }
-            Log.Information("UserID: {UserID}, Category: User, Description: Password for {User} has been reset successfully", user.Id, user.UserName);
-            return Ok(new { message = "Password reset successfully." });
         }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
+        {
+            try
+            {
+                var user = await _userManager.FindByIdAsync(request.UserId.ToString());
+                if (user == null)
+                    return NotFound("User not found.");
+
+                // Verify token from cache
+                var cacheKey = $"pwdreset_{request.UserId}";
+                if (!_cache.TryGetValue(cacheKey, out string? storedToken) || 
+                    storedToken != request.Token)
+                {
+                    return BadRequest("Invalid or expired reset token.");
+                }
+
+                // Reset the password
+                var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+                if (!result.Succeeded)
+                {
+                    await _claimsService.CreateAuditLog(
+                        userId: user.Id,
+                        category: AuditLogCategory.Password,
+                        action: AuditLogAction.Update,
+                        actionSuccess: result.Succeeded,
+                        additionalDetails: result.Succeeded ? "Password changed successfully" : 
+                            System.Text.Json.JsonSerializer.Serialize(result.Errors)
+                    );
+                    return BadRequest(result.Errors.Select(e => e.Description));
+                }
+
+                // Cleanup
+                _cache.Remove(cacheKey);
+
+                Log.Information($"Password reset successful for user {request.UserId}");
+                await _claimsService.CreateAuditLog(
+                    userId: user.Id,
+                    category: AuditLogCategory.Password,
+                    action: AuditLogAction.Update,
+                    actionSuccess: result.Succeeded,
+                    additionalDetails: result.Succeeded ? "Password reset successfully" : 
+                        System.Text.Json.JsonSerializer.Serialize(result.Errors)
+                );
+                return Ok(new { message = "Password reset successfully." });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Error resetting password for user {request.UserId}");
+                return StatusCode(500, "Error resetting password. Please try again.");
+            }
+        }
+
 
         [HttpPost]
         public async Task<IActionResult> SubmitFeedback(FeedbackForms feedback)

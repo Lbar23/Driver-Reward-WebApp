@@ -11,6 +11,7 @@ using MySqlConnector;
 using QuestPDF.Infrastructure;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
+using Backend_Server.Services;
 
 
 namespace Backend_Server.Controllers
@@ -36,11 +37,15 @@ namespace Backend_Server.Controllers
     {
         private readonly UserManager<Users> _userManager;
         private readonly AppDBContext _context;
+        private readonly ReportService _reportService;
 
-        public ReportsController(UserManager<Users> userManager, AppDBContext context)
+        public ReportsController(UserManager<Users> userManager, 
+                                 AppDBContext context,
+                                 ReportService reportService)
         {
             _userManager = userManager;
             _context = context;
+            _reportService = reportService;
         }
 
         private async Task<T> ExecuteWithRetryAsync<T>(Func<Task<T>> operation, int maxRetries = 3)
@@ -72,39 +77,21 @@ namespace Backend_Server.Controllers
         {
             try
             {
-                return await ExecuteWithRetryAsync<IActionResult>(async () =>
+                if (viewType == "summary")
                 {
-                    if (viewType == "summary")
-                    {
-                        // Fetch summary data
-                        var summaryResult = await _context.Set<SpSalesSummary>().FromSqlRaw(
-                            "CALL sp_GetSalesBySponsor(@sponsorId, @startDate, @endDate, @viewType)",
-                            new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
-                            new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
-                            new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
-                            new MySqlParameter("@viewType", viewType)
-                        ).ToListAsync();
-
-                        return Ok(summaryResult);
-                    }
-                    else if (viewType == "detail")
-                    {
-                        // Fetch detailed data
-                        var detailedResult = await _context.Set<SalesDetail>().FromSqlRaw(
-                            "CALL sp_GetSalesBySponsor(@sponsorId, @startDate, @endDate, @viewType)",
-                            new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
-                            new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
-                            new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
-                            new MySqlParameter("@viewType", viewType)
-                        ).ToListAsync();
-
-                        return Ok(detailedResult);
-                    }
-                    else
-                    {
-                        return BadRequest("Invalid viewType parameter. Must be 'summary' or 'detailed'.");
-                    }
-                });
+                    // Fetch summary data
+                    var summaryResult = await _reportService.GetSponsorSalesSummary(sponsorId, startDate, endDate, viewType);
+                    return Ok(summaryResult);
+                }
+                else if (viewType == "detail")
+                {
+                    var detailedResult = await _reportService.GetSponsorSalesDetail(sponsorId, startDate, endDate, viewType);
+                    return Ok(detailedResult);
+                }
+                else
+                {
+                    return BadRequest("Invalid viewType parameter. Must be 'summary' or 'detailed'.");
+                }
             }
             catch (Exception ex)
             {
@@ -131,28 +118,12 @@ namespace Backend_Server.Controllers
                     if (viewType == "summary")
                     {
                         // Fetch summary data
-                        var summaryResult = await _context.Set<DrSalesSummary>().FromSqlRaw(
-                            "CALL sp_GetSalesByDriver(@sponsorId, @driverId, @startDate, @endDate, @viewType)",
-                            new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
-                            new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
-                            new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
-                            new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value),
-                            new MySqlParameter("@viewType", viewType)
-                        ).ToListAsync();
-
+                        var summaryResult = await _reportService.GetDriverSalesSummary(sponsorId, driverId, startDate, endDate, viewType);
                         return Ok(summaryResult);
                     }
                     else if (viewType == "detail")
                     {
-                        // Fetch detailed data
-                        var detailedResult = await _context.Set<SalesDetail>().FromSqlRaw(
-                            "CALL sp_GetSalesByDriver(@sponsorId, @driverId, @startDate, @endDate, @viewType)",
-                            new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
-                            new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
-                            new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
-                            new MySqlParameter("@endDate", endDate ?? (object)DBNull.Value)
-                        ).ToListAsync();
-
+                        var detailedResult = await _reportService.GetDriverSalesDetail(sponsorId, driverId, startDate, endDate, viewType);
                         return Ok(detailedResult);
                     }
                     else
@@ -225,8 +196,6 @@ namespace Backend_Server.Controllers
             }
         }
 
-        //Update for multiple sponsor specific to company...
-        //Also, add for splitting between admins and sponsors
         [HttpGet("audit-logs")]
         public async Task<IActionResult> GetAuditLogs(
             [FromQuery] int? userId = null,
@@ -238,56 +207,53 @@ namespace Backend_Server.Controllers
         {
             try
             {
-                return await ExecuteWithRetryAsync<IActionResult>(async () =>
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
                 {
-                    var currentUser = await _userManager.GetUserAsync(User);
-                    if (currentUser == null)
-                    {
-                        return Unauthorized("User not found");
-                    }
-                    var userRoles = await _userManager.GetRolesAsync(currentUser);
-                    var query = _context.AuditLogs.AsQueryable();
+                    return Unauthorized("User not found");
+                }
 
-                    //User == Sponsor, only show logs related to their drivers
-                    if (userRoles.Contains("Sponsor"))
-                    {
-                        // Get the sponsor's drivers
-                        var sponsorUser = await _context.SponsorUsers
-                            .FirstOrDefaultAsync(su => su.UserID == currentUser.Id);
+                var userRoles = await _userManager.GetRolesAsync(currentUser);
+                
+                // Start with the base query using the view
+                var query = _context.AuditLogs
+                    .FromSqlRaw("SELECT * FROM AuditLogs")
+                    .AsQueryable();
 
-                        if (sponsorUser == null)
-                            return BadRequest("Sponsor user not found");
+                // Apply sponsor filtering if applicable
+                if (userRoles.Contains("Sponsor"))
+                {
+                    var sponsorUser = await _context.SponsorUsers
+                        .FirstOrDefaultAsync(su => su.UserID == currentUser.Id);
 
-                        var driverIds = await _context.SponsorDrivers
-                            .Where(sd => sd.SponsorID == sponsorUser.SponsorID)
-                            .Select(sd => sd.DriverID)
-                            .ToListAsync();
+                    if (sponsorUser == null)
+                        return BadRequest("Sponsor user not found");
 
-                        // Only show logs related to sponsor's drivers
-                        query = query.Where(l => driverIds.Contains(l.UserID));
-                    }
+                    query = query.Where(l => l.UserID == sponsorUser.UserID);
+                }
 
-                    if (userId.HasValue)
-                        query = query.Where(l => l.UserID == userId);
+                // Apply filters
+                if (userId.HasValue)
+                    query = query.Where(l => l.UserID == userId);
 
-                    if (!string.IsNullOrEmpty(category) && Enum.TryParse(category, out AuditLogCategory categoryEnum))
-                        query = query.Where(l => l.Category == categoryEnum);
+                if (!string.IsNullOrEmpty(category) && Enum.TryParse(category, out AuditLogCategory categoryEnum))
+                    query = query.Where(l => l.Category == categoryEnum);
 
-                    if (startDate.HasValue)
-                        query = query.Where(l => l.Timestamp >= startDate.Value);
+                if (startDate.HasValue)
+                    query = query.Where(l => l.Timestamp >= startDate.Value);
 
-                    if (endDate.HasValue)
-                        query = query.Where(l => l.Timestamp <= endDate.Value);
+                if (endDate.HasValue)
+                    query = query.Where(l => l.Timestamp <= endDate.Value);
 
-                    var totalCount = await query.CountAsync();
-                    var logs = await query
-                        .OrderByDescending(l => l.Timestamp)
-                        .Skip((page - 1) * pageSize)
-                        .Take(pageSize)
-                        .ToListAsync();
+                // Get total count and paginated results
+                var totalCount = await query.CountAsync();
+                var logs = await query
+                    .OrderByDescending(l => l.Timestamp)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
 
-                    return Ok(new { totalCount, page, pageSize, logs });
-                });
+                return Ok(new { totalCount, page, pageSize, logs });
             }
             catch (Exception ex)
             {
@@ -299,47 +265,14 @@ namespace Backend_Server.Controllers
         [HttpPost("export-pdf")]
         public IActionResult ExportPdf([FromBody] ExportRequest request)
         {
-            try
-            {
-                // Validate input
-                if (request == null || request.Data == null || !request.Data.Any())
-                {
-                    return BadRequest("No data provided to export.");
-                }
+            try{
+                if (request == null)
+                    return BadRequest("Request cannot be null");
 
-                // Generate PDF using QuestPDF
-                var pdfBytes = Document.Create(container =>
-                {
-                    container.Page(page =>
-                    {
-                        page.Size(PageSizes.A4);
-                        page.Margin(50);
-                        page.DefaultTextStyle(x => x.FontSize(12));
-                        
-                        // Header Section
-                        page.Header().Element(ComposeHeader(request.ReportType, request.Metadata));
-
-                        // Content Section
-                        page.Content().Element(ComposeTable(request.Data));
-
-                        // Footer Section
-                        page.Footer().AlignCenter().Text(text =>
-                        {
-                            text.Span("Generated on ");
-                            text.Span($"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC").Bold();
-                            text.Span(" | Page ");
-                            text.CurrentPageNumber();
-                            text.Span(" / ");
-                            text.TotalPages();
-                        });
-                    });
-                }).GeneratePdf();
-
-                // Return PDF
-                return File(pdfBytes, "application/pdf", $"{request.ReportType}_report.pdf");
+                var bytes = _reportService.ExportPdf(request);  
+                return File(bytes, "application/pdf", $"{request.ReportType}_report.pdf");
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex){
                 Log.Error(ex, "Error generating PDF report");
                 return StatusCode(500, "Failed to generate PDF report.");
             }
@@ -350,31 +283,11 @@ namespace Backend_Server.Controllers
         {
             try
             {
-                // Validate input
-                if (request == null || request.Data == null || !request.Data.Any())
-                {
-                    return BadRequest("No data provided to export.");
-                }
+                if (request == null)
+                    return BadRequest("Request cannot be null");
 
-                var csvLines = new List<string>();
-
-                // Add Headers
-                var headers = string.Join(",", request.Data.First().Keys);
-                csvLines.Add(headers);
-
-                // Add Data Rows
-                foreach (var row in request.Data)
-                {
-                    var values = string.Join(",", row.Values.Select(v => v?.ToString()?.Replace(",", ";") ?? "N/A"));
-                    csvLines.Add(values);
-                }
-
-                // Convert to CSV
-                var csvContent = string.Join(Environment.NewLine, csvLines);
-                var csvBytes = System.Text.Encoding.UTF8.GetBytes(csvContent);
-
-                // Return CSV
-                return File(csvBytes, "text/csv", $"{request.ReportType}_report.csv");
+                var bytes = _reportService.ExportCsv(request);
+                return File(bytes, "text/csv", $"{request.ReportType}_report.csv");
             }
             catch (Exception ex)
             {
@@ -382,82 +295,6 @@ namespace Backend_Server.Controllers
                 return StatusCode(500, "Failed to generate CSV report.");
             }
         }
-
-        // helper method for generate pdf
-        private static Action<IContainer> ComposeHeader(string reportType, Dictionary<string, string>? metadata)
-        {
-            return container =>
-            {
-                container.Column(column =>
-                {
-                    column.Spacing(10);
-                    
-                    column.Item().Text($"Report: {reportType.ToUpper()}")
-                        .SemiBold().FontSize(20).FontColor(Colors.Blue.Medium);
-
-                    if (metadata != null)
-                    {
-                        foreach (var item in metadata)
-                        {
-                            column.Item().Text($"{item.Key}: {item.Value}").FontSize(12);
-                        }
-                    }
-                });
-            };
-        }
-
-        // helper method for generate pdf
-        private static Action<IContainer> ComposeTable(List<Dictionary<string, object>> data)
-        {
-            return container =>
-            {
-                var headerStyle = TextStyle.Default.SemiBold();
-
-                container.PaddingVertical(10).Table(table =>
-                {
-                    // Define table columns
-                    var columnCount = data.First().Keys.Count;
-                    table.ColumnsDefinition(columns =>
-                    {
-                        for (int i = 0; i < columnCount; i++)
-                        {
-                            columns.RelativeColumn();
-                        }
-                    });
-
-                    // Add headers
-                    table.Header(header =>
-                    {
-                        foreach (var key in data.First().Keys)
-                        {
-                            header.Cell().Element(cell =>
-                            {
-                                cell.Text(key)
-                                    .Style(headerStyle);
-                            });
-                        }
-                        header.Cell().ColumnSpan((uint)columnCount).PaddingTop(5).BorderBottom(1).BorderColor(Colors.Black);
-                    });
-
-                    // Add rows
-                    foreach (var row in data)
-                    {
-                        foreach (var value in row.Values)
-                        {
-                            table.Cell().Element(cell =>
-                            {
-                                cell.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).PaddingVertical(5)
-                                    .Text(value?.ToString() ?? "N/A")
-                                    .FontSize(10);
-                            });
-                        }
-                    }
-                });
-            };
-        }
-
-        
-
 
     }
 }

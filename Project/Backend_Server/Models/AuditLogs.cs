@@ -7,20 +7,30 @@ namespace Backend_Server.Models
 {
     public enum AuditLogCategory
     {
-        User,
-        Points,
-        Purchase,
-        Application,
-        Product,
-        System
+        User,  // for user creation, removal, changes
+        Password, // password changes or resets
+        Authentication,  // login failure & success, includes 2fa failures
+    }
+
+     public enum AuditLogAction
+    {
+        Add, 
+        Remove,  
+        Update
     }
 
     public class AuditLogs
     {
-        public int UserID { get; set; }
-        public int LogID { get; set; }
-        public AuditLogCategory Category { get; set; }
-        public string? Description { get; set; }
-        public DateTime Timestamp { get; set; }
+        public int LogID { get; set; } // Primary Key
+        public required int UserID { get; set; } // FK to Users
+        public required AuditLogCategory Category { get; set; } 
+        public required AuditLogAction Action { get; set; } 
+        public required bool ActionSuccess { get; set;}
+        public required DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public string? AdditionalDetails { get; set; } // Stores JSON or other details for context
+
+        // Navigation Properties
+        public required Users User { get; set; }
     }
+
 }

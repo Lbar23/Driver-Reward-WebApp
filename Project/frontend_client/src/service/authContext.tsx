@@ -1,16 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-// SponsorDetails interface
+// Interface definitions
 interface SponsorDetails {
   sponsorID: number;
   companyName: string;
-  isPrimarySponsor: boolean;
+  IsPrimary: boolean;
   joinDate: string;
   sponsorRole: number;
 }
 
-// User interface definition
 interface User {
   id: number;
   userName: string;
@@ -19,7 +18,7 @@ interface User {
   createdAt: string;
   lastLogin: string;
   roles: string[];
-  sponsorDetails?: SponsorDetails; // Optional field for Sponsor users
+  sponsorDetails?: SponsorDetails;
 }
 
 interface NotifySettings {
@@ -31,8 +30,6 @@ interface NotifySettings {
   applicationApproved: boolean;
 }
 
-
-// Context properties for authentication handling
 interface AuthContextProps {
   user: User | null;
   isAuthenticated: boolean;
@@ -45,57 +42,49 @@ interface AuthContextProps {
   updateNotifySetting: (key: keyof NotifySettings, value: boolean) => void;
 }
 
+const defaultNotifySettings: NotifySettings = {
+  purchaseConfirmation: true,
+  pointEarned: true,
+  pointBalanceDrop: true,
+  orderIssue: true,
+  systemDrop: true,
+  applicationApproved: true,
+};
 
-// Initialize the AuthContext
+// Create context with undefined check
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Retrieve session data for user and viewRole
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('isAuthenticated') === 'true';
-  });
-
+  // State management with proper initial values
+  const [isAuthenticated, setIsAuthenticated] = useState(() => 
+    sessionStorage.getItem('isAuthenticated') === 'true'
+  );
+  
   const [user, setUser] = useState<User | null>(() => {
-    const cachedUser = sessionStorage.getItem('user');
-    return cachedUser ? JSON.parse(cachedUser) : null;
+    const savedUser = sessionStorage.getItem('user');
+    try {
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
   });
 
-  const [viewRole, setViewRoleState] = useState<string | null>(() => {
-    return sessionStorage.getItem('viewRole') || null;
-  });
+  const [viewRole, setViewRoleState] = useState<string | null>(() => 
+    sessionStorage.getItem('viewRole') || null
+  );
 
-  const [isLoading, setIsLoading] = useState<boolean>(!isAuthenticated);
-    
-  // Initial notification settings, with local storage fallback
-  const defaultNotifySettings: NotifySettings = {
-    purchaseConfirmation: true,
-    pointEarned: true,
-    pointBalanceDrop: true,
-    orderIssue: true,
-    systemDrop: true, // Cannot be disabled
-    applicationApproved: true, // Cannot be disabled
-  };
+  const [isLoading, setIsLoading] = useState(!isAuthenticated);
 
   const [notifySettings, setNotifySettings] = useState<NotifySettings>(() => {
     const savedSettings = localStorage.getItem('notifySettings');
-    return savedSettings ? JSON.parse(savedSettings) : defaultNotifySettings;
+    try {
+      return savedSettings ? JSON.parse(savedSettings) : defaultNotifySettings;
+    } catch {
+      return defaultNotifySettings;
+    }
   });
 
-  // Function to update notification settings
-  const updateNotifySetting = (key: keyof NotifySettings, value: boolean) => {
-    // Prevent disabling 'systemDrop' and 'applicationApproved'
-    if (key === 'systemDrop' || key === 'applicationApproved') return;
-
-    setNotifySettings((prevSettings) => {
-      const updatedSettings = { ...prevSettings, [key]: value };
-      localStorage.setItem('notifySettings', JSON.stringify(updatedSettings));
-      return updatedSettings;
-    });
-  };
-
-
-
-  // Function to handle view role updates and storage
+  // Handle view role changes
   const setViewRole = useCallback((role: string | null) => {
     setViewRoleState(role);
     if (role) {
@@ -105,86 +94,110 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // Update notification settings
+  const updateNotifySetting = useCallback((key: keyof NotifySettings, value: boolean) => {
+    if (key === 'systemDrop' || key === 'applicationApproved') return;
+
+    setNotifySettings(prev => {
+      const updated = { ...prev, [key]: value };
+      localStorage.setItem('notifySettings', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  // Check authentication status
+  const checkAuth = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await axios.get<User>('/api/user/currentuser', { 
+        withCredentials: true 
+      });
+
+      // Ensure proper typing of user data
+      const currentUser: User = {
+        ...data,
+        sponsorDetails: data.userType === 'Sponsor' ? {
+          sponsorID: data.sponsorDetails?.sponsorID ?? 0,
+          companyName: data.sponsorDetails?.companyName ?? '',
+          IsPrimary: data.sponsorDetails?.IsPrimary ?? false,
+          joinDate: data.sponsorDetails?.joinDate ?? '',
+          sponsorRole: data.sponsorDetails?.sponsorRole ?? 0,
+        } : undefined
+      };
+
+      setUser(currentUser);
+      setIsAuthenticated(true);
+      sessionStorage.setItem('user', JSON.stringify(currentUser));
+      sessionStorage.setItem('isAuthenticated', 'true');
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      handleLogout();
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Handle logout
+  const handleLogout = useCallback(() => {
+    setUser(null);
+    setIsAuthenticated(false);
+    setViewRole(null);
+    sessionStorage.clear();
+  }, [setViewRole]);
+
+  const logout = useCallback(async () => {
+    if (!user?.userType) {
+      handleLogout();
+      return;
+    }
+
+    try {
+      await axios.post('/api/system/logout', {}, { 
+        withCredentials: true 
+      });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      handleLogout();
+    }
+  }, [user, handleLogout]);
+
+  // Initial auth check
   useEffect(() => {
     if (!isAuthenticated) {
       checkAuth();
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, checkAuth]);
 
-  // Checks the user authentication status from the API
-  const checkAuth = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get('/api/user/currentuser', { withCredentials: true });
-      const currentUser = response.data;
-      // Check if the user is a sponsor and has sponsorDetails
-      if (response.data.userType === 'Sponsor' && response.data.sponsorDetails) {
-        currentUser.sponsorDetails = {
-          sponsorID: currentUser.sponsorDetails.sponsorID,
-          companyName: currentUser.sponsorDetails.companyName,
-          isPrimarySponsor: currentUser.sponsorDetails.isPrimarySponsor,
-          joinDate: currentUser.sponsorDetails.joinDate,
-          sponsorRole: currentUser.sponsorDetails.sponsorRole,
-        };
-      }
-      setUser(response.data);
-      setIsAuthenticated(true);
-
-      sessionStorage.setItem('user', JSON.stringify(response.data));
-      sessionStorage.setItem('isAuthenticated', 'true');
-    } catch (error) {
-      setUser(null);
-      setIsAuthenticated(false);
-      sessionStorage.removeItem('user');
-      sessionStorage.removeItem('isAuthenticated');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Logs out the user, clears session data, and redirects to login
-  const logout = async () => {
-    // Check if userType is null
-    if (!user || !user.userType) {
-      setViewRole(null);
-      setIsAuthenticated(false);
-      console.warn('User type is already null. Skipping logout process.');
-      return;
-    }
-
-    try {
-      await axios.post('/api/system/logout', {}, { withCredentials: true });
-      setUser(null);
-      setIsAuthenticated(false);
-      setViewRole(null); // Reset viewRole on logout
-      sessionStorage.clear(); // Clear all session data
-    } 
-    catch (error) {
-      console.error('Logout failed:', error);
-    }
+  // Provide context value
+  const contextValue = {
+    user,
+    isAuthenticated,
+    isLoading,
+    viewRole,
+    setViewRole,
+    checkAuth,
+    logout,
+    notifySettings,
+    updateNotifySetting,
   };
 
   return (
-    <AuthContext.Provider value={
-      { user, 
-      isAuthenticated, 
-      isLoading, 
-      viewRole, 
-      setViewRole, 
-      checkAuth, 
-      logout,
-      notifySettings,
-      updateNotifySetting }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook for easy access to AuthContext
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return context;
 };
+
+// Optional: Export types for use in other components
+export type { User, SponsorDetails, NotifySettings, AuthContextProps };

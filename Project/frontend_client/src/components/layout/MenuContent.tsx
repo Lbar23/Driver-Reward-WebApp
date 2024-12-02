@@ -1,4 +1,3 @@
-// MenuContent.tsx
 import * as React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,12 +10,11 @@ import Collapse from '@mui/material/Collapse';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
-import HelpRoundedIcon from '@mui/icons-material/HelpRounded';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import PeopleIcon from '@mui/icons-material/People';
-import QueryStatsIcon from "@mui/icons-material/QueryStats"
-import AutoGraphIcon from "@mui/icons-material/AutoGraph"
-import BarChartIcon from "@mui/icons-material/BarChart"
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
+import AutoGraphIcon from "@mui/icons-material/AutoGraph";
+import BarChartIcon from "@mui/icons-material/BarChart";
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useAuth } from '../../service/authContext';
@@ -31,14 +29,12 @@ type ListItemType = {
   nestedItems?: ListItemType[];
 };
 
-// Menu configuration
 const menuConfig: Record<string, ListItemType[]> = {
   base: [{ text: 'Dashboard', icon: <DashboardIcon />, view: 'MAIN' }],
   Guest: [{ text: 'Applications', icon: <ApprovalIcon />, view: 'DRIVER_APPLICATION' }],
   Driver: [
     { text: 'Applications', icon: <ApprovalIcon />, view: 'DRIVER_APPLICATION' },
     { text: 'Product Catalog', icon: <ShoppingBagIcon />, path: '/catalog' },
-    // { text: 'Register With Sponsors', icon: <ApprovalIcon />, view: 'DRIVER_REGISTRATION' }, <-- Consolidated to DriverApplication
     { text: 'Points', icon: <InfoRoundedIcon />, view: 'DRIVER_POINTS' },
     { text: 'Activity', icon: <InfoRoundedIcon />, view: 'DRIVER_ACTIVITY' },
     { text: 'Profile', icon: <InfoRoundedIcon />, view: 'PROFILE' },
@@ -51,15 +47,14 @@ const menuConfig: Record<string, ListItemType[]> = {
         { text: "Drivers", icon: <Person />, view: 'MANAGE_DRIVERS' },
         { text: "Sponsors", icon: <Person />, view: 'MANAGE_SPONSORS' },
         { text: "Admins", icon: <Person />, view: 'MANAGE_ADMINS' },
-
       ],
     },
     {
       text: 'Reports Views',
-      icon: <BarChartIcon fontWeight="large" />,
+      icon: <BarChartIcon />,
       nestedItems: [
-        { text: 'General', icon: <AutoGraphIcon fontWeight="medium" />, view: 'ADMIN_REPORTS' },
-        { text: 'Audits', icon: <QueryStatsIcon fontWeight="medium" />, view: 'ADMIN_AUDIT_REPORTS' },
+        { text: 'General', icon: <AutoGraphIcon />, view: 'ADMIN_REPORTS' },
+        { text: 'Audits', icon: <QueryStatsIcon />, view: 'ADMIN_AUDIT_REPORTS' },
       ],
     },
     {
@@ -74,10 +69,10 @@ const menuConfig: Record<string, ListItemType[]> = {
     { text: 'Product Catalog', icon: <ShoppingBagIcon />, path: '/catalog' },
     {
       text: 'Reports Views',
-      icon: <BarChartIcon fontWeight="large" />,
+      icon: <BarChartIcon />,
       nestedItems: [
         { text: 'General', icon: <InfoRoundedIcon />, view: 'SPONSOR_REPORTS' },
-        { text: 'Audits', icon: <QueryStatsIcon fontWeight="medium" />, view: 'SPONSOR_AUDIT_REPORTS' },
+        { text: 'Audits', icon: <QueryStatsIcon />, view: 'SPONSOR_AUDIT_REPORTS' },
       ],
     },
   ],
@@ -90,7 +85,6 @@ export default function MenuContent() {
   const currentRole = viewRole || user?.userType || 'Guest';
   const [openItems, setOpenItems] = useState<{ [key: string]: boolean }>({});
 
-  // Combine base items with role-specific items
   const menuItems = [...menuConfig.base, ...(menuConfig[currentRole] || [])];
 
   const toggleOpen = (text: string) => {
@@ -99,9 +93,9 @@ export default function MenuContent() {
 
   const handleItemClick = (view?: string, path?: string) => {
     if (path) {
-      navigate(path); // Use navigate for direct paths like '/catalog'
+      navigate(path);
     } else if (view) {
-      setCurrentView(view); // Set the view in ViewProvider
+      setCurrentView(view);
     }
   };
 

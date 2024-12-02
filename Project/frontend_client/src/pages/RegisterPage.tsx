@@ -1,8 +1,25 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
-import { TextField, Button, Typography, Box, Link as MuiLink, LinearProgress, Alert, CircularProgress, Checkbox, FormControlLabel } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom'; 
+import {
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Link as MuiLink,
+  LinearProgress,
+  Alert,
+  CircularProgress,
+  Checkbox,
+  FormControlLabel,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
+} from '@mui/material';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { UsaStates } from 'usa-states';
 import axios from 'axios';
 
+// Custom hook to calculate password strength
 const usePasswordStrength = (password: string): number => {
   const [strength, setStrength] = useState<number>(0);
 
@@ -22,6 +39,7 @@ const usePasswordStrength = (password: string): number => {
   return strength;
 };
 
+// Password validation function
 const validatePassword = (password: string): string | null => {
   if (password.length < 8) return 'Password must be at least 8 characters long.';
   if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter.';
@@ -30,63 +48,94 @@ const validatePassword = (password: string): string | null => {
   return null;
 };
 
+// Main Register Page Component
 const RegisterPage: React.FC = () => {
-  const [username, setUsername] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [enable2FA, setEnable2FA] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
+  // Form state
+  const [formData, setFormData] = useState({
+    username: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    state: '',
+  });
+  const [enable2FA, setEnable2FA] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const passwordStrength = usePasswordStrength(password);
+  
+  // Hooks
+  const navigate = useNavigate();
+  const location = useLocation();
+  const passwordStrength = usePasswordStrength(formData.password);
+  const usStates = new UsaStates().states;
 
-  const navigate = useNavigate(); // Use the useNavigate hook for programmatic navigation
+  // Handle form input changes
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
+  // Handle state select changes
+  const handleStateChange = (e: any) => {
+    setFormData(prev => ({
+      ...prev,
+      state: e.target.value
+    }));
+  };
+
+  // Get color for password strength indicator
+  const getStrengthColor = (strength: number): 'error' | 'warning' | 'success' => {
+    if (strength < 33) return 'error';
+    if (strength < 66) return 'warning';
+    return 'success';
+  };
+
+  // Handle form submission
   const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null); 
-    setPasswordError(null); 
+    setError(null);
+    setPasswordError(null);
 
-    const passwordValidationError = validatePassword(password);
+    // Validate password
+    const passwordValidationError = validatePassword(formData.password);
     if (passwordValidationError) {
       setPasswordError(passwordValidationError);
       return;
     }
 
     setLoading(true);
+
     try {
       const response = await axios.post('/api/system/register', {
-        username,
-        email,
-        password,
-        enable2FA // Send the 2FA preference during registration
+        ...formData,
+        enable2FA,
+        role: 'Guest'
       });
 
-      const loginResponse = await axios.post('/api/system/login', {
-        username,
-        password
-      });
-
-      if (response.data.requiresTwoFactor) {
-        // Redirect to the login page with 2FA
-        navigate(`/login?step=2fa&userId=${response.data.userId}`);
+      if (response.data.requiresTwoFactor && response.data.userId) {
+        // Redirect to 2FA setup with proper URL parameters
+        const searchParams = new URLSearchParams();
+        searchParams.set('step', '2fa');
+        searchParams.set('userId', response.data.userId.toString());
+        
+        navigate({
+          pathname: '/login',
+          search: searchParams.toString()
+        });
       } else {
-        // Redirect directly to the dashboard
-        navigate('/dashboard');
+        // Registration successful without 2FA
+        navigate('/login');
       }
-    } 
-    catch (error: any) {
+    } catch (error: any) {
       setError(error.response?.data?.message || 'Registration failed. Please try again.');
-    } 
-    finally {
+      console.error('Registration error:', error);
+    } finally {
       setLoading(false);
     }
-  };
-
-  const getStrengthColor = (strength: number): 'error' | 'warning' | 'success' => {
-    if (strength < 33) return 'error';
-    if (strength < 66) return 'warning';
-    return 'success';
   };
 
   return (
@@ -109,38 +158,93 @@ const RegisterPage: React.FC = () => {
         Create Account
       </Typography>
 
-      {error && <Alert severity="error">{error}</Alert>}
-      {passwordError && <Alert severity="warning">{passwordError}</Alert>}
+      {error && <Alert severity="error" sx={{ width: '100%', mb: 2 }}>{error}</Alert>}
+      {passwordError && <Alert severity="warning" sx={{ width: '100%', mb: 2 }}>{passwordError}</Alert>}
+
+      <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
+        <TextField
+          label="First Name"
+          name="firstName"
+          variant="outlined"
+          margin="normal"
+          fullWidth
+          value={formData.firstName}
+          onChange={handleInputChange}
+          required
+          disabled={loading}
+        />
+        <TextField
+          label="Last Name"
+          name="lastName"
+          variant="outlined"
+          margin="normal"
+          fullWidth
+          value={formData.lastName}
+          onChange={handleInputChange}
+          required
+          disabled={loading}
+        />
+      </Box>
 
       <TextField
         label="Username"
+        name="username"
         variant="outlined"
         margin="normal"
         fullWidth
-        value={username}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+        value={formData.username}
+        onChange={handleInputChange}
         required
+        disabled={loading}
       />
-      <TextField
-        label="Email"
-        type="email"
-        variant="outlined"
-        margin="normal"
-        fullWidth
-        value={email}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-        required
-      />
+
+      <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
+        <TextField
+          label="Email"
+          name="email"
+          type="email"
+          variant="outlined"
+          margin="normal"
+          fullWidth
+          value={formData.email}
+          onChange={handleInputChange}
+          required
+          disabled={loading}
+        />
+
+        <FormControl fullWidth margin="normal">
+          <InputLabel id="state-select-label">State</InputLabel>
+          <Select
+            labelId="state-select-label"
+            id="state-select"
+            value={formData.state}
+            label="State"
+            onChange={handleStateChange}
+            required
+            disabled={loading}
+          >
+            {usStates.map((state) => (
+              <MenuItem key={state.abbreviation} value={state.abbreviation}>
+                {state.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
       <TextField
         label="Password"
+        name="password"
         type="password"
         variant="outlined"
         margin="normal"
         fullWidth
-        value={password}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+        value={formData.password}
+        onChange={handleInputChange}
         required
+        disabled={loading}
       />
+
       <Box sx={{ width: '100%', mt: 1 }}>
         <LinearProgress
           variant="determinate"
@@ -158,6 +262,7 @@ const RegisterPage: React.FC = () => {
             checked={enable2FA}
             onChange={(e) => setEnable2FA(e.target.checked)}
             color="primary"
+            disabled={loading}
           />
         }
         label="Enable Two-Factor Authentication (2FA)"

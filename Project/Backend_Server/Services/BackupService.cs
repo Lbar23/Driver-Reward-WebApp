@@ -1,23 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Amazon.SecretsManager;
-using Backend_Server.Infrastructure;
-using MySql.Data.MySqlClient;
+using System.Data;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
-using Serilog;
 using Amazon.S3.Util;
+using Amazon.SecretsManager;
+using Backend_Server.Infrastructure;
+using MySqlConnector;
+using Serilog;
 
-
-
-/// <summary>
-/// Better documentation of each class that's made; Similar to JavaDocs
-/// This is just a simple implementation of automated backup database service. 
-/// Delagated to store to local directoryfile, but will be updated to store in S3 bucket storage instance
-/// </summary>
 namespace Backend_Server.Services
 {
     public class BackupService : BackgroundService
@@ -25,7 +15,6 @@ namespace Backend_Server.Services
         private readonly IConfiguration _configuration;
         private readonly IAmazonSecretsManager _amazonSecrets;
         private readonly IAmazonS3 _s3Client;
-        private readonly IServiceScopeFactory _scopeFactory;
 
         private readonly string _backupPath;
         private readonly string _bucketName;
@@ -33,7 +22,7 @@ namespace Backend_Server.Services
         private readonly CancellationTokenSource _emergencyStopToken = new();
 
         public BackupService(
-            IConfiguration configuration, 
+            IConfiguration configuration,
             IAmazonSecretsManager amazonSecrets,
             IAmazonS3 s3Client,
             IServiceScopeFactory scopeFactory)
@@ -41,124 +30,98 @@ namespace Backend_Server.Services
             _configuration = configuration;
             _amazonSecrets = amazonSecrets;
             _s3Client = s3Client;
-            _scopeFactory = scopeFactory;
-            
+
             _backupPath = "var/backups/database";
             _bucketName = _configuration["AWS:BackupBucketName"] ?? "team16-db-backups";
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            try
-            {
-                using var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(
-                    stoppingToken, 
-                    _emergencyStopToken.Token);
+            using var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(
+                stoppingToken, _emergencyStopToken.Token);
 
-                while (!combinedToken.Token.IsCancellationRequested)
+            while (!combinedToken.Token.IsCancellationRequested)
+            {
+                try
                 {
-                    try
+                    Directory.CreateDirectory(_backupPath);
+
+                    var backupFile = await BackupDatabaseAsync();
+
+                    if (combinedToken.Token.IsCancellationRequested && File.Exists(backupFile))
                     {
-                        Directory.CreateDirectory(_backupPath);
-
-                        var backupFile = await BackupDatabase();
-
-                        if (combinedToken.Token.IsCancellationRequested)
-                        {
-                            // Clean up partial backup if shutdown requested
-                            if (File.Exists(backupFile))
-                            {
-                                File.Delete(backupFile);
-                            }
-                            break;
-                        }
-
-                        await UploadBackupToS3(backupFile);
-
-                        await CleanupOldBackups();
-
-                        if (File.Exists(backupFile))
-                        {
-                            File.Delete(backupFile);
-                        }
-
-                        // Instead of infinite delay, use a timed wait that can be cancelled
-                        try 
-                        {
-                            await Task.Delay(TimeSpan.FromDays(1), combinedToken.Token);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            Log.Information("Backup service shutting down gracefully after completing backup");
-                            break;
-                        }
+                        File.Delete(backupFile);
+                        break;
                     }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
+
+                    await UploadBackupToS3Async(backupFile);
+                    await CleanupOldBackupsAsync();
+
+                    if (File.Exists(backupFile))
                     {
-                        Log.Error(ex, "Error during database backup process");
-                        
-                        // Only retry if not shutting down
-                        if (!combinedToken.Token.IsCancellationRequested)
-                        {
-                            try
-                            {
-                                await Task.Delay(TimeSpan.FromMinutes(30), combinedToken.Token);
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                Log.Information("Backup service shutting down after error");
-                                break;
-                            }
-                        }
+                        File.Delete(backupFile);
                     }
+
+                    await Task.Delay(TimeSpan.FromDays(1), combinedToken.Token);
                 }
-            }
-            finally
-            {
-                // Cleanup any resources
-                _emergencyStopToken.Dispose();
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Log.Error(ex, "Error during database backup process");
+                    await Task.Delay(TimeSpan.FromMinutes(30), combinedToken.Token);
+                }
             }
         }
 
-        private async Task<string> BackupDatabase()
+        private async Task<string> BackupDatabaseAsync()
         {
-            string backupFile = Path.Combine(_backupPath, $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.sql");
+            var backupFile = Path.Combine(_backupPath, $"backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.sql");
 
+            // Use `using` instead of `await using` because `DbConnectionProvider` does not implement `IAsyncDisposable`
             using var connectionProvider = new DbConnectionProvider(_configuration, _amazonSecrets);
-            using var connection = await connectionProvider.GetDbConnectionAsync();
-            using var cmd = new MySqlCommand { Connection = connection };
-            using var mb = new MySqlBackup(cmd)
+            var connection = await connectionProvider.GetDbConnectionAsync();
+
+            // Ensure the connection is open
+            if (connection.State != ConnectionState.Open)
             {
-                ExportInfo = 
+                await connection.OpenAsync();
+            }
+
+            await using var cmd = connection.CreateCommand();
+            var mb = new MySqlBackup(cmd)
+            {
+                ExportInfo =
                 {
                     ExportRows = true,
                     RecordDumpTime = true
                 }
             };
-            
-            //Uneeded since connection stays open long enough for reconnection...
-            //await connection.OpenAsync();
-            
-            // This is to handle datetime conversions, since some data in database includes DateOnly
-            await using var sessionCmd = new MySqlCommand(@"
-                SET SESSION time_zone='+00:00';
-                SET SESSION sql_mode='ALLOW_INVALID_DATES,NO_ZERO_DATE';
-                ", connection);
-            await sessionCmd.ExecuteNonQueryAsync();
-            
-            mb.ExportToFile(backupFile);
 
-            
+            try
+            {
+                await using var sessionCmd = connection.CreateCommand();
+                sessionCmd.CommandText = @"
+                    SET SESSION time_zone='+00:00';
+                    SET SESSION sql_mode='ALLOW_INVALID_DATES,NO_ZERO_DATE';
+                ";
+                await sessionCmd.ExecuteNonQueryAsync();
+
+                // Perform the database export
+                mb.ExportToFile(backupFile);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to perform database backup");
+                throw;
+            }
+
             return backupFile;
         }
 
-        private async Task UploadBackupToS3(string backupFile)
+        private async Task UploadBackupToS3Async(string backupFile)
         {
             try
             {
-                // Ensure bucket exists
-                var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, _bucketName);
-                if (!bucketExists)
+                if (!await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, _bucketName))
                 {
                     await _s3Client.PutBucketAsync(new PutBucketRequest
                     {
@@ -167,41 +130,35 @@ namespace Backend_Server.Services
                     });
                 }
 
-                // Upload file
                 var fileTransferUtility = new TransferUtility(_s3Client);
                 await fileTransferUtility.UploadAsync(new TransferUtilityUploadRequest
                 {
                     FilePath = backupFile,
                     BucketName = _bucketName,
                     Key = Path.GetFileName(backupFile),
-                    // Add server-side encryption
                     ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256
                 });
 
-                Log.Information("UserID: N/A, Category: System, Description: Successfully uploaded backup to S3: {FileName}", Path.GetFileName(backupFile));
+                Log.Information("Backup uploaded to S3: {FileName}", Path.GetFileName(backupFile));
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "UserID: N/A, Category: System, Description: Failed to upload backup to S3: {FileName}", Path.GetFileName(backupFile));
+                Log.Error(ex, "Failed to upload backup to S3: {FileName}", Path.GetFileName(backupFile));
                 throw;
             }
         }
 
-        private async Task CleanupOldBackups()
+        private async Task CleanupOldBackupsAsync()
         {
             try
             {
-                //This deletes local backups; this can be edited locally to delete every backup
-                //Or more than one instance...just create a new const variable
                 var localFiles = Directory.GetFiles(_backupPath)
-                    .Where(f => File.GetCreationTime(f) < DateTime.Now.AddDays(-BACKUP_RETENTION_DAYS));
+                    .Where(f => File.GetCreationTime(f) < DateTime.UtcNow.AddDays(-BACKUP_RETENTION_DAYS));
                 foreach (var file in localFiles)
                 {
                     File.Delete(file);
                 }
 
-                //This deletes old S3 database backups
-                //Do not change this at all
                 var listRequest = new ListObjectsV2Request
                 {
                     BucketName = _bucketName
@@ -221,11 +178,11 @@ namespace Backend_Server.Services
                     });
                 }
 
-                Log.Information("UserID: N/A, Category: System, Description: Cleanup completed. Removed {Count} old backups", oldObjects.Count);
+                Log.Information("Cleanup completed. Removed {Count} old backups", oldObjects.Count);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "UserID: N/A, Category: System, Description: Error during backup cleanup");
+                Log.Error(ex, "Error during backup cleanup");
                 throw;
             }
         }
@@ -233,13 +190,8 @@ namespace Backend_Server.Services
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
             Log.Information("Backup service is stopping...");
-            
-            //Trigger emergency stop if needed
             _emergencyStopToken.Cancel();
-
-            //Wait for base cleanup
             await base.StopAsync(cancellationToken);
-            
             Log.Information("Backup service stopped successfully");
         }
     }

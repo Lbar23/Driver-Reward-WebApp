@@ -7,18 +7,24 @@ namespace Backend_Server.Models
 {
     public enum OrderStatus
     {
-    Ordered, 
-    Cancelled,
-    Refunded,
+        Ordered,
+        Updated,
+        Cancelled,
+        Refunded,
+        Complete
     }
+
     public class Purchases
     {
-        public int SponsorID { get; set; } //change to sponsorID
-        public int PurchaseID { get; set; }
-        public int PointsSpent { get; set; }
-        public DateTime PurchaseDate { get; set; }
-        public OrderStatus Status { get; set; } = OrderStatus.Ordered;
-        public required Drivers Driver { get; set; }
-        public required Products Product { get; set; }
+        public int PurchaseID { get; set; } // Primary Key
+        public required int SponsorID { get; set; } // Part of SponsorDrivers FK
+        public required int UserID { get; set; }  // Part of SponsorDrivers FK
+        public required int TotalPointsSpent { get; set; }
+        public required DateTime PurchaseDate { get; set; }
+        public required OrderStatus Status { get; set; } = OrderStatus.Ordered;
+
+        // Navigation properties
+        public required SponsorDrivers SponsorDriver { get; set; } // Maps the sponsor-driver relationship
+        public ICollection<PurchaseProducts> PurchaseProducts { get; set; } = []; // Made optional initially
     }
 }
