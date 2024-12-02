@@ -6,11 +6,14 @@ import {
   Avatar,
   Grid2,
   Stack,
+  Button,
 } from '@mui/material';
 import { useAuth } from '../service/authContext';
+import { useNavigate } from 'react-router-dom';
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   if (!user) {
     return (
@@ -21,6 +24,10 @@ const ProfilePage: React.FC = () => {
       </Box>
     );
   }
+
+  const handleChangePassword = () => {
+    navigate('/change-password');
+  };
 
   const renderAdditionalInfo = () => {
     if (user.userType === 'Driver') {
@@ -49,7 +56,8 @@ const ProfilePage: React.FC = () => {
             <strong>Company:</strong> {user.sponsorDetails?.companyName || 'N/A'}
           </Typography>
           <Typography variant="body2">
-            <strong>Company Sponsor Since:</strong> {user.sponsorDetails?.joinDate || 0}
+            <strong>Company Sponsor Since:</strong>{' '}
+            {user.sponsorDetails?.joinDate || 0}
           </Typography>
           <Typography variant="body2">
             <strong>Member Since:</strong> {user.createdAt || 'Just now!'}
@@ -65,7 +73,7 @@ const ProfilePage: React.FC = () => {
             <strong>Admin Information:</strong>
           </Typography>
           <Typography variant="body2">
-            <strong>Managed Roles:</strong> { 'Sponsors, Drivers, Guests'}
+            <strong>Managed Roles:</strong> {'Sponsors, Drivers, Guests'}
           </Typography>
           <Typography variant="body2">
             <strong>Member Since:</strong> {user.createdAt || 'Just now!'}
@@ -89,25 +97,6 @@ const ProfilePage: React.FC = () => {
   return (
     <Box sx={{ display: 'flex', width: '100%', minHeight: '100vh' }}>
       <CssBaseline />
-      <a
-        href="#profile-main"
-        style={{
-          position: 'absolute',
-          left: '-9999px',
-          zIndex: 999,
-          padding: '1rem',
-          background: '#fff',
-          textDecoration: 'none',
-        }}
-        onFocus={(e) => {
-          e.currentTarget.style.left = '1rem';
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.left = '-9999px';
-        }}
-      >
-        Skip to profile content
-      </a>
       <Box
         component="main"
         sx={{
@@ -131,7 +120,10 @@ const ProfilePage: React.FC = () => {
         </Stack>
         <Box sx={{ mt: 4 }}>
           <Grid2 container spacing={2}>
-            <Grid2 size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Grid2
+              size={{ xs: 12, sm: 6, md: 4 }}
+              sx={{ display: 'flex', justifyContent: 'center' }}
+            >
               <Avatar
                 src={user.email || ''}
                 alt={`${user.userName}'s profile picture`}
@@ -153,6 +145,17 @@ const ProfilePage: React.FC = () => {
               </Stack>
             </Grid2>
           </Grid2>
+        </Box>
+
+        {/* Change Password Button */}
+        <Box sx={{ mt: 4 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleChangePassword}
+          >
+            Change Password
+          </Button>
         </Box>
       </Box>
     </Box>

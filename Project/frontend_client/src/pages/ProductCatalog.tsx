@@ -218,7 +218,7 @@ const ProductCatalog: React.FC = () => {
                 component="img"
                 height="200"
                 image={listing.imageUrl}
-                alt={listing.name}
+                alt={`Image of ${listing.name}`} // Added alt text
                 sx={{ objectFit: 'cover' }}
               />
               <CardContent>
