@@ -22,7 +22,7 @@ interface Transaction {
   type: string;
   reason: string;
   sponsorName?: string;
-  status?: string;
+  status: string;
 }
 
 interface PointValue {
@@ -118,19 +118,17 @@ const DriverActivity: React.FC = () => {
                   </TableCell>
                   <TableCell>{transaction.reason}</TableCell>
                   <TableCell>
-                    {transaction.status && (
                       <Chip
-                        label={transaction.status}
-                        color={
-                          transaction.status === 'Ordered'
-                            ? 'success'
-                            : transaction.status === 'Cancelled'
-                            ? 'error'
-                            : 'default'
-                        }
-                        size="small"
-                      />
-                    )}
+                      label={'Ordered'}
+                      color={
+                        transaction.status == 'Ordered'
+                          ? 'success'
+                          : transaction.status == 'Cancelled'
+                          ? 'error'
+                          : 'default'
+                      }
+                      size="small"
+                    />
                   </TableCell>
                 </TableRow>
               ))

@@ -49,28 +49,17 @@ const Order: React.FC = () => {
         // Create all purchase requests for the current sponsor
         const purchasePromises = cartItems.map(item => {
           const pointsForItem = Math.ceil(parseFloat(item.price.split(' ')[0]) / pointValue);
-          
+        
           return axios.post('/api/driver/purchase', {
             SponsorID: sponsorId,
-            ProductID: item.productID || item.productId, // Handle both ID formats
-            PointsSpent: pointsForItem
+            ProductID: item.productID || item.productId, // Use productId from cart item
+            PointsSpent: pointsForItem,
+            ProductName: item.name
           });
         });
 
-        // Wait for all purchases to complete
-        const results = await Promise.all(purchasePromises);
-        
-        // Check if any response contains updated points
-        const updatedPoints = results[results.length - 1]?.data?.remainingPoints;
-        if (updatedPoints) {
-          // Find the current sponsor's updated points
-          const currentSponsorPoints = updatedPoints.find(
-            (sp: any) => sp.sponsorId === sponsorId
-          );
-          if (currentSponsorPoints) {
-            setOrderCompleted(true);
-          }
-        }
+        await Promise.all(purchasePromises);
+        setOrderCompleted(true);
       } catch (err: any) {
         console.error('Purchase error:', err);
         const errorMessage = err.response?.data?.message || 'Failed to complete order';
