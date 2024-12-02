@@ -6,6 +6,8 @@ using static Backend_Server.Services.CatalogService;
 using Newtonsoft.Json;
 using Microsoft.EntityFrameworkCore;
 using Backend_Server.Models.DTO;
+using Microsoft.AspNetCore.Identity;
+using Backend_Server.Models;
 
 namespace Backend_Server.Controllers
 {
@@ -30,11 +32,13 @@ namespace Backend_Server.Controllers
     {
         private readonly CatalogService _catalogService;
         private readonly AppDBContext _context;
+        private readonly UserManager<Users> _userManager;
 
-        public CatalogController(CatalogService catalogService, AppDBContext context)
+        public CatalogController(CatalogService catalogService, AppDBContext context, UserManager<Users> userManager)
         {
             _catalogService = catalogService;
             _context = context;
+            _userManager = userManager;
         }
 
         /// <summary>
@@ -52,6 +56,8 @@ namespace Backend_Server.Controllers
             [FromQuery] int numberOfProducts,
             [FromQuery] int pointValue)
         {
+            var user = await _userManager.GetUserAsync(User);
+            var userId = user.Id;
             var parsedCategories = new List<EbayCategory>();
             foreach (var category in categories)
             {
@@ -70,7 +76,7 @@ namespace Backend_Server.Controllers
                 return BadRequest("At least one valid category must be provided.");
             }
 
-            var products = await _catalogService.CreateCatalogAsync(sponsorId, parsedCategories, numberOfProducts, pointValue);
+            var products = await _catalogService.CreateCatalogAsync( parsedCategories.ToString(), numberOfProducts, userId);
             if (!products.Any())
             {
                 return BadRequest("Failed to create catalog.");
@@ -82,12 +88,12 @@ namespace Backend_Server.Controllers
         /// <summary>
         /// Retrieves the catalog for a specific sponsor.
         /// </summary>
-        /// <param name="sponsorId">ID of the sponsor whose catalog is being retrieved.</param>
+        /// <param name="userId">ID of the user whose catalog is being retrieved.</param>
         /// <returns>A list of products in the sponsor's catalog.</returns>
-        [HttpGet("{sponsorId}")]
-        public async Task<IActionResult> GetSponsorCatalog(int sponsorId)
+        [HttpGet("{userId}")]
+        public async Task<IActionResult> GetSponsorCatalog(int userId)
         {
-            var catalog = await _catalogService.GetSponsorCatalogAsync(sponsorId);
+            var catalog = await _catalogService.GetSponsorCatalogAsync(userId);
             return catalog != null && catalog.Any()
                 ? Ok(catalog)
                 : NotFound("No catalog found for the sponsor.");

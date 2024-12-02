@@ -190,6 +190,7 @@ public async Task<IActionResult> Verify2FA([FromBody] TwoFactorDto twoFactorDto)
         await _signInManager.SignInAsync(user, false);
 
         // Generate and set JWT token
+        var addClaims = _claimsService.GetUserClaims(user);
         var jwtToken = await _claimsService.GenerateJwtToken(user);
         SetJwtCookie(jwtToken);
 
@@ -248,7 +249,8 @@ private async Task<bool> Send2FA(Users user)
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return BadRequest("User not found");
+                RemoveJwtCookie();
+                return Ok("User not found");
             }
 
             await _claimsService.RemoveImpersonation(user);
@@ -329,15 +331,7 @@ private async Task<bool> Send2FA(Users user)
             }
         }
 
-        [AllowAnonymous]
-        [HttpGet("generate-hash")]
-        public IActionResult GenerateHash()
-        {
-            var hasher = new PasswordHasher<Users>();
-            var hash = hasher.HashPassword(null, "Admin@123!");
-            Log.Information(hash);
-            return Ok(new { hash });
-        }
+
 
         [HttpPost("impersonate/stop")]
         public async Task<IActionResult> StopImpersonation()

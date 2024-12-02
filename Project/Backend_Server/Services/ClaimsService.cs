@@ -17,19 +17,23 @@ namespace Backend_Server.Services
         private readonly ILogger<ClaimsService> _logger;
         private readonly IMemoryCache _cache;
         private readonly AppDBContext _context;
+        private readonly byte[] _jwtKey;
+
 
         public ClaimsService(
             IConfiguration configuration,
             UserManager<Users> userManager,
             ILogger<ClaimsService> logger,
             AppDBContext context,
-            IMemoryCache cache)
+            IMemoryCache cache,
+            byte[] jwtKey)
         {
             _configuration = configuration;
             _userManager = userManager;
             _logger = logger;
             _context = context;
             _cache = cache;
+            _jwtKey = jwtKey;
         }
 
         public static class CustomClaimTypes
@@ -57,32 +61,31 @@ namespace Backend_Server.Services
             var userRoles = await _userManager.GetRolesAsync(user);
             var userClaims = await _userManager.GetClaimsAsync(user);
 
+            _logger.LogInformation("Generating token for user {UserId} with roles: {Roles}", 
+                user.Id, string.Join(", ", userRoles)); // Debug log
+
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
             };
 
-            // Add roles as claims
             claims.AddRange(userRoles.Select(role => new Claim(ClaimTypes.Role, role)));
-
-            // Add custom claims
             claims.AddRange(userClaims);
 
-            // Add additional claims if provided
             if (additionalClaims != null)
             {
                 claims.AddRange(additionalClaims);
             }
 
-            var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"] ??
-                throw new InvalidOperationException("JWT secret key is not configured")));
+            _logger.LogInformation("Total claims added: {ClaimsCount}, Claims: {Claims}", 
+                claims.Count, string.Join(", ", claims.Select(c => $"{c.Type}: {c.Value}"))); 
 
+            var key = new SymmetricSecurityKey(_jwtKey);
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer: "GitGud",  // Set explicit values instead of using configuration
+                audience: "GitGud",
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(24),
                 signingCredentials: creds
@@ -90,7 +93,6 @@ namespace Backend_Server.Services
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
-
         public async Task<(bool isValid, Users? user)> ValidateToken(string token)
         {
             if (string.IsNullOrEmpty(token))
@@ -236,7 +238,7 @@ namespace Backend_Server.Services
             roleName = await _context.Roles
                 .Where(r => r.Id == roleId)
                 .Select(r => r.Name)
-                .FirstOrDefaultAsync();
+                .SingleOrDefaultAsync();
 
             if (roleName != null)
             {
@@ -306,7 +308,7 @@ namespace Backend_Server.Services
                         su.IsPrimary,
                         su.JoinDate
                     })
-                    .FirstOrDefaultAsync();
+                    .ToListAsync();
             }
             catch (Exception ex)
             {

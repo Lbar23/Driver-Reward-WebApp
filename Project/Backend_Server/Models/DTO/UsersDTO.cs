@@ -92,14 +92,13 @@ namespace Backend_Server.Models.DTO
     [NotMapped]
     public record ViewAdminsDto
     {
-        public string UserId { get; set; } = string.Empty;
+        public int UserId { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLogin { get; set; }
-        public string UserType { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -109,7 +108,7 @@ namespace Backend_Server.Models.DTO
     [NotMapped]
     public record ViewDriversDto
     {
-        public string UserId { get; set; } = string.Empty;
+        public int UserId { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
@@ -128,9 +127,10 @@ namespace Backend_Server.Models.DTO
     [NotMapped]
     public record ViewSponsorUsersDto
     {
-        public string UserId { get; set; } = string.Empty;
+        public int UserId { get; set; }
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public int SponsorID { get; set; }
         public string CompanyName { get; set; } = string.Empty;

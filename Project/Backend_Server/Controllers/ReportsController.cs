@@ -73,19 +73,19 @@ namespace Backend_Server.Controllers
             [FromQuery] int? sponsorId,
             [FromQuery] DateTime? startDate,
             [FromQuery] DateTime? endDate,
-            [FromQuery] string viewType = "summary")
+            [FromQuery] string viewType)
         {
             try
             {
                 if (viewType == "summary")
                 {
                     // Fetch summary data
-                    var summaryResult = await _reportService.GetSponsorSalesSummary(sponsorId, startDate, endDate, viewType);
+                    var summaryResult = await _reportService.GetSponsorSalesSummary(sponsorId, startDate, endDate, "summary");
                     return Ok(summaryResult);
                 }
                 else if (viewType == "detail")
                 {
-                    var detailedResult = await _reportService.GetSponsorSalesDetail(sponsorId, startDate, endDate, viewType);
+                    var detailedResult = await _reportService.GetSponsorSalesDetail(sponsorId, startDate, endDate, "detail");
                     return Ok(detailedResult);
                 }
                 else
@@ -109,7 +109,7 @@ namespace Backend_Server.Controllers
             [FromQuery] int? driverId,
             [FromQuery] DateTime? startDate,
             [FromQuery] DateTime? endDate,
-            [FromQuery] string viewType = "summary")
+            [FromQuery] string viewType)
         {
             try
             {
@@ -118,12 +118,12 @@ namespace Backend_Server.Controllers
                     if (viewType == "summary")
                     {
                         // Fetch summary data
-                        var summaryResult = await _reportService.GetDriverSalesSummary(sponsorId, driverId, startDate, endDate, viewType);
+                        var summaryResult = await _reportService.GetDriverSalesSummary(sponsorId, driverId, startDate, endDate, "summary");
                         return Ok(summaryResult);
                     }
                     else if (viewType == "detail")
                     {
-                        var detailedResult = await _reportService.GetDriverSalesDetail(sponsorId, driverId, startDate, endDate, viewType);
+                        var detailedResult = await _reportService.GetDriverSalesDetail(sponsorId, driverId, startDate, endDate, "detail");
                         return Ok(detailedResult);
                     }
                     else

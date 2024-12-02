@@ -86,76 +86,91 @@ namespace Backend_Server.Services
             return _cachedToken;
         }
 
-        // public async Task<List<Product>> GetProductsAsync()
-        // {
-        //     var token = await GetAppTokenAsync();
-        //     _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        public async Task<List<Products>> GetProductsAsync(Sponsors sponsor)
+        {
+            var token = await GetAppTokenAsync();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        //     var response = await _httpClient.GetAsync(BrowseUrl);
-        //     response.EnsureSuccessStatusCode();
+            var response = await _httpClient.GetAsync(BrowseUrl);
+            response.EnsureSuccessStatusCode();
 
-        //     var content = await response.Content.ReadAsStringAsync();
-        //     var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
-        //     _logger.LogInformation("eBay API response: {ResponseContent}", content);
+            var content = await response.Content.ReadAsStringAsync();
+            var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
+            _logger.LogInformation("eBay API response: {ResponseContent}", content);
 
 
-        //     return productResponse?.ItemSummaries?.ConvertAll(item => new Product
-        //     {
-        //         ProductID = Math.Abs(item.ItemId.GetHashCode()),
-        //         Name = item.Title.ToString(),
-        //         ImageUrl = item.Image.ImageUrl,
-        //         Price = $"{item.Price.Value} {item.Price.Currency}"
-        //     }) ?? [];
-        // }
+            
 
-        public async Task<List<Products>> CreateCatalogAsync(int sponsorId, List<EbayCategory> categories, int numberOfProducts, int pointValue)
+            return productResponse?.ItemSummaries?.ConvertAll(item => new Products
+            {
+                ProductID = Math.Abs(item.ItemId.GetHashCode()),
+                SponsorID = sponsor.SponsorID,
+                ProductName = item.Title.ToString(),
+                PriceInPoints = (int)(item.Price.Value * sponsor.PointDollarValue),
+                ImageUrl = item.Image.ImageUrl,
+                CurrencyPrice = item.Price.Value,
+                ExternalID = item.ItemId,
+                Category = item.Categories.ToString(),
+                Description = ParseDescription(item)
+            }) ?? [];
+        }
+
+        public async Task<List<Products>> CreateCatalogAsync(string categories, int numberOfProducts, int userId)
         {
             // Fetch products from eBay API
-            var categoryIds = string.Join(",", categories.Select(c => (int)c));
+            var categoryIds = categories;
             var apiUrl = $"{BrowseUrl}category_ids={categoryIds}&limit={numberOfProducts}";
             var token = await GetAppTokenAsync();
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var response = await _httpClient.GetAsync(apiUrl);
+            response.EnsureSuccessStatusCode(); 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Failed to fetch products for sponsor {SponsorId} and categories {Categories}", sponsorId, categoryIds);
+                _logger.LogError("Failed to fetch products for categories {Categories}", categoryIds);
                 throw new Exception($"Failed to fetch products: {response.ReasonPhrase}");
             }
 
-            var content = await response.Content.ReadAsStringAsync();
-            var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
+           
+            using var scope = _serviceProvider.CreateScope(); // Create a scope for resolving scoped services
+            var context = scope.ServiceProvider.GetRequiredService<AppDBContext>();
 
+            var sponsor = await context.SponsorUsers
+                    .Where(su=> su.UserID == userId)
+                    .Select(su => su.Sponsor)
+                    .SingleOrDefaultAsync();
+             var content = await response.Content.ReadAsStringAsync();
+            var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
             if (productResponse?.ItemSummaries == null || !productResponse.ItemSummaries.Any())
             {
-                _logger.LogWarning("No products retrieved from eBay for sponsor {SponsorId}", sponsorId);
+                _logger.LogWarning("No products retrieved from eBay for sponsor {SponsorId}", sponsor?.SponsorID);
                 return new List<Products>();
             }
+            
+            
+            
 
             // Map API response to `Products` model
             var products = productResponse.ItemSummaries.Select(item => new Products
             {
-                SponsorID = sponsorId,
+                SponsorID = sponsor.SponsorID,
                 ProductID = Math.Abs(item.ItemId.GetHashCode()),
                 ProductName = item.Title,
                 Description = ParseDescription(item),
                 Category = categories.First().ToString(), // Assuming first category as example
                 CurrencyPrice = (int)Convert.ToDecimal(item.Price.Value), // Price in cents
-                PriceInPoints = (int)(Convert.ToDecimal(item.Price.Value) * pointValue),
+                PriceInPoints = (int)(Convert.ToDecimal(item.Price.Value) * sponsor.PointDollarValue),
                 ExternalID = item.ItemId,
                 ImageUrl = item.Image.ImageUrl,
                 Availability = true
             }).ToList();
-            
-            using var scope = _serviceProvider.CreateScope(); // Create a scope for resolving scoped services
-            var context = scope.ServiceProvider.GetRequiredService<AppDBContext>();
             
             // Insert products into the database using stored procedure
             foreach (var product in products)
             {
                 
                 await context.Database.ExecuteSqlRawAsync(
-                    "CALL InsertSponsorCatalog(@SponsorID, @ProductID, @Name, @Description, @Category, @CurrencyPrice, @PriceInPoints, @ExternalID, @ImageUrl, @Availability)",
+                    "CALL sp_CreateSponsorCatalog(@SponsorID, @ProductID, @Name, @Description, @Category, @CurrencyPrice, @PriceInPoints, @ExternalID, @ImageUrl, @Availability)",
                     new[]
                     {
                         new MySqlParameter("@SponsorID", product.SponsorID),
@@ -171,7 +186,7 @@ namespace Backend_Server.Services
                     });
             }
 
-            _logger.LogInformation("Catalog created successfully for sponsor {SponsorId}", sponsorId);
+            _logger.LogInformation("Catalog created successfully for sponsor");
             return products;
         }
 
@@ -229,14 +244,33 @@ namespace Backend_Server.Services
             return rowsAffected > 0;
         }
 
-        public async Task<List<Products>> GetSponsorCatalogAsync(int sponsorId)
+        public async Task<List<Products>> GetSponsorCatalogAsync(int userId)
         {
+           try{ 
             using var scope = _serviceProvider.CreateScope(); // Create a scope for resolving scoped services
             var context = scope.ServiceProvider.GetRequiredService<AppDBContext>();
+            var sponsorId = await context.SponsorUsers
+                    .Where(su=> su.UserID == userId)
+                    .Select(su => su.SponsorID)
+                    .SingleOrDefaultAsync();
 
-            return await context.Products
+            var products = await context.Products
                 .FromSqlRaw("CALL sp_GetSponsorCatalog(@SponsorID)", new MySqlParameter("@SponsorID", sponsorId))
                 .ToListAsync();
+
+             // Log the results
+        if (products.Count == 0)
+        {
+            _logger.LogWarning("No products found for SponsorID: {SponsorID}", sponsorId);
+        }
+
+        return products;
+           }
+          catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error fetching catalog for {userId}", userId);
+        throw;
+    }
         }
 
         public string ShortenTitle(string originalTitle)
@@ -283,7 +317,7 @@ namespace Backend_Server.Services
              }
 
             var categories = string.Join(", ", item.Categories?.Select(c => c.CategoryName) ?? new[] { "Miscellaneous" });
-            var categoryFocus = categories.Split(',').FirstOrDefault(); // Use main category
+            var categoryFocus = categories.Split(',').SingleOrDefault(); // Use main category
 
             // Build the description
             return $"{title}: {condition}. Ideal for {categoryFocus}. Priced at {price}. {discount}".Trim();

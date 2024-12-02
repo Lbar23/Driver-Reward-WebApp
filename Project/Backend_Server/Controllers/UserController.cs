@@ -64,7 +64,7 @@ namespace Backend_Server.Controllers
             {
                 var sponsorUser = await _context.SponsorUsers
                     .Include(su => su.Sponsor)
-                    .FirstOrDefaultAsync(su => su.UserID == user.Id);
+                    .SingleOrDefaultAsync(su => su.UserID == user.Id);
 
                 response = new
                 {

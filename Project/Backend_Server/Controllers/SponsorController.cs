@@ -6,6 +6,8 @@ using Backend_Server.Models.DTO;
 using Serilog;
 using Microsoft.Extensions.Caching.Memory;
 using Backend_Server.Infrastructure;
+using System.Collections.Frozen;
+using System.Collections.Immutable;
 
 
 namespace Backend_Server.Controllers
@@ -32,6 +34,34 @@ namespace Backend_Server.Controllers
         private readonly AppDBContext _context = context;
 
         /********* API CALLS *********/
+
+        [HttpGet("list-all")]
+        public async Task<IActionResult> GetSponsors()
+        {
+            try
+            {
+                // Fetch all sponsors from the database
+                var sponsors = await _context.Sponsors.ToListAsync();
+
+                // Check if the sponsors list is empty
+                if (sponsors.Count == 0)
+                {
+                    Log.Warning("Category: Sponsor, Description: No sponsors found in the database.");
+                    return NotFound("No sponsors found");
+                }
+
+
+                // Return the list of sponsors
+                return Ok(sponsors.ToList());
+            }
+            catch (Exception ex)
+            {
+                // Log the error
+                Log.Error(ex, "An error occurred while retrieving sponsors.");
+                return StatusCode(500, "An error occurred while processing your request. Please try again later.");
+            }
+        }
+ 
 
         // update applicaiton
         [HttpPut("update/{id}")]
