@@ -65,7 +65,7 @@ try {
         options.AddPolicy("AllowSpecificOrigins",
             builder =>
             {
-                builder.WithOrigins("BASE_API_URL", "http://localhost:5041")
+                builder.WithOrigins("http://localhost:5173", "http://localhost:5041", "http://localhost:5000")
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();

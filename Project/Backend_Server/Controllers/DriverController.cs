@@ -433,9 +433,8 @@ namespace Backend_Server.Controllers
                 {
                     product = new Products
                     {
-                        ProductID = purchaseRequest.ProductID,
-                        Name = "External Product",
-                        Description = "Product from external catalog",
+                        Name = purchaseRequest.ProductName, // change to actual product b=name
+                        Description = "Product from external catalog", // same for description
                         PriceInPoints = purchaseRequest.PointsSpent,
                         ExternalID = purchaseRequest.ProductID.ToString(),
                         Availability = true,
@@ -458,10 +457,6 @@ namespace Backend_Server.Controllers
                 _context.Purchases.Add(purchase);
 
                 await _context.SaveChangesAsync(); // Save that as well
-
-                // Update points
-                sponsorDriver.Points -= purchaseRequest.PointsSpent;
-                await _context.SaveChangesAsync();
 
                 // Finally, create transaction record
                 var pointTransaction = new PointTransactions

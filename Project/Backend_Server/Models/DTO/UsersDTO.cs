@@ -45,6 +45,7 @@ namespace Backend_Server.Models.DTO
         public required int SponsorID { get; init; }
         public required int ProductID { get; init; }
         public required int PointsSpent { get; init; }
+        public required string ProductName {get; set; }
     }
 
     [NotMapped]
