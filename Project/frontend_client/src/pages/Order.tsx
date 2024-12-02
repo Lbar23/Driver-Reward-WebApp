@@ -11,30 +11,42 @@ interface CartItem {
   pointCost?: number;
 }
 
-const Order: React.FC = () => {
+interface OrderState {
+  cartItems: CartItem[];
+  sponsorId: number;
+  points: number;
+  pointValue: number;
+}
 
+const Order: React.FC = () => {
     const [orderCompleted, setOrderCompleted] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [processingOrder, setProcessingOrder] = useState(false);
     
-      const handleCloseDialog = () => {
-        setOrderCompleted(false);
-        navigate('/catalog');
-      };      
+    const handleCloseDialog = () => {
+      setOrderCompleted(false);
+      navigate('/catalog');
+    };      
 
-    const location = useLocation<{ cartItems: CartItem[]; sponsorId: number; points: number; pointValue: number }>();
-    const { cartItems, sponsorId, points, pointValue } = location.state || {};
+    const location = useLocation();
+    const state = location.state as OrderState;
+    const { cartItems, sponsorId, points, pointValue } = state || {};
     const navigate = useNavigate();
 
     const calculateCartTotalPoints = (): number => {
       return cartItems?.reduce((sum, item) => {
-        const numericPrice = parseFloat(item.price.split(' ')[0]); // Assuming `price` is a string like "$100"
+        const numericPrice = parseFloat(item.price.split(' ')[0]);
         return sum + Math.ceil(numericPrice / pointValue);
-      }, 0) || 0; // Default to 0 if cartItems is undefined
+      }, 0) || 0;
     };
 
     const handleCompleteOrder = async () => {
+      if (processingOrder) return; // Prevent double submissions
+      setProcessingOrder(true);
+      setError(null);
+      
       try {
-        // Create a purchase request for each item
+        // Create all purchase requests for the current sponsor
         const purchasePromises = cartItems.map(item => {
           const pointsForItem = Math.ceil(parseFloat(item.price.split(' ')[0]) / pointValue);
         
@@ -46,13 +58,14 @@ const Order: React.FC = () => {
           });
         });
 
-        
         await Promise.all(purchasePromises);
         setOrderCompleted(true);
       } catch (err: any) {
         console.error('Purchase error:', err);
         const errorMessage = err.response?.data?.message || 'Failed to complete order';
-        alert(errorMessage);
+        setError(errorMessage);
+      } finally {
+        setProcessingOrder(false);
       }
     };
 
@@ -64,13 +77,18 @@ const Order: React.FC = () => {
       <Typography variant="h4" align="center" gutterBottom>
         Secure Checkout
       </Typography>
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
       <Grid container spacing={4}>
         {/* Delivery Address Form */}
         <Grid item xs={12} sm={7}>
           <Box>
             <Typography variant="h6">1. Delivery Address</Typography>
             <Typography variant="body2">All fields marked with * are required</Typography>
-            <Grid container spacing={2} mt={2}> {/*fill these out with dbs stuff from the driver user*/}
+            <Grid container spacing={2} mt={2}>
               <Grid item xs={12}>
                 <TextField label="Email address *" fullWidth variant="outlined" />
               </Grid>
@@ -96,7 +114,7 @@ const Order: React.FC = () => {
           </Box>
         </Grid>
 
-        {/* Order Summary - get items from catalog*/}
+        {/* Order Summary */}
         <Grid item xs={12} sm={5}>
           <Box>
             <Typography variant="h6">Order Summary</Typography>
@@ -121,10 +139,11 @@ const Order: React.FC = () => {
                 variant="contained" 
                 color="primary" 
                 fullWidth 
-                onClick={handleCompleteOrder} 
+                onClick={handleCompleteOrder}
+                disabled={processingOrder || calculateCartTotalPoints() > points}
                 sx={{ mt: 2 }}
               >
-                Complete Order
+                {processingOrder ? 'Processing...' : 'Complete Order'}
               </Button>
             </Box>
           </Box>
@@ -135,7 +154,7 @@ const Order: React.FC = () => {
       <Dialog open={orderCompleted} onClose={handleCloseDialog}>
         <DialogTitle>Order Complete</DialogTitle>
         <DialogContent>
-          <Typography>Your order has been successfully completed! Remaining points: {points - calculateCartTotalPoints()}</Typography> {/* connect points from dbs */}
+          <Typography>Your order has been successfully completed! Remaining points: {points - calculateCartTotalPoints()}</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} color="primary">Close</Button>

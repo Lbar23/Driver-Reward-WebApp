@@ -12,6 +12,10 @@ using Amazon.Extensions.NETCore.Setup;
 using Serilog;
 using Amazon.S3;
 using Serilog.Events;
+// using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -71,6 +75,27 @@ try {
                     .AllowCredentials();
                     
             });
+    });
+
+    // JWT Authentication setup
+    var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "YourSecretKeyHere"; // Add this in appsettings.json
+    var key = Encoding.ASCII.GetBytes(jwtSecret);
+
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = "JwtBearer";
+        options.DefaultChallengeScheme = "JwtBearer";
+    })
+    .AddJwtBearer("JwtBearer", options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ClockSkew = TimeSpan.Zero // No tolerance for clock skew
+        };
     });
 
     // Identity Services and Options

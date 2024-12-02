@@ -1,12 +1,13 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
 using Backend_Server.Models;
 using Backend_Server.Models.DTO;
 using Backend_Server.Services;
-using Backend_Server.Infrastructure;
 using Serilog;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.AspNetCore.Mvc.TagHelpers.Cache;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,11 +31,17 @@ namespace Backend_Server.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class SystemController(UserManager<Users> userManager, SignInManager<Users> signInManager, AppDBContext context, NotifyService notifyService) : ControllerBase
+    public class SystemController(UserManager<Users> userManager, 
+                                  SignInManager<Users> signInManager, 
+                                  AppDBContext context, 
+                                  IConfiguration configuration,
+                                  NotifyService notifyService) : ControllerBase
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly SignInManager<Users> _signInManager = signInManager;
         private readonly AppDBContext _context = context;
+        private readonly IConfiguration _configuration = configuration ;
+
         private readonly NotifyService _notifyService = notifyService;
 
         /********* API CALLS *********/
@@ -43,7 +50,6 @@ namespace Backend_Server.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserRegisterDto userDto)
         {
-            // do later lmao if (isAdminDomain) user's email == web app default admin domain; UserType = UserType.Admin.ToString()
             var user = new Users
             {
                 UserName = userDto.Username,
@@ -51,7 +57,7 @@ namespace Backend_Server.Controllers
                 UserType = UserType.Guest.ToString(),
                 CreatedAt = DateTime.UtcNow,
                 NotifyPref = NotificationPref.Email,
-                EmailConfirmed = true, //for now
+                EmailConfirmed = true, // development purposes, switch later
                 PhoneNumberConfirmed = false,
                 LockoutEnabled = false,
                 TwoFactorEnabled = userDto.Enable2FA, // Set 2FA based on user's choice during registration

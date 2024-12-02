@@ -1,7 +1,7 @@
 import { Route, Routes, Navigate, Outlet } from 'react-router-dom';
 import { Toolbar, Box } from '@mui/material';
 import AppNavbar from './components/layout/AppNavbar';
-import AppTheme from './components/layout/AppTheme';
+import AppTheme from './theme/AppTheme';
 import { AuthProvider, useAuth } from './service/authContext';
 import { ViewProvider } from './service/viewContext';
 import SideMenu from './components/layout/SideMenu';

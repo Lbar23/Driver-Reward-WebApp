@@ -17,7 +17,7 @@ namespace Backend_Server.Controllers
     /// AdminController:
     /// 
     /// This controller provides endpoints for managing users, including creation, deletion,
-    /// role updates, and retrieval of details and audit logs.
+    /// role updates, and retrieval of details.
     /// 
     /// Endpoints:
     /// 

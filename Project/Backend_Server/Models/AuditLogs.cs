@@ -8,7 +8,7 @@ namespace Backend_Server.Models
     public enum AuditLogCategory
     {
         User,
-        Point,
+        Points,
         Purchase,
         Application,
         Product,

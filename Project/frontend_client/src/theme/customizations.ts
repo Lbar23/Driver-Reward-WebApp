@@ -13,7 +13,7 @@ import type { ChartsComponents } from '@mui/x-charts/themeAugmentation';
 import type { TreeViewComponents } from '@mui/x-tree-view/themeAugmentation';
 import type { PickerComponents } from '@mui/x-date-pickers/themeAugmentation';
 import type { DataGridComponents } from '@mui/x-data-grid/themeAugmentation';
-import { gray, brand } from '../../theme/themePrimitives';
+import { gray, brand } from './themePrimitives';
 
 export const dataGridComponents: DataGridComponents<Theme> = {
   MuiDataGrid: {

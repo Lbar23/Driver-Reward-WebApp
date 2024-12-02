@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import Grid2 from '@mui/material/Grid2';
 import { useAuth } from '../service/authContext';
-import { useAppTheme } from '../components/layout/AppTheme';
+import { useAppTheme } from '../theme/AppTheme';
 import Section from '../components/form-elements/Section';
 
 const Settings: React.FC = () => {
