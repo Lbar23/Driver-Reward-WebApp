@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using static Backend_Server.Services.ClaimsService;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +42,10 @@ try {
     builder.Services.AddScoped<NotifyService>();
     builder.Services.AddScoped<ReportService>();
     builder.Services.AddScoped<ClaimsService>();
+
+    builder.Services.AddSignalR();
+    builder.Services.AddHealthChecks()
+        .AddCheck("SignalR", () => HealthCheckResult.Healthy());
 
     builder.Services.AddLogging(configure => {
         configure.AddConsole();
@@ -222,7 +227,9 @@ try {
     app.UseAuthentication();
     app.UseAuthorization();
 
+    app.MapHub<TerminalHub>("/terminalHub");
     app.MapControllers();
+    app.MapHealthChecks("/health");
 
     app.UseSpa(spa =>
     {

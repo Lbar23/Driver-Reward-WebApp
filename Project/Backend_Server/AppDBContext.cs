@@ -655,7 +655,7 @@ namespace Backend_Server
                 entity.HasIndex(f => f.FeedbackCategory);
                 entity.HasIndex(f => f.SubmissionDate);
             });
-
+            /* PROCEDURE & VIEW DTOS */
             // For sp_GetSalesBySponsor (both summary and detail use same proc with different viewType)
             modelBuilder.Entity<SpSalesSummary>()
                 .HasNoKey()
