@@ -232,15 +232,19 @@ namespace Backend_Server.Models.DTO
         public required string NewPassword { get; set; }
     }
 
-    // DTO for representing product information
-    public record ProductDto
+
+    public class ProductDto
     {
+        public int SponsorID { get; set; }
         public int ProductID { get; set; }
-        public required string ProductName { get; set; } // Updated to match Products model
-        public required string Category { get; set; } // New field
-        public required decimal CurrencyPrice { get; set; }
-        public int PointCost { get; set; }
-        public required string ImageUrl { get; set; }
-        public string Description { get; set; } = string.Empty; // Updated to include Description
+        public string ProductName { get; set; }
+        public string Category { get; set; }
+        public string Description { get; set; }
+        public decimal CurrencyPrice { get; set; }
+        public int PriceInPoints { get; set; }
+        public string ExternalID { get; set; }
+        public string ImageUrl { get; set; }
+        public bool Availability { get; set; }
     }
+
 }

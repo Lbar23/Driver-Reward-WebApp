@@ -115,80 +115,100 @@ namespace Backend_Server.Services
             }) ?? [];
         }
 
-        public async Task<List<Products>> CreateCatalogAsync(string categories, int numberOfProducts, int userId)
+      public async Task<List<Products>> CreateCatalogAsync(List<string> categories, int numberOfProducts, int userId)
+{
+    var token = await GetAppTokenAsync();
+    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+    using var scope = _serviceProvider.CreateScope(); // Create a scope for resolving scoped services
+    var context = scope.ServiceProvider.GetRequiredService<AppDBContext>();
+
+    // Fetch sponsor details
+    var sponsor = await context.SponsorUsers
+        .Where(su => su.UserID == userId)
+        .Select(su => su.Sponsor)
+        .SingleOrDefaultAsync();
+
+    if (sponsor == null)
+    {
+        throw new Exception($"No sponsor found for user ID {userId}");
+    }
+
+    var allProducts = new List<Products>();
+
+    foreach (var category in categories)
+    {
+        // Make a separate API call for each category
+        var apiUrl = $"{BrowseUrl}category_ids={category}&limit={numberOfProducts}";
+        var response = await _httpClient.GetAsync(apiUrl);
+
+        if (!response.IsSuccessStatusCode)
         {
-            // Fetch products from eBay API
-            var categoryIds = categories;
-            var apiUrl = $"{BrowseUrl}category_ids={categoryIds}&limit={numberOfProducts}";
-            var token = await GetAppTokenAsync();
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            var response = await _httpClient.GetAsync(apiUrl);
-            response.EnsureSuccessStatusCode(); 
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError("Failed to fetch products for categories {Categories}", categoryIds);
-                throw new Exception($"Failed to fetch products: {response.ReasonPhrase}");
-            }
-
-           
-            using var scope = _serviceProvider.CreateScope(); // Create a scope for resolving scoped services
-            var context = scope.ServiceProvider.GetRequiredService<AppDBContext>();
-
-            var sponsor = await context.SponsorUsers
-                    .Where(su=> su.UserID == userId)
-                    .Select(su => su.Sponsor)
-                    .SingleOrDefaultAsync();
-             var content = await response.Content.ReadAsStringAsync();
-            var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
-            if (productResponse?.ItemSummaries == null || !productResponse.ItemSummaries.Any())
-            {
-                _logger.LogWarning("No products retrieved from eBay for sponsor {SponsorId}", sponsor?.SponsorID);
-                return new List<Products>();
-            }
-            
-            
-            
-
-            // Map API response to `Products` model
-            var products = productResponse.ItemSummaries.Select(item => new Products
-            {
-                SponsorID = sponsor.SponsorID,
-                ProductID = Math.Abs(item.ItemId.GetHashCode()),
-                ProductName = item.Title,
-                Description = ParseDescription(item),
-                Category = categories.First().ToString(), // Assuming first category as example
-                CurrencyPrice = (int)Convert.ToDecimal(item.Price.Value), // Price in cents
-                PriceInPoints = (int)(Convert.ToDecimal(item.Price.Value) * sponsor.PointDollarValue),
-                ExternalID = item.ItemId,
-                ImageUrl = item.Image.ImageUrl,
-                Availability = true
-            }).ToList();
-            
-            // Insert products into the database using stored procedure
-            foreach (var product in products)
-            {
-                
-                await context.Database.ExecuteSqlRawAsync(
-                    "CALL sp_CreateSponsorCatalog(@SponsorID, @ProductID, @Name, @Description, @Category, @CurrencyPrice, @PriceInPoints, @ExternalID, @ImageUrl, @Availability)",
-                    new[]
-                    {
-                        new MySqlParameter("@SponsorID", product.SponsorID),
-                        new MySqlParameter("@ProductID", product.ProductID),
-                        new MySqlParameter("@Name", product.ProductName),
-                        new MySqlParameter("@Description", product.Description),
-                        new MySqlParameter("@Category", product.Category),
-                        new MySqlParameter("@CurrencyPrice", product.CurrencyPrice),
-                        new MySqlParameter("@PriceInPoints", product.PriceInPoints),
-                        new MySqlParameter("@ExternalID", product.ExternalID),
-                        new MySqlParameter("@ImageUrl", product.ImageUrl),
-                        new MySqlParameter("@Availability", product.Availability)
-                    });
-            }
-
-            _logger.LogInformation("Catalog created successfully for sponsor");
-            return products;
+            _logger.LogError("Failed to fetch products for category {Category}: {Reason}", category, response.ReasonPhrase);
+            continue; // Skip to the next category
         }
+
+        var content = await response.Content.ReadAsStringAsync();
+        var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
+
+        if (productResponse?.ItemSummaries == null || !productResponse.ItemSummaries.Any())
+        {
+            _logger.LogWarning("No products retrieved for category {Category}", category);
+            continue; // Skip to the next category
+        }
+
+        // Map API response to `Products` model
+        var products = productResponse.ItemSummaries.Select(item => new Products
+        {
+            SponsorID = sponsor.SponsorID,
+            ProductID = Math.Abs(item.ItemId.GetHashCode()),
+            ProductName = item.Title,
+            Description = ParseDescription(item),
+            Category = category,
+            CurrencyPrice = item.Price.Value,
+            PriceInPoints = (int)(item.Price.Value * sponsor.PointDollarValue),
+            ExternalID = item.ItemId,
+            ImageUrl = item.Image.ImageUrl,
+            Availability = true
+        }).ToList();
+
+        // Add products to the list
+        allProducts.AddRange(products);
+    }
+
+    if (!allProducts.Any())
+    {
+        _logger.LogWarning("No products were successfully fetched for any category.");
+        return new List<Products>();
+    }
+
+    // Insert products into the database using stored procedure
+    foreach (var product in allProducts)
+    {
+        await context.Database.ExecuteSqlRawAsync(
+            "CALL sp_CreateSponsorCatalog(@SponsorID, @ProductID, @Name, @Description, @Category, @CurrencyPrice, @PriceInPoints, @ExternalID, @ImageUrl, @Availability)",
+            new[]
+            {
+                new MySqlParameter("@SponsorID", product.SponsorID),
+                new MySqlParameter("@ProductID", product.ProductID),
+                new MySqlParameter("@Name", product.ProductName),
+                new MySqlParameter("@Description", product.Description),
+                new MySqlParameter("@Category", product.Category),
+                new MySqlParameter("@CurrencyPrice", product.CurrencyPrice),
+                new MySqlParameter("@PriceInPoints", product.PriceInPoints),
+                new MySqlParameter("@ExternalID", product.ExternalID),
+                new MySqlParameter("@ImageUrl", product.ImageUrl),
+                new MySqlParameter("@Availability", product.Availability)
+            });
+    }
+
+    _logger.LogInformation("Catalog created successfully for sponsor ID {SponsorID}", sponsor.SponsorID);
+    return allProducts;
+}
+
+
+
+
 
         public async Task<bool> CheckProductAvailabilityAsync(string itemId)
         {
