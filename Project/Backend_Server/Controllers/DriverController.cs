@@ -218,6 +218,7 @@ namespace Backend_Server.Controllers
                 {
                     // Add new relationships and applications
                     await _context.SponsorDrivers.AddRangeAsync(newRelationships);
+                    await _context.SaveChangesAsync();
                     await _context.DriverApplications.AddRangeAsync(newApplications);
                     await _context.SaveChangesAsync();
 

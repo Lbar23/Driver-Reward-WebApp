@@ -9,6 +9,8 @@ using Backend_Server.Infrastructure;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using Backend_Server.Services;
+using Newtonsoft.Json;
+using System.Text.Json;
 
 
 namespace Backend_Server.Controllers
@@ -213,6 +215,10 @@ namespace Backend_Server.Controllers
                 {
                     app.ApplicationID,
                     app.UserID,
+                    DriverName = _context.Users
+                        .Where(u => u.Id == app.UserID)
+                        .Select(u => $"{u.FirstName} {u.LastName}")
+                        .FirstOrDefault() ?? "Unknown",
                     app.ApplyDate,
                     app.Status,
                     app.ProcessReason
@@ -228,45 +234,60 @@ namespace Backend_Server.Controllers
             return Ok(applications);
         }
 
-        [HttpPost("applications/{appID}")]
-        public async Task<IActionResult> ProcessApplication(int appID, [FromQuery] string action)
+[HttpPost("applications/{appID}")]
+public async Task<IActionResult> ProcessApplication(int appID, [FromBody] JsonElement payload)
+{
+    try
+    {
+        // Log the incoming payload for debugging
+        Log.Information("Received Payload: {Payload}", payload.GetRawText());
+
+        // Retrieve the application from the database
+        var application = await _context.DriverApplications.FindAsync(appID);
+        if (application == null)
         {
-
-            var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser == null)
-            {
-                return Unauthorized("User not found.");
-            }
-
-            var application = await _context.DriverApplications.FindAsync(appID);
-            if (application == null)
-            {
-                return NotFound("Application not found.");
-            }
-            var sponsorUser = await _context.SponsorUsers
-                .FirstOrDefaultAsync(su => su.UserID == currentUser.Id && su.SponsorID == application.SponsorID);
-
-            if (sponsorUser == null){
-                return Unauthorized("Sponsor user does not have access to this application.");
-            }
-
-            if (action == "approve"){
-                application.Status = AppStatus.Approved;
-                application.ProcessedDate = DateOnly.FromDateTime(DateTime.Now);
-            }
-
-            else if (action == "reject"){
-                application.Status = AppStatus.Rejected;
-                application.ProcessedDate = DateOnly.FromDateTime(DateTime.Now);
-            }
-
-            else{
-                return BadRequest("Invalid action specified. Use 'approve' or 'reject'.");
-            }
-
-            await _context.SaveChangesAsync();
-            return Ok($"Application {action}ed successfully.");
+            return NotFound("Application not found.");
         }
+
+        // Deserialize only the fields in the payload
+        var status = payload.TryGetProperty("status", out var statusProp) ? (AppStatus)statusProp.GetInt32() : application.Status;
+        var processReason = payload.TryGetProperty("processReason", out var reasonProp) 
+            ? (ProcessedReason?)reasonProp.GetInt32() 
+            : application.ProcessReason;
+        var processedDate = payload.TryGetProperty("processedDate", out var dateProp) 
+            ? DateOnly.Parse(dateProp.GetString()) 
+            : application.ProcessedDate;
+        var comments = payload.TryGetProperty("comments", out var commentsProp) 
+            ? commentsProp.GetString() 
+            : application.Comments;
+
+        // Update the application with the new values
+        application.Status = status;
+        application.ProcessReason = processReason;
+        application.ProcessedDate = processedDate;
+        application.Comments = comments;
+        application.LastModified = DateTime.Now; // Always update the last modified timestamp
+
+        // Save the changes to the database
+        await _context.SaveChangesAsync();
+
+        return Ok("Application processed successfully.");
+    }
+    catch (Exception ex)
+    {
+        // Log the error for debugging
+        Log.Error(ex, "Error processing application with ID {ApplicationID}", appID);
+        return StatusCode(500, "Internal server error.");
+    }
+}
+
+
+
+
+
+
+
+
         [HttpPut("point-value")]
         public async Task<IActionResult> UpdatePointDollarValue([FromBody] decimal newPointValue)
         {
