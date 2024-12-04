@@ -15,6 +15,7 @@ import { useView } from '../../service/viewContext';
 import AdminConsole from './AdminConsole';
 import Profile from './Profile';
 import UserManagementDashboard from './ManagementUsers';
+import SponsorAuditLogs from './SponsorAudit';
 
 // Link the current view to the corresponding component
 const viewComponents: Record<string, JSX.Element> = {
@@ -30,7 +31,7 @@ const viewComponents: Record<string, JSX.Element> = {
   // MANAGE_DRIVERS: <ManageDriverSponsors />,
   // MANAGE_SPONSORS: <ManageSponsors/>,
   // MANAGE_ADMINS: <ManageAdmins/>,
-  MANAGE_ALL: <UserManagementDashboard/>,
+  MANAGE_ALL: <UserManagementDashboard />,
   ADMIN_REPORTS: <AdminReports />,
   ADMIN_AUDIT_REPORTS: <AuditLogDashboard/>,
   ADMIN_CONSOLE: <AdminConsole />,
@@ -44,7 +45,7 @@ const viewComponents: Record<string, JSX.Element> = {
   // Sponsor Components
   APPLICATION_MANAGER: <ApplicationManager />,
   SPONSOR_REPORTS: <SponsorReports />,
-  SPONSOR_AUDIT_REPORTS: <Typography>Audit Reports</Typography>,
+  SPONSOR_AUDIT_REPORTS: <SponsorAuditLogs />,
   SPONSOR_DRIVERS: <SponsorDrivers />,
 };
 
