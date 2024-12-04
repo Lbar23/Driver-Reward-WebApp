@@ -262,6 +262,28 @@ namespace Backend_Server.Migrations
                     b.ToTable("Authentications", (string)null);
                 });
 
+            modelBuilder.Entity("Backend_Server.Models.DTO.DrSalesDetail", b =>
+                {
+                    b.Property<string>("DriverName")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ProductName")
+                        .HasColumnType("longtext");
+
+                    b.Property<decimal>("SaleAmount")
+                        .HasColumnType("decimal(65,30)");
+
+                    b.Property<string>("SponsorName")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.ToTable((string)null);
+
+                    b.ToFunction("sp_GetSalesDriverDetail");
+                });
+
             modelBuilder.Entity("Backend_Server.Models.DTO.DrSalesSummary", b =>
                 {
                     b.Property<string>("DriverName")
@@ -272,9 +294,6 @@ namespace Backend_Server.Migrations
 
                     b.Property<string>("SponsorName")
                         .HasColumnType("longtext");
-
-                    b.Property<int?>("TotalDrivers")
-                        .HasColumnType("int");
 
                     b.Property<decimal>("TotalSales")
                         .HasColumnType("decimal(65,30)");
@@ -333,11 +352,8 @@ namespace Backend_Server.Migrations
                     b.ToFunction("sp_GetInvoiceReport");
                 });
 
-            modelBuilder.Entity("Backend_Server.Models.DTO.SalesDetail", b =>
+            modelBuilder.Entity("Backend_Server.Models.DTO.SpSalesDetail", b =>
                 {
-                    b.Property<string>("DriverName")
-                        .HasColumnType("longtext");
-
                     b.Property<string>("ProductName")
                         .HasColumnType("longtext");
 
@@ -357,9 +373,6 @@ namespace Backend_Server.Migrations
 
             modelBuilder.Entity("Backend_Server.Models.DTO.SpSalesSummary", b =>
                 {
-                    b.Property<int?>("PurchaseCount")
-                        .HasColumnType("int");
-
                     b.Property<string>("SponsorName")
                         .HasColumnType("longtext");
 
@@ -588,7 +601,7 @@ namespace Backend_Server.Migrations
                             Email = "alice@example.com",
                             FeedbackCategory = "Suggestion",
                             FirstName = "Alice",
-                            SubmissionDate = new DateTime(2024, 12, 3, 23, 49, 44, 329, DateTimeKind.Utc).AddTicks(6433)
+                            SubmissionDate = new DateTime(2024, 12, 4, 7, 50, 48, 564, DateTimeKind.Utc).AddTicks(5837)
                         },
                         new
                         {
@@ -597,7 +610,7 @@ namespace Backend_Server.Migrations
                             Email = "bob@example.com",
                             FeedbackCategory = "BugReport",
                             FirstName = "Bob",
-                            SubmissionDate = new DateTime(2024, 12, 3, 23, 49, 44, 329, DateTimeKind.Utc).AddTicks(6435)
+                            SubmissionDate = new DateTime(2024, 12, 4, 7, 50, 48, 564, DateTimeKind.Utc).AddTicks(5839)
                         },
                         new
                         {
@@ -606,7 +619,7 @@ namespace Backend_Server.Migrations
                             Email = "charlie@example.com",
                             FeedbackCategory = "Compliment",
                             FirstName = "Charlie",
-                            SubmissionDate = new DateTime(2024, 12, 3, 23, 49, 44, 329, DateTimeKind.Utc).AddTicks(6436)
+                            SubmissionDate = new DateTime(2024, 12, 4, 7, 50, 48, 564, DateTimeKind.Utc).AddTicks(5840)
                         },
                         new
                         {
@@ -615,7 +628,7 @@ namespace Backend_Server.Migrations
                             Email = "dana@example.com",
                             FeedbackCategory = "Complaint",
                             FirstName = "Dana",
-                            SubmissionDate = new DateTime(2024, 12, 3, 23, 49, 44, 329, DateTimeKind.Utc).AddTicks(6437)
+                            SubmissionDate = new DateTime(2024, 12, 4, 7, 50, 48, 564, DateTimeKind.Utc).AddTicks(6282)
                         });
                 });
 
@@ -942,10 +955,10 @@ namespace Backend_Server.Migrations
 
             modelBuilder.Entity("Backend_Server.Models.SponsorDrivers", b =>
                 {
-                    b.Property<int>("UserID")
+                    b.Property<int>("SponsorID")
                         .HasColumnType("int");
 
-                    b.Property<int>("SponsorID")
+                    b.Property<int>("UserID")
                         .HasColumnType("int");
 
                     b.Property<decimal>("DriverPointValue")
@@ -964,9 +977,7 @@ namespace Backend_Server.Migrations
                         .HasDefaultValue(0)
                         .HasComment("Points specific to this sponsor");
 
-                    b.HasKey("UserID", "SponsorID");
-
-                    b.HasIndex("SponsorID");
+                    b.HasKey("SponsorID", "UserID");
 
                     b.HasIndex("UserID", "SponsorID")
                         .HasDatabaseName("IX_SponsorDrivers_DriverSponsor");

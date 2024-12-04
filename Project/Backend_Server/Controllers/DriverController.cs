@@ -64,11 +64,12 @@ namespace Backend_Server.Controllers
             try
             {
                 // Call the stored procedure for driver's point tracking
-                return (IActionResult)await _reportService.GetDriverPointTracking(user.Id,
+                var result = await _reportService.GetDriverPointTracking(user.Id,
                     sponsorId: null, 
                     startDate: null,  
                     endDate: null        
                 );
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -171,6 +172,8 @@ namespace Backend_Server.Controllers
                     var sponsor = await _context.Sponsors
                         .FirstOrDefaultAsync(s => s.SponsorID == sponsorId);
 
+                    Log.Information($"Adding sponsor ID={sponsorId} to driver ID={user.Id}");
+
                     if (sponsor == null)
                     {
                         return BadRequest($"Sponsor with ID {sponsorId} not found.");
@@ -188,6 +191,10 @@ namespace Backend_Server.Controllers
                         MilestoneLevel = sponsor.MilestoneThreshold == 0 ? 0 : 1
                     };
                     newRelationships.Add(sponsorDriver);
+                    Log.Information(
+                            "New driver sponsor relationship created - UserID: {UserId}, SponsorID: {SponsorId}", 
+                            sponsorDriver.UserID, 
+                            sponsorDriver.SponsorID);
 
                     // Create corresponding application
                     var application = new DriverApplications
@@ -200,6 +207,11 @@ namespace Backend_Server.Controllers
                         SponsorDriver = sponsorDriver
                     };
                     newApplications.Add(application);
+
+                    Log.Information(
+                            "New driver application created before save change - UserID: {UserId}, SponsorID: {SponsorId}", 
+                            application.UserID, 
+                            application.SponsorID);
                 }
 
                 if (newRelationships.Any())

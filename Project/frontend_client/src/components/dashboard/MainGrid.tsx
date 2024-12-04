@@ -7,18 +7,14 @@ import PasswordChangeForm from '../../pages/PasswordChangeForm';
 import DriverPointsList from '../dashboard/PMSDriverList';
 import DriverActivity from '../dashboard/DriverActivity';
 import SponsorDrivers from '../dashboard/SponsorDriverList';
-import SponsorRegistrationPage from '../dashboard/SponsorRegistrationForDriver';
 import DriverPointsHistory from '../dashboard/DriverPointHistory';
 import SponsorReports from './SponsorReports';
 import AdminReports from './AdminReports';
-import ManageSponsors from './ManageSponsors';
-import ManageAdmins from './ManageAdmins';
-import ManageDriverSponsors from './ManageDriverSponsors';
 import AuditLogDashboard from '../../pages/AuditLogDashboard';
 import { useView } from '../../service/viewContext';
 import AdminConsole from './AdminConsole';
 import Profile from './Profile';
-//import ManageSponsors from './ManageSponsorsAdmin';
+import UserManagementDashboard from './ManagementUsers';
 
 // Link the current view to the corresponding component
 const viewComponents: Record<string, JSX.Element> = {
@@ -31,9 +27,10 @@ const viewComponents: Record<string, JSX.Element> = {
   // General Components here
   CHANGE_PASSWORD: <PasswordChangeForm />,
   // Admin Components
-  MANAGE_DRIVERS: <ManageDriverSponsors />,
-  MANAGE_SPONSORS: <ManageSponsors/>,
-  MANAGE_ADMINS: <ManageAdmins/>,
+  // MANAGE_DRIVERS: <ManageDriverSponsors />,
+  // MANAGE_SPONSORS: <ManageSponsors/>,
+  // MANAGE_ADMINS: <ManageAdmins/>,
+  MANAGE_ALL: <UserManagementDashboard/>,
   ADMIN_REPORTS: <AdminReports />,
   ADMIN_AUDIT_REPORTS: <AuditLogDashboard/>,
   ADMIN_CONSOLE: <AdminConsole />,

@@ -18,6 +18,7 @@ import ProductCatalog from './pages/ProductCatalog';
 import FAQ from './pages/FAQ';
 import FeedbackForm from './pages/Feedback';
 import Order from './pages/Order';
+import ResetPasswordPage from './pages/ResetPassword';
 // Other pages for authenticated routes
 import PasswordChangeForm from './pages/PasswordChangeForm';
 import Settings from './pages/Settings'
@@ -84,6 +85,8 @@ const App = () => (
           <Route path="/home" element={<HomePage />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/feedback" element={<FeedbackForm />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+
           
 
           {/* Protected Routes */}

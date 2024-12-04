@@ -170,6 +170,8 @@ namespace Backend_Server.Controllers
                     user.UserName ?? "User"
                 );
 
+                Log.Information("Password reset token for UserID: {UserId}, Email: {Email}, Token: {Token}", user.Id, user.Email, resetToken);
+
                 Log.Information("Password reset initiated for UserID: {UserId}", userId);
                 return Ok(new { message = "Password reset initiated. Check email for reset code." });
             }
