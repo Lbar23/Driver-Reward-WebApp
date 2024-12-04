@@ -31,25 +31,18 @@ namespace Backend_Server.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class AdminController : CachedBaseController
+    public class AdminController(
+        AppDBContext context,
+        UserManager<Users> userManager,
+        NotifyService notifyService,
+        ClaimsService claimsService,
+        IMemoryCache cache) 
+        : CachedBaseController(cache)
     {
-        private readonly AppDBContext _context;
-        private readonly UserManager<Users> _userManager;
-        private readonly NotifyService _notifyService;
-        private readonly ClaimsService _claimsService;
-
-        public AdminController(
-            AppDBContext context,
-            UserManager<Users> userManager,
-            NotifyService notifyService,
-            ClaimsService claimsService,
-            IMemoryCache cache) : base(cache)
-        {
-            _context = context;
-            _userManager = userManager;
-            _notifyService = notifyService;
-            _claimsService = claimsService;
-        }
+        private readonly AppDBContext _context = context;
+        private readonly UserManager<Users> _userManager = userManager;
+        private readonly NotifyService _notifyService = notifyService;
+        private readonly ClaimsService _claimsService = claimsService;
 
         [Authorize(Roles = "Admin, Sponsor")]
         [HttpPost("create-user")]

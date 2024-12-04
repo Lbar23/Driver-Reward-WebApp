@@ -28,18 +28,14 @@ namespace Backend_Server.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class CatalogController : ControllerBase
+    public class CatalogController(CatalogService catalogService, 
+                                   AppDBContext context, 
+                                   UserManager<Users> userManager) 
+                                   : ControllerBase
     {
-        private readonly CatalogService _catalogService;
-        private readonly AppDBContext _context;
-        private readonly UserManager<Users> _userManager;
-
-        public CatalogController(CatalogService catalogService, AppDBContext context, UserManager<Users> userManager)
-        {
-            _catalogService = catalogService;
-            _context = context;
-            _userManager = userManager;
-        }
+        private readonly CatalogService _catalogService = catalogService;
+        private readonly AppDBContext _context = context;
+        private readonly UserManager<Users> _userManager = userManager;
 
         /// <summary>
         /// Creates a catalog for a sponsor by fetching products from eBay.
@@ -59,14 +55,13 @@ namespace Backend_Server.Controllers
             var user = await _userManager.GetUserAsync(User);
             var userId = user.Id;
             var parsedCategories = new List<EbayCategory>();
-            foreach (var category in categories)
-            {
-                if (Enum.TryParse<EbayCategory>(category, true, out var ebayCategory))
-                {
+            foreach (var category in categories){
+                
+                if (Enum.TryParse<EbayCategory>(category, true, out var ebayCategory)){
                     parsedCategories.Add(ebayCategory);
                 }
-                else
-                {
+
+                else{
                     return BadRequest($"Invalid category: {category}");
                 }
             }

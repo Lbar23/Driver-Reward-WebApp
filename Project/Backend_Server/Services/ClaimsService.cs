@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Identity;
+using Amazon.SecretsManager;
 using Backend_Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -12,28 +13,28 @@ namespace Backend_Server.Services
 {
     public class ClaimsService
     {
+        private readonly IAmazonSecretsManager _secretsManager;
         private readonly IConfiguration _configuration;
         private readonly UserManager<Users> _userManager;
-        private readonly ILogger<ClaimsService> _logger;
         private readonly IMemoryCache _cache;
         private readonly AppDBContext _context;
-        private readonly byte[] _jwtKey;
+        private readonly IJwtKeyProvider _jwtKeyProvider;
 
 
         public ClaimsService(
             IConfiguration configuration,
+            IAmazonSecretsManager secretsManager,
             UserManager<Users> userManager,
-            ILogger<ClaimsService> logger,
             AppDBContext context,
             IMemoryCache cache,
-            byte[] jwtKey)
+            IJwtKeyProvider jwtKeyProvider)
         {
             _configuration = configuration;
+            _secretsManager = secretsManager;
             _userManager = userManager;
-            _logger = logger;
             _context = context;
             _cache = cache;
-            _jwtKey = jwtKey;
+            _jwtKeyProvider = jwtKeyProvider;
         }
 
         public static class CustomClaimTypes
@@ -58,10 +59,11 @@ namespace Backend_Server.Services
 
         public async Task<string> GenerateJwtToken(Users user, IList<Claim>? additionalClaims = null)
         {
+            var jwtKey = await _jwtKeyProvider.GetJwtKeyAsync();
             var userRoles = await _userManager.GetRolesAsync(user);
             var userClaims = await _userManager.GetClaimsAsync(user);
 
-            _logger.LogInformation("Generating token for user {UserId} with roles: {Roles}", 
+            Log.Information("Generating token for user {UserId} with roles: {Roles}", 
                 user.Id, string.Join(", ", userRoles)); // Debug log
 
             var claims = new List<Claim>
@@ -77,10 +79,10 @@ namespace Backend_Server.Services
                 claims.AddRange(additionalClaims);
             }
 
-            _logger.LogInformation("Total claims added: {ClaimsCount}, Claims: {Claims}", 
+            Log.Information("Total claims added: {ClaimsCount}, Claims: {Claims}", 
                 claims.Count, string.Join(", ", claims.Select(c => $"{c.Type}: {c.Value}"))); 
 
-            var key = new SymmetricSecurityKey(_jwtKey);
+            var key = new SymmetricSecurityKey(jwtKey);
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
@@ -100,23 +102,16 @@ namespace Backend_Server.Services
 
             try
             {
+                var jwtKey = await _jwtKeyProvider.GetJwtKeyAsync();
                 var tokenHandler = new JwtSecurityTokenHandler();
-                var secretKey = _configuration["Jwt:SecretKey"];
-
-                if (string.IsNullOrWhiteSpace(secretKey)){
-                    throw new InvalidOperationException("JWT secret key is not configured");
-                }
-                var key = Encoding.UTF8.GetBytes(secretKey);
-
-
                 var validationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    IssuerSigningKey = new SymmetricSecurityKey(jwtKey),
                     ValidateIssuer = true,
-                    ValidIssuer = _configuration["Jwt:Issuer"],
+                    ValidIssuer = "GitGud",
                     ValidateAudience = true,
-                    ValidAudience = _configuration["Jwt:Audience"],
+                    ValidAudience = "GitGud",
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
                 };
@@ -132,13 +127,12 @@ namespace Backend_Server.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Token validation failed");
+                Log.Error(ex, "Token validation failed");
                 return (false, null);
             }
         }
 
-        public async Task<IList<Claim>> GetUserClaims(Users user)
-        {
+        public async Task<IList<Claim>> GetUserClaims(Users user){
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -157,14 +151,18 @@ namespace Backend_Server.Services
                 System.Text.Json.JsonSerializer.Serialize(notifyPrefs)));
 
             // Add role information
-            string? roleName = user.Role?.Name ?? await GetRoleNameAsync(user.Role.Id);
+            var roleId = user.Role?.Id;
+            string? roleName = null;
+            if (roleId.HasValue)
+            {
+                roleName = await GetRoleNameAsync(roleId.Value);
+            }
+
             if (!string.IsNullOrEmpty(roleName))
             {
                 claims.Add(new Claim(ClaimTypes.Role, roleName));
+                claims.AddRange(GenerateTypeSpecificClaims(user, roleName));
             }
-
-            // Add type-specific claims
-            claims.AddRange(GenerateTypeSpecificClaims(user, roleName));
 
             // Add sponsor info for sponsor users
             if (roleName == UserType.Sponsor.ToString())
@@ -222,7 +220,7 @@ namespace Backend_Server.Services
             }
 
             catch (Exception ex){
-                _logger.LogError(ex, "Error updating claims for user {UserId}", user.Id);
+                Log.Error(ex, "Error updating claims for user {UserId}", user.Id);
                 throw;
             }
         }
@@ -289,7 +287,7 @@ namespace Backend_Server.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing impersonation for user {UserId}", user.Id);
+                Log.Error(ex, "Error removing impersonation for user {UserId}", user.Id);
                 return false;
             }
         }
@@ -312,7 +310,7 @@ namespace Backend_Server.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting sponsor info for user {UserId}", userId);
+                Log.Error(ex, "Error getting sponsor info for user {UserId}", userId);
                 return null;
             }
         }

@@ -17,6 +17,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using static Backend_Server.Services.ClaimsService;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,7 @@ try {
 
     builder.Services.AddHttpClient();
 
+    builder.Services.AddSingleton<IJwtKeyProvider, AwsJwtKeyProvider>();
     builder.Services.AddSingleton<CatalogService>();
     builder.Services.AddSingleton<DbConnectionProvider>();
     builder.Services.AddScoped<NotifyService>();
@@ -75,44 +77,40 @@ try {
             });
     });
 
-    // Generate random key for JWT
-    byte[] key = new byte[32];
-    using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
-    {
-        rng.GetBytes(key);
-    }
 
-    // Add the key to DI container
-    builder.Services.AddSingleton<byte[]>(key);
-
+    
     builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
-    .AddJwtBearer("JwtBearer", options =>
+    .AddJwtBearer("JwtBearer", static options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(key),
-            ValidateIssuer = true,
-            ValidIssuer = "GitGud",  
-            ValidateAudience = true,
-            ValidAudience = "GitGud",
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
-        };
-
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
             {
                 context.Token = context.Request.Cookies["X-Access-Token"];
                 return Task.CompletedTask;
+            },
+            OnTokenValidated = static async context =>
+            {
+                var claimsService = context.HttpContext.RequestServices
+                    .GetRequiredService<ClaimsService>();
+
+                if (context.SecurityToken is JwtSecurityToken token)
+                {
+                    var (isValid, user) = await claimsService.ValidateToken(token.RawData);
+                    if (!isValid || user == null)
+                    {
+                        context.Fail("Invalid token");
+                    }
+                }
             }
         };
     });
+
+
 
     builder.Services.AddAuthorization(options =>
     {
