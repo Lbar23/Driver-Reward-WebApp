@@ -12,33 +12,54 @@ import SponsorReports from './SponsorReports';
 import AdminReports from './AdminReports';
 import AuditLogDashboard from '../../pages/AuditLogDashboard';
 import { useView } from '../../service/viewContext';
+import { useAuth } from '../../service/authContext';
 import AdminConsole from './AdminConsole';
 import Profile from './Profile';
 import UserManagementDashboard from './ManagementUsers';
 import SponsorAuditLogs from './SponsorAudit';
 
+const DashboardHome: React.FC = () => {
+  const { user } = useAuth();
+
+  if (user?.roles.includes('Admin')) {
+    return (
+      <Box>
+        <Typography variant="h6">Admin Dashboard</Typography>
+        <UserManagementDashboard />
+      </Box>
+    );
+  }
+
+  if (user?.roles.includes('Sponsor')) {
+    return (
+      <Box>
+        <Typography variant="h6">Sponsor Dashboard</Typography>
+        <SponsorDrivers />
+      </Box>
+    );
+  }
+
+  // For other roles (like Driver) or if no specific role matches
+  return (
+    <Box>
+      <Typography variant="h6">Dashboard</Typography>
+      <Typography>Welcome to your dashboard</Typography>
+      <DriverPointsList />
+    </Box>
+  );
+};
+
 // Link the current view to the corresponding component
 const viewComponents: Record<string, JSX.Element> = {
-  MAIN: (
-    <Box>
-      <Typography variant="h6">Dashboard Home</Typography>
-      {/* Add other main dashboard content here */}
-    </Box>
-  ),
-  // General Components here
+  MAIN: <DashboardHome />,
+  // General Components
   CHANGE_PASSWORD: <PasswordChangeForm />,
   // Admin Components
-  // MANAGE_DRIVERS: <ManageDriverSponsors />,
-  // MANAGE_SPONSORS: <ManageSponsors/>,
-  // MANAGE_ADMINS: <ManageAdmins/>,
-  MANAGE_ALL: <UserManagementDashboard />,
   ADMIN_REPORTS: <AdminReports />,
   ADMIN_AUDIT_REPORTS: <AuditLogDashboard/>,
   ADMIN_CONSOLE: <AdminConsole />,
   // Driver Components
   DRIVER_APPLICATION: <DriverApplication />,
-  // DRIVER_REGISTRATION: <SponsorRegistrationPage />, // this probably needs to be consolidated with app <-- Done
-  DRIVER_POINTS: <DriverPointsList />,
   DRIVER_ACTIVITY: <DriverActivity />,
   DRIVER_POINTS_HISTORY: <DriverPointsHistory/>,
   PROFILE: <Profile/>,
@@ -46,19 +67,19 @@ const viewComponents: Record<string, JSX.Element> = {
   APPLICATION_MANAGER: <ApplicationManager />,
   SPONSOR_REPORTS: <SponsorReports />,
   SPONSOR_AUDIT_REPORTS: <SponsorAuditLogs />,
-  SPONSOR_DRIVERS: <SponsorDrivers />,
 };
 
 export default function MainGrid() {
   const { currentView } = useView();
+  const { user } = useAuth();
 
   useEffect(() => {
     console.log("Rendering MainGrid with current view:", currentView);
-  }, [currentView]);
+    console.log("Current user roles:", user?.roles);
+  }, [currentView, user]);
 
   return (
     <Box sx={{ width: '100%' }}>
-      {/* Render the component corresponding to the current view */}
       {viewComponents[currentView] || <Typography>Select an option to view content</Typography>}
     </Box>
   );
