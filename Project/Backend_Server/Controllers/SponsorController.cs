@@ -205,6 +205,7 @@ namespace Backend_Server.Controllers
                 return NotFound("Sponsor information not found.");
             }
 
+
             // Get all applications for the sponsor, regardless of status
             var applications = await _context.DriverApplications
                 .Where(app => app.SponsorID == sponsorUser.SponsorID)
@@ -217,7 +218,7 @@ namespace Backend_Server.Controllers
                     app.ProcessReason
                 })
                 .ToListAsync();
-
+            
             Log.Information("Found {Count} applications for sponsor", applications.Count);
             if (applications.Count == 0)
             {
@@ -309,9 +310,7 @@ namespace Backend_Server.Controllers
         }
 
         [HttpPut("driver/{driverId}/points")]
-        public async Task<IActionResult> UpdateDriverPoints(
-         int driverId, 
-        [FromBody] int newPoints)
+        public async Task<IActionResult> UpdateDriverPoints(int driverId, [FromBody] int newPoints)
         {
             try
             {
@@ -321,10 +320,12 @@ namespace Backend_Server.Controllers
                     return Unauthorized("User not found.");
                 }
 
-                // Get sponsor's ID
-                var sponsor = await _context.SponsorUsers
-                    .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
-                if (sponsor == null)
+                // Get sponsor's information
+                var sponsorUser = await _context.SponsorUsers
+                    .Include(su => su.Sponsor)
+                    .FirstOrDefaultAsync(su => su.UserID == currentUser.Id);
+                    
+                if (sponsorUser == null || sponsorUser.Sponsor == null)
                 {
                     Log.Warning("No sponsor found for User ID: {UserId}", currentUser.Id);
                     return NotFound("Sponsor information not found.");
@@ -338,7 +339,7 @@ namespace Backend_Server.Controllers
 
                 var sponsorDriver = await _context.SponsorDrivers
                     .FirstOrDefaultAsync(sd => 
-                        sd.SponsorID == sponsor.SponsorID && 
+                        sd.SponsorID == sponsorUser.SponsorID && 
                         sd.UserID == driverId);
 
                 if (sponsorDriver == null)
@@ -351,7 +352,7 @@ namespace Backend_Server.Controllers
                 await _context.SaveChangesAsync();
 
                 // Calculate dollar value based on sponsor's point-dollar ratio
-                decimal dollarValue = newPoints * sponsor.Sponsor.PointDollarValue;
+                decimal dollarValue = newPoints * sponsorUser.Sponsor.PointDollarValue;
 
                 return Ok(new { 
                     message = "Driver points updated successfully",
@@ -378,6 +379,7 @@ namespace Backend_Server.Controllers
 
                 // Get sponsor's information
                 var sponsor = await _context.SponsorUsers
+                    .Include(s => s.Sponsor)
                     .FirstOrDefaultAsync(s => s.UserID == currentUser.Id);
                 if (sponsor == null)
                 {

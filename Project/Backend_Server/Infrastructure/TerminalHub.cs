@@ -7,6 +7,14 @@ using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Security.Claims;
 
+
+/// <summary>
+/// TemrinalHub:
+/// 
+/// This class represents a modified SignalR hub where it handles a terminal connection for Admins.
+/// This hub is only accessible to Admins. It allows admins to send commands to the server terminal and receive responses.
+/// 
+/// </summary>
 namespace Backend_Server.Infrastructure
 {
     [Authorize(Roles = "Admin")]

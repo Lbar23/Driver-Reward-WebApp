@@ -42,12 +42,13 @@ const menuConfig: Record<string, ListItemType[]> = {
   Admin: [
     { 
       text: 'Manage Users', 
-      icon: <PeopleIcon />, 
-      nestedItems: [
-        { text: "Drivers", icon: <Person />, view: 'MANAGE_DRIVERS' },
-        { text: "Sponsors", icon: <Person />, view: 'MANAGE_SPONSORS' },
-        { text: "Admins", icon: <Person />, view: 'MANAGE_ADMINS' },
-      ],
+      icon: <PeopleIcon />,
+      view: 'MANAGE_ALL', 
+      // nestedItems: [
+      //   { text: "Drivers", icon: <Person />, view: 'MANAGE_DRIVERS' },
+      //   { text: "Sponsors", icon: <Person />, view: 'MANAGE_SPONSORS' },
+      //   { text: "Admins", icon: <Person />, view: 'MANAGE_ADMINS' },
+      // ],
     },
     {
       text: 'Reports Views',

@@ -140,6 +140,12 @@ namespace Backend_Server.Models.DTO
         public DateTime JoinDate { get; set; }
     }
 
+    [NotMapped]
+    public record InitResetPasswordDto
+    {
+        public required string Email { get; set; }
+    }
+
     // DTO for creating a new user
     [NotMapped]
     public record CreateUserDto

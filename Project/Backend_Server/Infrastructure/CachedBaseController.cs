@@ -9,6 +9,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 
+/// <summary>
+/// 
+/// </summary>
 namespace Backend_Server.Infrastructure
 {
     [Route("[controller]")]
