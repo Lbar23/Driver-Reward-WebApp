@@ -157,7 +157,7 @@ namespace Backend_Server
                 entity.ToTable("SponsorDrivers"); // Table name
 
                 // Composite Primary Key
-                entity.HasKey(sd => new { sd.UserID, sd.SponsorID });
+                entity.HasKey(sd => new { sd.SponsorID, sd.UserID });
 
                 // Foreign Key: UserID references Users table
                 entity.HasOne(sd => sd.User)
@@ -735,7 +735,7 @@ namespace Backend_Server
                 .HasNoKey()
                 .ToFunction("sp_GetSalesSponsorSummary");
 
-            modelBuilder.Entity<SalesDetail>()
+            modelBuilder.Entity<SpSalesDetail>()
                 .HasNoKey()
                 .ToFunction("sp_GetSalesSponsorDetail");
 
@@ -743,6 +743,10 @@ namespace Backend_Server
             modelBuilder.Entity<DrSalesSummary>()
                 .HasNoKey()
                 .ToFunction("sp_GetSalesByDriver");
+
+                modelBuilder.Entity<DrSalesDetail>()
+                .HasNoKey()
+                .ToFunction("sp_GetSalesDriverDetail");
 
             // For sp_GetInvoiceReport
             modelBuilder.Entity<InvoiceDetail>()

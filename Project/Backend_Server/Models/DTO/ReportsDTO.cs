@@ -14,7 +14,6 @@ namespace Backend_Server.Models.DTO
         string? DriverName,        
         string? SponsorName,       
         decimal TotalSales,       
-        int? TotalDrivers,         
         int? PurchaseCount        
     );
 
@@ -22,17 +21,24 @@ namespace Backend_Server.Models.DTO
     public record SpSalesSummary(
         string? SponsorName,       
         decimal TotalSales,       
-        int? TotalDrivers,         
-        int? PurchaseCount        
+        int? TotalDrivers         
     );
 
     [NotMapped]
-    public record SalesDetail(
+    public record DrSalesDetail(
         string? DriverName,      
         string? SponsorName,       
         DateTime TransactionDate,  
         string? ProductName,       
         decimal SaleAmount       
+    );
+
+      [NotMapped]
+    public record SpSalesDetail(
+        string? SponsorName,       
+        DateTime TransactionDate,  
+        decimal SaleAmount,   
+        string? ProductName    
     );
 
     [NotMapped]

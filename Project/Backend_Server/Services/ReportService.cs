@@ -55,12 +55,12 @@ public class ReportService
         });
     }
 
-    public async Task<List<SalesDetail>> GetSponsorSalesDetail(
+    public async Task<List<SpSalesDetail>> GetSponsorSalesDetail(
            int? sponsorId, DateTime? startDate, DateTime? endDate, string viewType="Detail")
     {
         return await ExecuteWithRetryAsync(async () =>
         {
-            return await _context.Set<SalesDetail>().FromSqlRaw(
+            return await _context.Set<SpSalesDetail>().FromSqlRaw(
                 "CALL sp_GetSalesBySponsor(@sponsorId, @startDate, @endDate, @viewType)",
                 new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
                 new MySqlParameter("@startDate", startDate ?? (object)DBNull.Value),
@@ -86,12 +86,12 @@ public class ReportService
         });
     }
 
-    public async Task<List<DrSalesSummary>> GetDriverSalesDetail(
+    public async Task<List<DrSalesDetail>> GetDriverSalesDetail(
            int? sponsorId, int? driverId, DateTime? startDate, DateTime? endDate, string viewType="Detail")
     {
         return await ExecuteWithRetryAsync(async () =>
         {
-            return await _context.Set<DrSalesSummary>().FromSqlRaw(
+            return await _context.Set<DrSalesDetail>().FromSqlRaw(
                 "CALL sp_GetSalesByDriver(@sponsorId, @driverId, @startDate, @endDate, @viewType)",
                 new MySqlParameter("@sponsorId", sponsorId ?? (object)DBNull.Value),
                 new MySqlParameter("@driverId", driverId ?? (object)DBNull.Value),
