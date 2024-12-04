@@ -6,6 +6,7 @@ using Backend_Server.Models;
 using MySqlConnector;
 using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Backend_Server.Services
 {
@@ -103,7 +104,6 @@ namespace Backend_Server.Services
 
             return productResponse?.ItemSummaries?.ConvertAll(item => new Products
             {
-                ProductID = Math.Abs(item.ItemId.GetHashCode()),
                 SponsorID = sponsor.SponsorID,
                 ProductName = item.Title.ToString(),
                 PriceInPoints = (int)(item.Price.Value * sponsor.PointDollarValue),
@@ -115,96 +115,125 @@ namespace Backend_Server.Services
             }) ?? [];
         }
 
-      public async Task<List<Products>> CreateCatalogAsync(List<string> categories, int numberOfProducts, int userId)
-{
-    var token = await GetAppTokenAsync();
-    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-    using var scope = _serviceProvider.CreateScope(); // Create a scope for resolving scoped services
-    var context = scope.ServiceProvider.GetRequiredService<AppDBContext>();
-
-    // Fetch sponsor details
-    var sponsor = await context.SponsorUsers
-        .Where(su => su.UserID == userId)
-        .Select(su => su.Sponsor)
-        .SingleOrDefaultAsync();
-
-    if (sponsor == null)
+      private static string ParseDescription(ItemSummary item)
     {
-        throw new Exception($"No sponsor found for user ID {userId}");
-    }
+        // Extract relevant fields from api response
+        var title = item.Title;
+        var condition = item.Condition ?? "Condition unspecified";
+        var discount = string.Empty;
+        var price = $"{item.Price.Value} {item.Price.Currency}";
 
-    var allProducts = new List<Products>();
-
-    foreach (var category in categories)
-    {
-        // Make a separate API call for each category
-        var apiUrl = $"{BrowseUrl}category_ids={category}&limit={numberOfProducts}";
-        var response = await _httpClient.GetAsync(apiUrl);
-
-        if (!response.IsSuccessStatusCode)
+        if (item?.MarketingPrice != null)
         {
-            _logger.LogError("Failed to fetch products for category {Category}: {Reason}", category, response.ReasonPhrase);
-            continue; // Skip to the next category
-        }
-
-        var content = await response.Content.ReadAsStringAsync();
-        var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
-
-        if (productResponse?.ItemSummaries == null || !productResponse.ItemSummaries.Any())
-        {
-            _logger.LogWarning("No products retrieved for category {Category}", category);
-            continue; // Skip to the next category
-        }
-
-        // Map API response to `Products` model
-        var products = productResponse.ItemSummaries.Select(item => new Products
-        {
-            SponsorID = sponsor.SponsorID,
-            ProductID = Math.Abs(item.ItemId.GetHashCode()),
-            ProductName = item.Title,
-            Description = ParseDescription(item),
-            Category = category,
-            CurrencyPrice = item.Price.Value,
-            PriceInPoints = (int)(item.Price.Value * sponsor.PointDollarValue),
-            ExternalID = item.ItemId,
-            ImageUrl = item.Image.ImageUrl,
-            Availability = true
-        }).ToList();
-
-        // Add products to the list
-        allProducts.AddRange(products);
-    }
-
-    if (!allProducts.Any())
-    {
-        _logger.LogWarning("No products were successfully fetched for any category.");
-        return new List<Products>();
-    }
-
-    // Insert products into the database using stored procedure
-    foreach (var product in allProducts)
-    {
-        await context.Database.ExecuteSqlRawAsync(
-            "CALL sp_CreateSponsorCatalog(@SponsorID, @ProductID, @Name, @Description, @Category, @CurrencyPrice, @PriceInPoints, @ExternalID, @ImageUrl, @Availability)",
-            new[]
+            var discountValue = item.MarketingPrice.DiscountAmount?.Value ?? 0;
+            var priceTreatment = item.MarketingPrice.PriceTreatment?.ToLower() ?? "special";
+            var discountPercentage = item.MarketingPrice.DiscountPercentage;
+            if (discountValue > 0)
             {
-                new MySqlParameter("@SponsorID", product.SponsorID),
-                new MySqlParameter("@ProductID", product.ProductID),
-                new MySqlParameter("@Name", product.ProductName),
-                new MySqlParameter("@Description", product.Description),
-                new MySqlParameter("@Category", product.Category),
-                new MySqlParameter("@CurrencyPrice", product.CurrencyPrice),
-                new MySqlParameter("@PriceInPoints", product.PriceInPoints),
-                new MySqlParameter("@ExternalID", product.ExternalID),
-                new MySqlParameter("@ImageUrl", product.ImageUrl),
-                new MySqlParameter("@Availability", product.Availability)
-            });
+                discount = $"Now {priceTreatment}! Save {discountPercentage}%."; 
+            }
+        }
+
+        // Take the first leaf category name, or the first category name if no leaf categories
+        var categoryFocus = item.Categories
+            .FirstOrDefault()?.CategoryName ?? "Miscellaneous";
+
+        // Build the description
+        return $"{title}: {condition}. Ideal for {categoryFocus}. Priced at {price}. {discount}".Trim();
     }
 
-    _logger.LogInformation("Catalog created successfully for sponsor ID {SponsorID}", sponsor.SponsorID);
-    return allProducts;
-}
+    public async Task<List<Products>> CreateCatalogAsync(int categoryId, int numberOfProducts, int userId)
+    {
+        var token = await GetAppTokenAsync();
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        using var scope = _serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDBContext>();
+
+        // Fetch sponsor details
+        var sponsor = await context.SponsorUsers
+            .Where(su => su.UserID == userId)
+            .Include(su => su.Sponsor)
+            .FirstOrDefaultAsync();
+
+        if (sponsor?.Sponsor == null)
+        {
+            _logger.LogError("No sponsor found for user ID {UserId}", userId);
+            throw new Exception($"No sponsor found for user ID {userId}");
+        }
+
+        try
+        {
+            // Make API call for the single category
+            var apiUrl = $"{BrowseUrl}category_ids={categoryId}&limit={numberOfProducts}";
+            _logger.LogInformation("Calling eBay API with URL: {ApiUrl}", apiUrl);
+            
+            var response = await _httpClient.GetAsync(apiUrl);
+            response.EnsureSuccessStatusCode();
+
+            var content = await response.Content.ReadAsStringAsync();
+            _logger.LogDebug("eBay API response for category {CategoryId}: {Response}", categoryId, content);
+
+            var productResponse = JsonConvert.DeserializeObject<EbayProductResponse>(content);
+
+            if (productResponse?.ItemSummaries == null || !productResponse.ItemSummaries.Any())
+            {
+                _logger.LogWarning("No products retrieved for category {CategoryId}", categoryId);
+                return new List<Products>();
+            }
+
+            var products = productResponse.ItemSummaries.Select(item => new Products
+            {
+                SponsorID = sponsor.Sponsor.SponsorID,
+                // ProductID = Math.Abs(item.ItemId.GetHashCode()),
+                ProductName = ShortenTitle(item.Title),
+                Description = ParseDescription(item),
+                Category = categoryId.ToString(),
+                CurrencyPrice = item.Price.Value,
+                PriceInPoints = (int)(item.Price.Value * sponsor.Sponsor.PointDollarValue),
+                ExternalID = item.ItemId,
+                ImageUrl = item.Image.ImageUrl,
+                Availability = true
+            }).ToList();
+
+            // Save to database
+            foreach (var product in products)
+            {
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync(
+                        "CALL sp_CreateSponsorCatalog(@SponsorID, @ProductID, @Name, @Description, @Category, @CurrencyPrice, @PriceInPoints, @ExternalID, @ImageUrl, @Availability)",
+                        new MySqlParameter[] {
+                            new("@SponsorID", product.SponsorID),
+                            // new("@ProductID", product.ProductID),
+                            new("@Name", product.ProductName),
+                            new("@Description", product.Description),
+                            new("@Category", product.Category),
+                            new("@CurrencyPrice", product.CurrencyPrice),
+                            new("@PriceInPoints", product.PriceInPoints),
+                            new("@ExternalID", product.ExternalID),
+                            new("@ImageUrl", product.ImageUrl),
+                            new("@Availability", product.Availability)
+                        });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error saving product {ProductId} to database", product.ProductID);
+                    // Continue with the next product rather than failing the entire batch
+                }
+            }
+
+            _logger.LogInformation("Successfully processed {Count} products for category {CategoryId}", 
+                products.Count, categoryId);
+            return products;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing category {CategoryId}", categoryId);
+            throw;
+        }
+    }
+
 
 
 
@@ -318,30 +347,30 @@ namespace Backend_Server.Services
             return shortenedTitle;
         }
 
-        private static string ParseDescription(ItemSummary item)
-        {
+        // private static string ParseDescription(ItemSummary item)
+        // {
 
-            // Extract relevant fields from api response
-            var title = item.Title;
-            var condition = item.Condition ?? "Condition unspecified";
-            var discount = string.Empty;
-            var price = $"{item.Price.Value} {item.Price.Currency}";
+        //     // Extract relevant fields from api response
+        //     var title = item.Title;
+        //     var condition = item.Condition ?? "Condition unspecified";
+        //     var discount = string.Empty;
+        //     var price = $"{item.Price.Value} {item.Price.Currency}";
 
-            if (item?.MarketingPrice != null){
-                var discountValue = item.MarketingPrice.DiscountAmount?.Value ?? 0;
-                var priceTreatment = item.MarketingPrice.PriceTreatment?.ToLower() ?? "special";
-                var discountPercentage = item.MarketingPrice.DiscountPercentage;
-                    if (discountValue > 0){
-                        discount = $"Now {priceTreatment}! Save {discountPercentage}%."; 
-                    }
-             }
+        //     if (item?.MarketingPrice != null){
+        //         var discountValue = item.MarketingPrice.DiscountAmount?.Value ?? 0;
+        //         var priceTreatment = item.MarketingPrice.PriceTreatment?.ToLower() ?? "special";
+        //         var discountPercentage = item.MarketingPrice.DiscountPercentage;
+        //             if (discountValue > 0){
+        //                 discount = $"Now {priceTreatment}! Save {discountPercentage}%."; 
+        //             }
+        //      }
 
-            var categories = string.Join(", ", item.Categories?.Select(c => c.CategoryName) ?? new[] { "Miscellaneous" });
-            var categoryFocus = categories.Split(',').SingleOrDefault(); // Use main category
+        //     var categories = string.Join(", ", item.Categories?.Select(c => c.CategoryName) ?? new[] { "Miscellaneous" });
+        //     var categoryFocus = categories.Split(',').SingleOrDefault(); // Use main category
 
-            // Build the description
-            return $"{title}: {condition}. Ideal for {categoryFocus}. Priced at {price}. {discount}".Trim();
-        }
+        //     // Build the description
+        //     return $"{title}: {condition}. Ideal for {categoryFocus}. Priced at {price}. {discount}".Trim();
+        // }
 
 
         // classes for strong-typing ebay api response

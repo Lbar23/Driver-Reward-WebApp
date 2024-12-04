@@ -34,10 +34,10 @@ public class CatalogController : ControllerBase
     /// <param name="numberOfProducts">Number of products to retrieve per category.</param>
     /// <param name="pointValue">Conversion rate of product price to points.</param>
     /// <returns>A list of products added to the catalog.</returns>
-   [HttpPost("create")]
+  [HttpPost("create")]
 public async Task<IActionResult> CreateCatalog(
     int sponsorId,
-    [FromQuery] string category, // Single category as a string
+    [FromQuery] int categoryId, // Single category ID
     [FromQuery] int numberOfProducts,
     [FromQuery] int pointValue)
 {
@@ -46,36 +46,16 @@ public async Task<IActionResult> CreateCatalog(
     {
         return Unauthorized("User not authenticated.");
     }
-
-    var userId = user.Id;
-
-    // Convert the single category string into a List<string>
-    var categories = new List<string> { category };
-
-    var products = await _catalogService.CreateCatalogAsync(categories, numberOfProducts, userId);
+    
+    var products = await _catalogService.CreateCatalogAsync(categoryId, numberOfProducts, user.Id);
 
     if (!products.Any())
     {
         return BadRequest("Failed to create catalog. No products retrieved.");
     }
 
-    var productDtos = products.Select(product => new ProductDto
-    {
-        SponsorID = product.SponsorID,
-        ProductID = product.ProductID,
-        ProductName = product.ProductName,
-        Category = product.Category,
-        Description = product.Description,
-        CurrencyPrice = product.CurrencyPrice,
-        PriceInPoints = (int)(product.CurrencyPrice * pointValue),
-        ExternalID = product.ExternalID,
-        ImageUrl = product.ImageUrl,
-        Availability = product.Availability
-    });
-
-    return Ok(productDtos);
+    return Ok(products);
 }
-
 
 
 
