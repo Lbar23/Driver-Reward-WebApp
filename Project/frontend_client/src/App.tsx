@@ -17,6 +17,7 @@ import ProductCatalog from './pages/ProductCatalog';
 import FAQ from './pages/FAQ';
 import FeedbackForm from './pages/Feedback';
 import Order from './pages/Order';
+import ProfilePage from './pages/ProfileView'
 // Other pages for authenticated routes
 import PasswordChangeForm from './pages/PasswordChangeForm';
 import Settings from './pages/Settings'
