@@ -26,11 +26,16 @@ interface CatalogOverlayProps {
   onCatalogCreated: () => void;
 }
 
-const CatalogOverlay: React.FC<CatalogOverlayProps> = ({onClose, onCatalogCreated }) => {
+const CatalogOverlay: React.FC<CatalogOverlayProps> = ({
+  sponsorId,
+  onClose,
+  onCatalogCreated,
+}) => {
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [numberOfProducts, setNumberOfProducts] = useState(10);
   const [pointValue, setPointValue] = useState(100);
   const [error, setError] = useState<string | null>(null);
+
   const handleCategoryChange = (category: number) => {
     setSelectedCategories((prev) =>
       prev.includes(category)
@@ -45,26 +50,33 @@ const CatalogOverlay: React.FC<CatalogOverlayProps> = ({onClose, onCatalogCreate
       return;
     }
     setError(null);
-
+  
     try {
-      const queryParams = new URLSearchParams({
-        categories: selectedCategories.join(","),
-        numberOfProducts: numberOfProducts.toString(),
-      });
-
-      const response = await axios.post(
-        `/api/catalog/create?${queryParams}`
-      );
-
-      if (response.status === 200) {
-        onCatalogCreated(); // Notify parent of successful catalog creation
-        onClose(); // Close the dialog
+      for (const category of selectedCategories) {
+        const queryParams = new URLSearchParams({
+          category: category.toString(),
+          numberOfProducts: numberOfProducts.toString(),
+          pointValue: pointValue.toString(),
+        });
+  
+        // Make the API request for each category
+        const response = await axios.post(`/api/catalog/create?${queryParams}`);
+  
+        if (response.status !== 200) {
+          throw new Error(`Failed to fetch products for category ${category}`);
+        }
       }
+  
+      onCatalogCreated(); // Notify parent of successful catalog creation
+      onClose(); // Close the dialog
     } catch (err) {
       console.error("Error creating catalog:", err);
       setError("Failed to create catalog. Please try again.");
     }
   };
+  
+  
+  
 
   return (
     <Dialog open onClose={onClose}>
@@ -95,6 +107,14 @@ const CatalogOverlay: React.FC<CatalogOverlayProps> = ({onClose, onCatalogCreate
           value={numberOfProducts}
           onChange={(e) => setNumberOfProducts(Number(e.target.value))}
         />
+        <TextField
+          label="Point Value"
+          type="number"
+          fullWidth
+          margin="normal"
+          value={pointValue}
+          onChange={(e) => setPointValue(Number(e.target.value))}
+        />
         {error && (
           <Typography variant="body2" color="error">
             {error}
@@ -105,7 +125,11 @@ const CatalogOverlay: React.FC<CatalogOverlayProps> = ({onClose, onCatalogCreate
         <Button onClick={onClose} color="secondary">
           Cancel
         </Button>
-        <Button onClick={handleCreateCatalog} color="primary" variant="contained">
+        <Button
+          onClick={handleCreateCatalog}
+          color="primary"
+          variant="contained"
+        >
           Create Catalog
         </Button>
       </DialogActions>
