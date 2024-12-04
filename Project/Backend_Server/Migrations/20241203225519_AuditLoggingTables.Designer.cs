@@ -4,6 +4,7 @@ using Backend_Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend_Server.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    partial class AppDBContextModelSnapshot : ModelSnapshot
+    [Migration("20241203225519_AuditLoggingTables")]
+    partial class AuditLoggingTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -588,7 +591,7 @@ namespace Backend_Server.Migrations
                             Email = "alice@example.com",
                             FeedbackCategory = "Suggestion",
                             FirstName = "Alice",
-                            SubmissionDate = new DateTime(2024, 12, 3, 23, 49, 44, 329, DateTimeKind.Utc).AddTicks(6433)
+                            SubmissionDate = new DateTime(2024, 12, 3, 22, 55, 18, 960, DateTimeKind.Utc).AddTicks(851)
                         },
                         new
                         {
@@ -597,7 +600,7 @@ namespace Backend_Server.Migrations
                             Email = "bob@example.com",
                             FeedbackCategory = "BugReport",
                             FirstName = "Bob",
-                            SubmissionDate = new DateTime(2024, 12, 3, 23, 49, 44, 329, DateTimeKind.Utc).AddTicks(6435)
+                            SubmissionDate = new DateTime(2024, 12, 3, 22, 55, 18, 960, DateTimeKind.Utc).AddTicks(852)
                         },
                         new
                         {
@@ -606,7 +609,7 @@ namespace Backend_Server.Migrations
                             Email = "charlie@example.com",
                             FeedbackCategory = "Compliment",
                             FirstName = "Charlie",
-                            SubmissionDate = new DateTime(2024, 12, 3, 23, 49, 44, 329, DateTimeKind.Utc).AddTicks(6436)
+                            SubmissionDate = new DateTime(2024, 12, 3, 22, 55, 18, 960, DateTimeKind.Utc).AddTicks(854)
                         },
                         new
                         {
@@ -615,7 +618,7 @@ namespace Backend_Server.Migrations
                             Email = "dana@example.com",
                             FeedbackCategory = "Complaint",
                             FirstName = "Dana",
-                            SubmissionDate = new DateTime(2024, 12, 3, 23, 49, 44, 329, DateTimeKind.Utc).AddTicks(6437)
+                            SubmissionDate = new DateTime(2024, 12, 3, 22, 55, 18, 960, DateTimeKind.Utc).AddTicks(855)
                         });
                 });
 

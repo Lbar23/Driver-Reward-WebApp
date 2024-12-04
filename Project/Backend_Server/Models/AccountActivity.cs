@@ -14,6 +14,7 @@ namespace Backend_Server.Models
         ResetPassword,
         AccountRemoved,
         AccountCreated,
+        AccountUpdated,
         RoleChange,
         UpdateProfile
     }
@@ -22,7 +23,7 @@ namespace Backend_Server.Models
     {
         public int ActivityId { get; set; } // Primary Key
         public int UserId { get; set; } // Foreign Key to Users
-        public DateTime TimeStamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
         public required ActivityType ActivityType { get; set; } // The type of activity
         public string? Details { get; set; } // Additional details about the activity
 
