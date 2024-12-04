@@ -35,21 +35,10 @@ const menuConfig: Record<string, ListItemType[]> = {
   Driver: [
     { text: 'Applications', icon: <ApprovalIcon />, view: 'DRIVER_APPLICATION' },
     { text: 'Product Catalog', icon: <ShoppingBagIcon />, path: '/catalog' },
-    { text: 'Points', icon: <InfoRoundedIcon />, view: 'DRIVER_POINTS' },
     { text: 'Activity', icon: <InfoRoundedIcon />, view: 'DRIVER_ACTIVITY' },
     { text: 'Profile', icon: <InfoRoundedIcon />, view: 'PROFILE' },
   ],
   Admin: [
-    { 
-      text: 'Manage Users', 
-      icon: <PeopleIcon />,
-      view: 'MANAGE_ALL', 
-      // nestedItems: [
-      //   { text: "Drivers", icon: <Person />, view: 'MANAGE_DRIVERS' },
-      //   { text: "Sponsors", icon: <Person />, view: 'MANAGE_SPONSORS' },
-      //   { text: "Admins", icon: <Person />, view: 'MANAGE_ADMINS' },
-      // ],
-    },
     {
       text: 'Reports Views',
       icon: <BarChartIcon />,
@@ -65,7 +54,6 @@ const menuConfig: Record<string, ListItemType[]> = {
     }
   ],
   Sponsor: [
-    { text: 'Manage Drivers', icon: <PeopleIcon />, view: 'SPONSOR_DRIVERS' },
     { text: 'Approve/Reject Applications', icon: <ApprovalIcon />, view: 'APPLICATION_MANAGER' },
     { text: 'Product Catalog', icon: <ShoppingBagIcon />, path: '/catalog' },
     {

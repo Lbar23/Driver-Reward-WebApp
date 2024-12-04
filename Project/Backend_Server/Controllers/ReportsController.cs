@@ -215,9 +215,18 @@ namespace Backend_Server.Controllers
 
                 var userRoles = await _userManager.GetRolesAsync(currentUser);
                 
-                // Start with the base query using the view
+                // Start with the base query
                 var query = _context.AuditLogs
-                    .FromSqlRaw("SELECT * FROM AuditLogs")
+                    .Select(l => new { // Project to anonymous type to avoid circular references
+                        l.LogID,
+                        l.UserID,
+                        UserName = l.User.UserName,
+                        l.Category,
+                        l.Action,
+                        l.ActionSuccess,
+                        l.Timestamp,
+                        l.AdditionalDetails
+                    })
                     .AsQueryable();
 
                 // Apply sponsor filtering if applicable
@@ -229,7 +238,13 @@ namespace Backend_Server.Controllers
                     if (sponsorUser == null)
                         return BadRequest("Sponsor user not found");
 
-                    query = query.Where(l => l.UserID == sponsorUser.UserID);
+                    // Get all drivers under this sponsor
+                    var driverIds = await _context.SponsorDrivers
+                        .Where(sd => sd.SponsorID == sponsorUser.SponsorID)
+                        .Select(sd => sd.UserID)
+                        .ToListAsync();
+
+                    query = query.Where(l => driverIds.Contains(l.UserID));
                 }
 
                 // Apply filters

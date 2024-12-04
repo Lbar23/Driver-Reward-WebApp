@@ -225,19 +225,7 @@ const SponsorReports: React.FC = () => {
       params.driverID = filters.selectedDriver;
     }
 
-    if (filters.reportType === "audit-log" && filters.auditCategory) {
-      params.category = filters.auditCategory;
-    }
-
     const response = await axios.get(endpoint, { params });
-    
-    if (filters.reportType === "audit-log") {
-      const auditData = response.data as AuditLogResponse;
-      return {
-        data: auditData.logs,
-        totalCount: auditData.totalCount,
-      };
-    }
     
     return {
       data: response.data,
@@ -354,7 +342,6 @@ const SponsorReports: React.FC = () => {
             }
           >
             <MenuItem value="driver-points">Driver Points</MenuItem>
-            <MenuItem value="audit-log">Audit Log</MenuItem>
           </Select>
         </FormControl>
 
