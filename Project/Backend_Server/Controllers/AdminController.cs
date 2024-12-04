@@ -68,6 +68,14 @@ namespace Backend_Server.Controllers
 
                         Log.Information("UserID: {UserID}, Category: User, Description: Created new {UserType}: {Username}", 
                             user.Id, model.Role, user.UserName);
+                        
+                        await _claimsService.CreateAuditLog(
+                            user.Id,
+                            AuditLogCategory.User,
+                            AuditLogAction.Add,
+                            true,
+                            $"User created: {user.UserName}, Role: {model.Role}"
+                        );
                     }
                     catch
                     {
@@ -81,6 +89,15 @@ namespace Backend_Server.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "UserID: N/A, Category: User, Description: Failed to create {Role}", model.Role);
+                
+                await _claimsService.CreateAuditLog(
+                    0, // 0 will be the default value for any user ID that can't be fetched (i.e "N/A")
+                    AuditLogCategory.User,
+                    AuditLogAction.Add,
+                    false,
+                    $"Failed to create user: {model.Username}, Errors: {ex.Message}"
+                );
+                
                 return StatusCode(500, new { error = "Failed to create user", details = ex.Message });
             }
         }
@@ -118,6 +135,14 @@ namespace Backend_Server.Controllers
 
                     Log.Information("Changed user type for {Username} from {OldType} to {NewType}", 
                         user.UserName, oldUserType, model.NewUserType);
+
+                    await _claimsService.CreateAuditLog(
+                        user.Id,
+                        AuditLogCategory.User,
+                        AuditLogAction.Update,
+                        true,
+                        $"User type changed from {oldUserType} to {model.NewUserType}"
+                    );
 
                     return new { Success = true, Message = "User type changed successfully" };
                 }
@@ -180,6 +205,15 @@ namespace Backend_Server.Controllers
 
                         Log.Information("UserID: {UserId}, Category: User, Description: User {UserType} removed successfully", 
                             userId, userType);
+
+                        await _claimsService.CreateAuditLog(
+                            user.Id,
+                            AuditLogCategory.User,
+                            AuditLogAction.Remove,
+                            true,
+                            $"User removed: {user.UserName}"
+                        );
+
                     }
                     catch
                     {
@@ -198,6 +232,15 @@ namespace Backend_Server.Controllers
             catch (InvalidOperationException ex)
             {
                 Log.Error(ex, "Failed to remove user {UserId}", userId);
+                
+                await _claimsService.CreateAuditLog(
+                    int.Parse(userId),
+                    AuditLogCategory.User,
+                    AuditLogAction.Remove,
+                    false,
+                    $"Failed to remove user: {userId}, Errors: {ex.Message}"
+                );
+
                 return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)

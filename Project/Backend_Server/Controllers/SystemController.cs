@@ -41,7 +41,8 @@ namespace Backend_Server.Controllers
                                   IMemoryCache cache,
                                   IConfiguration configuration,
                                   NotifyService notifyService,
-                                  ClaimsService claimsService) : ControllerBase
+                                  ClaimsService claimsService,
+                                  LoggingService loggingService) : ControllerBase
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly SignInManager<Users> _signInManager = signInManager;
@@ -50,6 +51,7 @@ namespace Backend_Server.Controllers
         private readonly IConfiguration _configuration = configuration;
         private readonly NotifyService _notifyService = notifyService;
         private readonly ClaimsService _claimsService = claimsService;
+        private readonly LoggingService _loggingService = loggingService;
 
         /********* API CALLS *********/
 
@@ -89,6 +91,12 @@ namespace Backend_Server.Controllers
 
             Log.Information("User registered successfully: {Username} ({UserId})", user.UserName, user.Id);
 
+            await _loggingService.LogAccountActivityAsync(
+                user.Id,
+                ActivityType.AccountCreated,
+                $"Account created for {user.UserName}"
+            );
+
             // Optionally send 2FA
             if (userDto.Enable2FA)
             {
@@ -111,135 +119,184 @@ namespace Backend_Server.Controllers
         }
 
         [HttpPost("login")]
-public async Task<IActionResult> Login(UserLoginDto userDto)
-{
-    var user = await _userManager.FindByNameAsync(userDto.Username);
-    if (user == null)
-    {
-        return Unauthorized(new { succeeded = false, message = "Invalid username or password" });
-    }
-
-    // First sign out any existing session
-    await _signInManager.SignOutAsync();
-    
-    // Attempt password sign in
-    var result = await _signInManager.PasswordSignInAsync(user, userDto.Password, false, false);
-    
-    if (!result.Succeeded && !result.RequiresTwoFactor)
-    {
-        Log.Error("Login failed for user {Username}", userDto.Username);
-        return Unauthorized(new { message = "Invalid username or password" });
-    }
-
-    if (user.TwoFactorEnabled)
-    {
-        // Generate and send 2FA token
-        var send2FaResult = await Send2FA(user);
-        if (!send2FaResult)
+        public async Task<IActionResult> Login(UserLoginDto userDto)
         {
-            Log.Error($"Failed to send 2FA code for user {user.Id}");
-            return StatusCode(500, "Failed to send 2FA code");
+            var user = await _userManager.FindByNameAsync(userDto.Username);
+            if (user == null)
+            {
+                return Unauthorized(new { succeeded = false, message = "Invalid username or password" });
+            }
+
+            // First sign out any existing session
+            await _signInManager.SignOutAsync();
+            
+            // Attempt password sign in
+            var result = await _signInManager.PasswordSignInAsync(user, userDto.Password, false, false);
+            
+            if (!result.Succeeded && !result.RequiresTwoFactor)
+            {
+                await _loggingService.LogAuthenticationAsync(
+                    user.Id, 
+                    AuthenticationType.Login, 
+                    false, 
+                    Request.Headers["User-Agent"],
+                    "Invalid Username or Password"
+                );
+
+                Log.Error("Login failed for user {Username}", userDto.Username);
+                return Unauthorized(new { message = "Invalid username or password" });
+            }
+
+            if (user.TwoFactorEnabled)
+            {
+                // Generate and send 2FA token
+                var send2FaResult = await Send2FA(user);
+                if (!send2FaResult)
+                {
+                    Log.Error($"Failed to send 2FA code for user {user.Id}");
+                    return StatusCode(500, "Failed to send 2FA code");
+                }
+
+                await _loggingService.LogAuthenticationAsync(
+                    user.Id, 
+                    AuthenticationType.TwoFactorAuth, 
+                    true, 
+                    Request.Headers["User-Agent"],
+                    "2FA code sent"
+                );
+
+                await _loggingService.LogAuthenticationAsync(
+                    user.Id,
+                    AuthenticationType.Login,
+                    true,
+                    Request.Headers["User-Agent"],
+                    "Login successful with 2FA"
+                );
+
+                return Ok(new { 
+                    succeeded = false, 
+                    requiresTwoFactor = true, 
+                    userId = user.Id 
+                });
+            }
+
+            var token = await _claimsService.GenerateJwtToken(user);
+            SetJwtCookie(token);
+
+            user.LastLogin = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+
+            await _loggingService.LogAuthenticationAsync(
+                user.Id,
+                AuthenticationType.Login,
+                true,
+                Request.Headers["User-Agent"],
+                "Login successful"
+            );
+
+            return Ok(new { message = "Login successful", userId = user.Id });
         }
 
-        return Ok(new { 
-            succeeded = false, 
-            requiresTwoFactor = true, 
-            userId = user.Id 
-        });
-    }
-
-    var token = await _claimsService.GenerateJwtToken(user);
-    SetJwtCookie(token);
-
-    user.LastLogin = DateTime.UtcNow;
-    await _userManager.UpdateAsync(user);
-
-    return Ok(new { message = "Login successful", userId = user.Id });
-}
-
-[HttpPost("verify-2fa")]
-public async Task<IActionResult> Verify2FA([FromBody] TwoFactorDto twoFactorDto)
-{
-    try 
-    {
-        Log.Information("2FA verification attempt for userId: {UserId} with code: {Code}", 
-            twoFactorDto.UserId, twoFactorDto.Code);
-
-        var user = await _userManager.FindByIdAsync(twoFactorDto.UserId);
-        if (user == null)
+        [HttpPost("verify-2fa")]
+        public async Task<IActionResult> Verify2FA([FromBody] TwoFactorDto twoFactorDto)
         {
-            Log.Warning("User not found for 2FA verification: {UserId}", twoFactorDto.UserId);
-            return Unauthorized(new { succeeded = false, message = "Invalid user" });
+            try 
+            {
+                Log.Information("2FA verification attempt for userId: {UserId} with code: {Code}", 
+                    twoFactorDto.UserId, twoFactorDto.Code);
+
+                var user = await _userManager.FindByIdAsync(twoFactorDto.UserId);
+                if (user == null)
+                {
+                    Log.Warning("User not found for 2FA verification: {UserId}", twoFactorDto.UserId);
+                    return Unauthorized(new { succeeded = false, message = "Invalid user" });
+                }
+
+                // Generate a new token and compare with the provided code
+                var token = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
+                Log.Information("Generated token for comparison: {Token}", token);
+
+                if (token != twoFactorDto.Code.Trim())
+                {
+                    Log.Warning("Invalid 2FA code provided for user {UserId}", twoFactorDto.UserId);
+                    
+                    await _loggingService.LogAuthenticationAsync(
+                        user.Id,
+                        AuthenticationType.TwoFactorAuth,
+                        false,
+                        Request.Headers["User-Agent"],
+                        "Invalid 2FA code"
+                    );
+                    
+                    return Unauthorized(new { 
+                        succeeded = false, 
+                        message = "Invalid verification code" 
+                    });
+                }
+
+                // Sign in the user
+                await _signInManager.SignOutAsync();
+                await _signInManager.SignInAsync(user, false);
+
+                // Generate and set JWT token
+                var addClaims = _claimsService.GetUserClaims(user);
+                var jwtToken = await _claimsService.GenerateJwtToken(user);
+                SetJwtCookie(jwtToken);
+
+                // Update last login
+                user.LastLogin = DateTime.UtcNow;
+                await _userManager.UpdateAsync(user);
+
+                Log.Information("2FA verification successful for user {UserId}", user.Id);
+
+                await _loggingService.LogAuthenticationAsync(
+                    user.Id,
+                    AuthenticationType.TwoFactorAuth,
+                    true,
+                    Request.Headers["User-Agent"],
+                    "2FA verification successful"
+                );
+
+                return Ok(new { 
+                    succeeded = true, 
+                    userId = user.Id,
+                    message = "2FA verification successful"
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error during 2FA verification for userId: {UserId}", twoFactorDto.UserId);
+                return StatusCode(500, new { 
+                    succeeded = false, 
+                    message = "An error occurred during verification" 
+                });
+            }
         }
 
-        // Generate a new token and compare with the provided code
-        var token = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
-        Log.Information("Generated token for comparison: {Token}", token);
-
-        if (token != twoFactorDto.Code.Trim())
+        private async Task<bool> Send2FA(Users user)
         {
-            Log.Warning("Invalid 2FA code provided for user {UserId}", twoFactorDto.UserId);
-            return Unauthorized(new { 
-                succeeded = false, 
-                message = "Invalid verification code" 
-            });
+            try
+            {
+                // Generate the 2FA token
+                var token = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
+                if (string.IsNullOrEmpty(token))
+                {
+                    Log.Error($"Failed to generate 2FA token for user {user.Id}");
+                    return false;
+                }
+
+                Log.Information("Generated 2FA token for user {UserId}: {Token}", user.Id, token);
+
+                // Send the notification
+                await _notifyService.NotifyAuthAsync(user.Id, token, user.UserName ?? "User");
+                return true;
+            }
+            catch(Exception ex)
+            {
+                Log.Error(ex, "2FA notify attempt failed for user {UserId}", user.Id);
+                return false;
+            }
         }
-
-        // Sign in the user
-        await _signInManager.SignOutAsync();
-        await _signInManager.SignInAsync(user, false);
-
-        // Generate and set JWT token
-        var addClaims = _claimsService.GetUserClaims(user);
-        var jwtToken = await _claimsService.GenerateJwtToken(user);
-        SetJwtCookie(jwtToken);
-
-        // Update last login
-        user.LastLogin = DateTime.UtcNow;
-        await _userManager.UpdateAsync(user);
-
-        Log.Information("2FA verification successful for user {UserId}", user.Id);
-
-        return Ok(new { 
-            succeeded = true, 
-            userId = user.Id,
-            message = "2FA verification successful"
-        });
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error during 2FA verification for userId: {UserId}", twoFactorDto.UserId);
-        return StatusCode(500, new { 
-            succeeded = false, 
-            message = "An error occurred during verification" 
-        });
-    }
-}
-
-private async Task<bool> Send2FA(Users user)
-{
-    try
-    {
-        // Generate the 2FA token
-        var token = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
-        if (string.IsNullOrEmpty(token))
-        {
-            Log.Error($"Failed to generate 2FA token for user {user.Id}");
-            return false;
-        }
-
-        Log.Information("Generated 2FA token for user {UserId}: {Token}", user.Id, token);
-
-        // Send the notification
-        await _notifyService.NotifyAuthAsync(user.Id, token, user.UserName ?? "User");
-        return true;
-    }
-    catch(Exception ex)
-    {
-        Log.Error(ex, "2FA notify attempt failed for user {UserId}", user.Id);
-        return false;
-    }
-}
 
 
 
@@ -256,6 +313,14 @@ private async Task<bool> Send2FA(Users user)
             await _claimsService.RemoveImpersonation(user);
             await _signInManager.SignOutAsync();
             RemoveJwtCookie();
+
+            await _loggingService.LogAuthenticationAsync(
+                user.Id,
+                AuthenticationType.Logout,
+                true,
+                Request.Headers["User-Agent"],
+                "User logged out successfully"
+            );
 
             Log.Information("User {UserId} logged out", user.Id);
             return Ok(new { message = "Logged out successfully" });

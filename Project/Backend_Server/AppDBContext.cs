@@ -37,6 +37,8 @@ namespace Backend_Server
         public required DbSet<PointTransactions> PointTransactions { get; set; }
         public required DbSet<AuditLogs> AuditLogs { get; set; }
         public required DbSet<NotificationHistory> NotificationHistory { get; set; }
+        public required DbSet<AccountActivity> AccountActivity { get; set; }
+        public required DbSet<Authentications> Authentications { get; set; }
 
         /// <summary>
         /// Reporting and Summaries
@@ -655,7 +657,79 @@ namespace Backend_Server
                 entity.HasIndex(f => f.FeedbackCategory);
                 entity.HasIndex(f => f.SubmissionDate);
             });
-            /* PROCEDURE & VIEW DTOS */
+
+
+            /// <summary>
+            /// Stores user account activity, including timestamps, types, and details.
+            /// </summary>
+            modelBuilder.Entity<AccountActivity>(entity => 
+            {
+                entity.ToTable("AccountActivity");
+
+                entity.HasKey(a => a.ActivityId);
+
+                entity.HasOne(a => a.User)
+                    .WithMany()
+                    .HasForeignKey(a => a.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                entity.Property(a => a.UserId)
+                    .IsRequired();
+
+                entity.Property(a => a.Timestamp)
+                    .IsRequired()
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                    .HasColumnType("TIMESTAMP");
+
+                entity.Property(a => a.ActivityType)
+                    .IsRequired()
+                    .HasConversion<string>()
+                    .HasMaxLength(50);
+                
+                entity.Property(a => a.Details)
+                    .HasMaxLength(500);
+                
+            });
+
+            /// <summary>
+            /// Stores user authentication events, including timestamps, types, and details.
+            /// </summary>
+            modelBuilder.Entity<Authentications>(entity => 
+            {
+                entity.ToTable("Authentications");
+
+                entity.HasKey(a => a.AuthID);
+
+                entity.HasOne(a => a.User)
+                    .WithMany()
+                    .HasForeignKey(a => a.UserID)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                entity.Property(a => a.UserID)
+                    .IsRequired();
+
+                entity.Property(a => a.Timestamp)
+                    .IsRequired()
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                    .HasColumnType("TIMESTAMP");
+                
+                entity.Property(a => a.AuthType)
+                    .IsRequired()
+                    .HasConversion<string>()
+                    .HasMaxLength(50);
+                
+                entity.Property(a => a.Success)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+
+                entity.Property(a => a.UserAgent)
+                    .HasMaxLength(60);
+                
+                entity.Property(a => a.Details)
+                    .HasMaxLength(500);
+            });
+
+
             // For sp_GetSalesBySponsor (both summary and detail use same proc with different viewType)
             modelBuilder.Entity<SpSalesSummary>()
                 .HasNoKey()

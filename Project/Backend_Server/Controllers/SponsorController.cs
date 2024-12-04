@@ -8,6 +8,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Backend_Server.Infrastructure;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
+using Backend_Server.Services;
 
 
 namespace Backend_Server.Controllers
@@ -28,10 +29,11 @@ namespace Backend_Server.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class SponsorController(UserManager<Users> userManager, AppDBContext context, IMemoryCache cache) : CachedBaseController(cache)
+    public class SponsorController(UserManager<Users> userManager, AppDBContext context, IMemoryCache cache, LoggingService loggingService) : CachedBaseController(cache)
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly AppDBContext _context = context;
+        private readonly LoggingService _loggingService = loggingService;
 
         /********* API CALLS *********/
 
@@ -129,9 +131,20 @@ namespace Backend_Server.Controllers
                 .ToListAsync();
 
             Log.Information("UserID: N/A, Category: User, Description: Found {Count} drivers for sponsor", drivers.Count);
+
+            await _loggingService.LogAccountActivityAsync(
+                currentUser.Id,
+                ActivityType.AccountUpdated, 
+                $"Retrieved {drivers.Count} drivers"
+            );
             if (drivers == null)
             {
                 Log.Warning("UserID: N/A, Category: User, Description: No drivers found for sponsor with ID: {SponsorId}", sponsorUser.SponsorID);
+                await _loggingService.LogAccountActivityAsync(
+                    currentUser.Id,
+                    ActivityType.AccountUpdated,
+                    "No drivers found"
+                );
                 return NotFound("No drivers found");
             }
 

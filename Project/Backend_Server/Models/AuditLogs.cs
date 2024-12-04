@@ -23,8 +23,8 @@ namespace Backend_Server.Models
     {
         public int LogID { get; set; } // Primary Key
         public required int UserID { get; set; } // FK to Users
-        public required AuditLogCategory Category { get; set; } 
-        public required AuditLogAction Action { get; set; } 
+        public required AuditLogCategory Category { get; set; }
+        public required AuditLogAction Action { get; set; }
         public required bool ActionSuccess { get; set;}
         public required DateTime Timestamp { get; set; } = DateTime.UtcNow;
         public string? AdditionalDetails { get; set; } // Stores JSON or other details for context

@@ -36,12 +36,14 @@ namespace Backend_Server.Controllers
     public class DriverController(UserManager<Users> userManager, 
                                   AppDBContext context,
                                   ReportService reportService,
-                                  IMemoryCache cache) 
+                                  IMemoryCache cache,
+                                  LoggingService loggingService) 
                                   : CachedBaseController(cache)
     {
         private readonly UserManager<Users> _userManager = userManager;
         private readonly ReportService _reportService = reportService;
         private readonly AppDBContext _context = context;
+        private readonly LoggingService _loggingService = loggingService;
 
 
         /********* API CALLS *********/
@@ -217,6 +219,12 @@ namespace Backend_Server.Controllers
                     }
                 }
 
+                await _loggingService.LogAccountActivityAsync(
+                    user.Id,
+                    ActivityType.UpdateProfile,
+                    $"Applied to sponsors: {string.Join(", ", sponsorIds)}"
+                );
+
                 return Ok(new { 
                     message = "Successfully submitted applications to selected sponsors.",
                     applicationsSubmitted = newApplications.Count
@@ -276,6 +284,12 @@ namespace Backend_Server.Controllers
                                 })
                             .ToListAsync();
 
+                            await _loggingService.LogAccountActivityAsync(
+                                user.Id,
+                                ActivityType.UpdateProfile,
+                                "Retrieved full sponsor list"
+                            );
+
                         return Ok(sponsorPoints);
                     }
                     catch (Exception ex)
@@ -331,6 +345,12 @@ namespace Backend_Server.Controllers
                 {
                     return NotFound("Sponsor relationship not found.");
                 }
+
+                await _loggingService.LogAccountActivityAsync(
+                    user.Id,
+                    ActivityType.UpdateProfile,
+                    $"Retrieved points for sponsor ID: {sponsorId}"
+                );
 
                 return Ok(sponsorPoints);
             }

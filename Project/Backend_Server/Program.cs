@@ -44,6 +44,7 @@ try {
     builder.Services.AddScoped<NotifyService>();
     builder.Services.AddScoped<ReportService>();
     builder.Services.AddScoped<ClaimsService>();
+    builder.Services.AddScoped<LoggingService>();
 
     builder.Services.AddSignalR();
     builder.Services.AddHealthChecks()
