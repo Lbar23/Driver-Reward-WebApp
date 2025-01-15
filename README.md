@@ -31,10 +31,9 @@ This project is a Web Application that incentivizes the improvement of on-road p
 
 ## Key Features
 
-- Advanced DB Management: 
-  - [...edit this later]
-- Web Accessibility:
-  - [...edit this later]
+- Advanced DB Management
+  
+- Web Accessibility
 
 ## Demo Data
 
@@ -105,23 +104,11 @@ For the Backend_Server folder, run:
 
 ## DB ERD
 
-TODO: [Once DB is finalized, upload the UPDATED]
-
-previous one:
-
 <h1><img src="./Docs/db.png" alt="Database ERD" width="500"></h1>
 
 ## Website Wireframe
 
-[The same here as well]
-
-Previous one:
-
 <h1><img src="./Docs/web.png" width="500"></h1>
-
-## Demo Instructions
-
-1. (More information here whenever finalized...)
 
 ## AWS Assets
 
@@ -137,25 +124,12 @@ etc...
 
 **Damon Milford**
 
-- Initial Technical Stack and Documentation
-- ...
-
 **Kristen Wright**
-
-- ...
-
-**Ryan Sands**
-
-- ...
 
 **Luis Barerra**
 
-- ...
+**Ryan Sands**
 
 **Isaac Hine**
 
-- ...
-
-## Acknowledgments
-
-(This can be edited later)
+## unfortunately no longer works due to Amazon account being deleted!
