@@ -126,7 +126,7 @@ etc...
 
 **Kristen Wright**
 
-**Luis Barerra**
+**Luis Barrera**
 
 **Ryan Sands**
 
